@@ -16,13 +16,10 @@
     "noEmit": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
-    "strict": true
+    "strict": true,
+    "lib": ["webworker", "dom"]
   },
-  "exclude": [
-    "node_modules",
-    "vendor",
-    "dist"
-  ],
+  "exclude": ["node_modules", "vendor", "dist"],
   "ts-node": {
     "esm": true,
     "experimentalSpecifierResolution": true
