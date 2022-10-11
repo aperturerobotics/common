@@ -54,20 +54,20 @@
     "singleQuote": true
   },
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^5.36.2",
-    "@typescript-eslint/parser": "^5.36.2",
+    "@typescript-eslint/eslint-plugin": "^5.40.0",
+    "@typescript-eslint/parser": "^5.40.0",
     "depcheck": "^1.4.3",
-    "eslint": "^8.23.0",
+    "eslint": "^8.25.0",
     "eslint-config-prettier": "^8.5.0",
     "patch-package": "^6.4.7",
     "prettier": "^2.7.1",
-    "protobufjs": "^7.1.0",
-    "ts-proto": "^1.125.0",
-    "typescript": "^4.8.2"
+    "protobufjs": "^7.1.2",
+    "ts-proto": "^1.126.1",
+    "typescript": "^4.8.4"
   },
   "dependencies": {
     "bufferutil": "^4.0.6",
-    "starpc": "^0.10.0",
+    "starpc": "^0.11.0",
     "utf-8-validate": "^5.0.9"
   }
 }
