@@ -1,7 +1,7 @@
 {
   "name": "@aperturerobotics/ts-common",
   "description": "Common project configuration files.",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "license": "MIT",
   "author": {
     "name": "Aperture Robotics LLC.",
@@ -68,7 +68,7 @@
   "dependencies": {
     "bufferutil": "^4.0.7",
     "long": "^5.2.1",
-    "starpc": "^0.15.0",
+    "starpc": "^0.15.2",
     "utf-8-validate": "^5.0.10"
   }
 }
