@@ -1,29 +1,3 @@
-diff --git a/node_modules/ts-proto/build/generate-grpc-web.js b/node_modules/ts-proto/build/generate-grpc-web.js
-index c0669e1..d23db07 100644
---- a/node_modules/ts-proto/build/generate-grpc-web.js
-+++ b/node_modules/ts-proto/build/generate-grpc-web.js
-@@ -107,7 +107,11 @@ function generateGrpcMethodDesc(ctx, serviceDesc, methodDesc) {
-     // we want/what grpc-web's runtime needs.
-     const responseFn = (0, ts_poet_1.code) `{
-     deserializeBinary(data: Uint8Array) {
--      return { ...${outputType}.decode(data), toObject() { return this; } };
-+      const value = ${outputType}.decode(data);
-+      return {
-+        ...value,
-+        toObject() { return value; },
-+      };
-     }
-   }`;
-     return (0, ts_poet_1.code) `
-@@ -217,7 +221,7 @@ function createPromiseUnaryMethod(ctx) {
-           debug: this.options.debug,
-           onEnd: function (response) {
-             if (response.status === grpc.Code.OK) {
--              resolve(response.message);
-+              resolve(response.message!.toObject());
-             } else {
-               const err = new ${ctx.utils.GrpcWebError}(response.statusMessage, response.status, response.trailers);
-               reject(err);
 diff --git a/node_modules/ts-proto/build/generate-services.js b/node_modules/ts-proto/build/generate-services.js
 index e9f7077..882cb7d 100644
 --- a/node_modules/ts-proto/build/generate-services.js
