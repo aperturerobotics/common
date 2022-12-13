@@ -1,5 +1,5 @@
 diff --git a/node_modules/ts-proto/build/generate-services.js b/node_modules/ts-proto/build/generate-services.js
-index e9f7077..882cb7d 100644
+index e9f7077..bc3bf7e 100644
 --- a/node_modules/ts-proto/build/generate-services.js
 +++ b/node_modules/ts-proto/build/generate-services.js
 @@ -39,6 +39,9 @@ function generateService(ctx, fileDesc, sourceInfo, serviceDesc) {
@@ -30,7 +30,7 @@ index e9f7077..882cb7d 100644
 +    const params = [
 +        ...(options.context ? [(0, ts_poet_1.code) `ctx: Context`] : []),
 +        (0, ts_poet_1.code) `request: ${inputType}`,
-+        ...(options.useAbortSignal ? [(0, ts_poet_1.code) `abortSignal?: AbortSignal`] : [])
++        ...(options.useAbortSignal ? [(0, ts_poet_1.code) `abortSignal?: AbortSignal`] : []),
 +    ];
      const maybeCtx = options.context ? "ctx," : "";
 +    const maybeAbortSignal = options.useAbortSignal ? "abortSignal || undefined," : "";
