@@ -1,7 +1,7 @@
 {
   "name": "@aperturerobotics/ts-common",
   "description": "Common project configuration files.",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "license": "MIT",
   "author": {
     "name": "Aperture Robotics LLC.",
@@ -62,7 +62,7 @@
     "patch-package": "^6.5.0",
     "prettier": "^2.8.1",
     "protobufjs": "^7.1.2",
-    "ts-proto": "^1.135.3",
+    "ts-proto": "^1.136.0",
     "typescript": "^4.9.4"
   },
   "dependencies": {
