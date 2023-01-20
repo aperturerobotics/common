@@ -82,6 +82,10 @@ export const ExampleMsg = {
     return obj;
   },
 
+  create<I extends Exact<DeepPartial<ExampleMsg>, I>>(base?: I): ExampleMsg {
+    return ExampleMsg.fromPartial(base ?? {});
+  },
+
   fromPartial<I extends Exact<DeepPartial<ExampleMsg>, I>>(object: I): ExampleMsg {
     const message = createBaseExampleMsg();
     message.exampleField = object.exampleField ?? "";
