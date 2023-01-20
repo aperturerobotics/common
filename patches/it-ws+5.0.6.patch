@@ -30,3 +30,15 @@ index 0000000..af37c43
 @@ -0,0 +1 @@
 +{"version":3,"file":"index.browser.js","sourceRoot":"","sources":["../../src/index.ts"],"names":[],"mappings":"AACA,OAAO,EAAE,OAAO,IAAI,MAAM,EAAE,MAAM,aAAa,CAAA;AAC/C,OAAO,EAAE,OAAO,IAAI,MAAM,EAAE,MAAM,aAAa,CAAA;AAC/C,OAAO,EAAE,OAAO,IAAI,IAAI,EAAE,MAAM,WAAW,CAAA;AAC3C,OAAO,EAAE,YAAY,EAAE,MAAM,aAAa,CAAA;AAC1C,OAAO,EAAE,OAAO,EAAE,MAAM,aAAa,CAAA"}
 \ No newline at end of file
+diff --git a/node_modules/it-ws/package.json b/node_modules/it-ws/package.json
+index 67165dc..7d7991c 100644
+--- a/node_modules/it-ws/package.json
++++ b/node_modules/it-ws/package.json
+@@ -50,6 +50,7 @@
+   "exports": {
+     ".": {
+       "types": "./dist/src/index.d.ts",
++      "browser": "./dist/src/index.browser.js",
+       "import": "./dist/src/index.js"
+     },
+     "./client": {
