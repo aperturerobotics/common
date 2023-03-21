@@ -10,7 +10,7 @@ require (
 	github.com/golangci/golangci-lint v1.50.1
 	github.com/planetscale/vtprotobuf v0.3.1-0.20220817155510-0ae748fd2007
 	github.com/psampaz/go-mod-outdated v0.8.0
-	google.golang.org/protobuf v1.28.1
+	google.golang.org/protobuf v1.30.0
 )
 
 require (

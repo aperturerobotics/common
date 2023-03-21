@@ -9,6 +9,7 @@ import (
 	io "io"
 	bits "math/bits"
 
+	proto "google.golang.org/protobuf/proto"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
@@ -18,6 +19,24 @@ const (
 	// Verify that runtime/protoimpl is sufficiently up-to-date.
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
+
+func (m *ExampleMsg) CloneVT() *ExampleMsg {
+	if m == nil {
+		return (*ExampleMsg)(nil)
+	}
+	r := &ExampleMsg{
+		ExampleField: m.ExampleField,
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *ExampleMsg) CloneGenericVT() proto.Message {
+	return m.CloneVT()
+}
 
 func (this *ExampleMsg) EqualVT(that *ExampleMsg) bool {
 	if this == nil {
