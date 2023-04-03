@@ -1376,13 +1376,6 @@ it-merge@^2.0.0:
   dependencies:
     it-pushable "^3.1.0"
 
-it-merge@^3.0.0:
-  version "3.0.0"
-  resolved "https://registry.yarnpkg.com/it-merge/-/it-merge-3.0.0.tgz#d820749ecbf647867e16fa81335a46ac2b79e91f"
-  integrity sha512-sM7t9wPDvCJnAlnvTvzvx82j89GR4mmYs1F8e4tSZ6yChlrnymb1v3b8tXZ6lhZpTye2Nm5nN7zmlhfU5bv4qA==
-  dependencies:
-    it-pushable "^3.1.0"
-
 it-pipe@^2.0.4, it-pipe@^2.0.5:
   version "2.0.5"
   resolved "https://registry.yarnpkg.com/it-pipe/-/it-pipe-2.0.5.tgz#9caf7993dcbbc3824bc6ef64ee8b94574f65afa7"
@@ -1391,14 +1384,6 @@ it-pipe@^2.0.4, it-pipe@^2.0.5:
     it-merge "^2.0.0"
     it-pushable "^3.1.0"
     it-stream-types "^1.0.3"
-
-it-pipe@^3.0.0:
-  version "3.0.0"
-  resolved "https://registry.yarnpkg.com/it-pipe/-/it-pipe-3.0.0.tgz#f318f34080261b1528c51f96b964c8f6cc4acf17"
-  integrity sha512-/CSA3QZ0l1Z552+ujqpAL1A0TCADgVAkeqqDh+CmXxSIN3xETJzGoVsRo85zuS01d4+k1ZLAp30tWAzaG9dJlw==
-  dependencies:
-    it-merge "^3.0.0"
-    it-pushable "^3.1.0"
 
 it-pushable@^3.1.0, it-pushable@^3.1.2:
   version "3.1.2"

@@ -1,7 +1,7 @@
 {
   "name": "@aperturerobotics/ts-common",
   "description": "Common project configuration files.",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "license": "MIT",
   "author": {
     "name": "Aperture Robotics LLC.",
@@ -34,7 +34,7 @@
     "build": "tsc --project tsconfig.json --noEmit false --module ES6 --target es2022 --outDir ./dist/",
     "check": "npm run typecheck",
     "typecheck": "tsc --noEmit",
-    "deps": "depcheck --ignores bufferutil,utf-8-validate,ts-proto,ts-poet,esbuild,starpc,protobufjs,it-pipe",
+    "deps": "depcheck --ignores bufferutil,utf-8-validate,ts-proto,ts-poet,esbuild,starpc,protobufjs",
     "codegen": "npm run gen",
     "ci": "npm run build && npm run lint:js && npm run lint:go",
     "format": "prettier --write './!(vendor|dist)/**/(*.ts|*.tsx|*.js|*.html|*.css)'",
@@ -67,7 +67,6 @@
   },
   "dependencies": {
     "bufferutil": "^4.0.7",
-    "it-pipe": "^3.0.0",
     "long": "^5.2.1",
     "starpc": "^0.18.2",
     "utf-8-validate": "^6.0.3"
