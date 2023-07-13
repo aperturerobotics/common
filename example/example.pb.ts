@@ -17,7 +17,7 @@ function createBaseExampleMsg(): ExampleMsg {
 export const ExampleMsg = {
   encode(
     message: ExampleMsg,
-    writer: _m0.Writer = _m0.Writer.create()
+    writer: _m0.Writer = _m0.Writer.create(),
   ): _m0.Writer {
     if (message.exampleField !== '') {
       writer.uint32(10).string(message.exampleField)
@@ -34,14 +34,14 @@ export const ExampleMsg = {
       const tag = reader.uint32()
       switch (tag >>> 3) {
         case 1:
-          if (tag != 10) {
+          if (tag !== 10) {
             break
           }
 
           message.exampleField = reader.string()
           continue
       }
-      if ((tag & 7) == 4 || tag == 0) {
+      if ((tag & 7) === 4 || tag === 0) {
         break
       }
       reader.skipType(tag & 7)
@@ -54,7 +54,7 @@ export const ExampleMsg = {
   async *encodeTransform(
     source:
       | AsyncIterable<ExampleMsg | ExampleMsg[]>
-      | Iterable<ExampleMsg | ExampleMsg[]>
+      | Iterable<ExampleMsg | ExampleMsg[]>,
   ): AsyncIterable<Uint8Array> {
     for await (const pkt of source) {
       if (Array.isArray(pkt)) {
@@ -72,7 +72,7 @@ export const ExampleMsg = {
   async *decodeTransform(
     source:
       | AsyncIterable<Uint8Array | Uint8Array[]>
-      | Iterable<Uint8Array | Uint8Array[]>
+      | Iterable<Uint8Array | Uint8Array[]>,
   ): AsyncIterable<ExampleMsg> {
     for await (const pkt of source) {
       if (Array.isArray(pkt)) {
@@ -105,7 +105,7 @@ export const ExampleMsg = {
   },
 
   fromPartial<I extends Exact<DeepPartial<ExampleMsg>, I>>(
-    object: I
+    object: I,
   ): ExampleMsg {
     const message = createBaseExampleMsg()
     message.exampleField = object.exampleField ?? ''
