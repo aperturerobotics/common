@@ -95,8 +95,9 @@ export const ExampleMsg = {
 
   toJSON(message: ExampleMsg): unknown {
     const obj: any = {}
-    message.exampleField !== undefined &&
-      (obj.exampleField = message.exampleField)
+    if (message.exampleField !== '') {
+      obj.exampleField = message.exampleField
+    }
     return obj
   },
 
