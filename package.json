@@ -16,7 +16,7 @@
     }
   ],
   "repository": {
-    "url": "git@github.com:aperturerobotics/ts-common.git"
+    "url": "git+ssh://git@github.com/aperturerobotics/ts-common.git"
   },
   "files": [
     "!**/*.tsbuildinfo",
