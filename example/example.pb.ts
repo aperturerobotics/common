@@ -102,9 +102,8 @@ export const ExampleMsg = {
   },
 
   create<I extends Exact<DeepPartial<ExampleMsg>, I>>(base?: I): ExampleMsg {
-    return ExampleMsg.fromPartial(base ?? {})
+    return ExampleMsg.fromPartial(base ?? ({} as any))
   },
-
   fromPartial<I extends Exact<DeepPartial<ExampleMsg>, I>>(
     object: I,
   ): ExampleMsg {
