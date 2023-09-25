@@ -1,6 +1,7 @@
 /* eslint-disable */
 import Long from 'long'
 import _m0 from 'protobufjs/minimal.js'
+import { OtherMsg } from './other/other.pb.js'
 
 export const protobufPackage = 'example'
 
@@ -8,10 +9,12 @@ export const protobufPackage = 'example'
 export interface ExampleMsg {
   /** ExampleField is an example field. */
   exampleField: string
+  /** OtherMsg is an example of an imported message field. */
+  otherMsg: OtherMsg | undefined
 }
 
 function createBaseExampleMsg(): ExampleMsg {
-  return { exampleField: '' }
+  return { exampleField: '', otherMsg: undefined }
 }
 
 export const ExampleMsg = {
@@ -21,6 +24,9 @@ export const ExampleMsg = {
   ): _m0.Writer {
     if (message.exampleField !== '') {
       writer.uint32(10).string(message.exampleField)
+    }
+    if (message.otherMsg !== undefined) {
+      OtherMsg.encode(message.otherMsg, writer.uint32(18).fork()).ldelim()
     }
     return writer
   },
@@ -39,6 +45,13 @@ export const ExampleMsg = {
           }
 
           message.exampleField = reader.string()
+          continue
+        case 2:
+          if (tag !== 18) {
+            break
+          }
+
+          message.otherMsg = OtherMsg.decode(reader, reader.uint32())
           continue
       }
       if ((tag & 7) === 4 || tag === 0) {
@@ -90,6 +103,9 @@ export const ExampleMsg = {
       exampleField: isSet(object.exampleField)
         ? String(object.exampleField)
         : '',
+      otherMsg: isSet(object.otherMsg)
+        ? OtherMsg.fromJSON(object.otherMsg)
+        : undefined,
     }
   },
 
@@ -97,6 +113,9 @@ export const ExampleMsg = {
     const obj: any = {}
     if (message.exampleField !== '') {
       obj.exampleField = message.exampleField
+    }
+    if (message.otherMsg !== undefined) {
+      obj.otherMsg = OtherMsg.toJSON(message.otherMsg)
     }
     return obj
   },
@@ -109,6 +128,10 @@ export const ExampleMsg = {
   ): ExampleMsg {
     const message = createBaseExampleMsg()
     message.exampleField = object.exampleField ?? ''
+    message.otherMsg =
+      object.otherMsg !== undefined && object.otherMsg !== null
+        ? OtherMsg.fromPartial(object.otherMsg)
+        : undefined
     return message
   },
 }

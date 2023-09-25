@@ -1,8 +1,12 @@
 syntax = "proto3";
 package example;
 
+import "github.com/aperturerobotics/ts-common/example/other/other.proto";
+
 // ExampleMsg is an example message.
 message ExampleMsg {
   // ExampleField is an example field.
   string example_field = 1;
+  // OtherMsg is an example of an imported message field.
+  .example.other.OtherMsg other_msg = 2;
 }

@@ -62,6 +62,7 @@
     "patch-package": "^8.0.0",
     "prettier": "^3.0.3",
     "protobufjs": "^7.2.5",
+    "ts-poet": "6.6.0",
     "ts-proto": "^1.158.0",
     "typescript": "^5.2.2"
   },

@@ -1,0 +1,8 @@
+syntax = "proto3";
+package example.other;
+
+// OtherMsg is a different message from ExampleMsg.
+message OtherMsg {
+  // FooField is an example field.
+  uint32 foo_field = 1;
+}

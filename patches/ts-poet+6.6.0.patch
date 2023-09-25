@@ -1,0 +1,43 @@
+diff --git a/node_modules/ts-poet/build/Import.js b/node_modules/ts-poet/build/Import.js
+index 695a5d0..a15205f 100644
+--- a/node_modules/ts-poet/build/Import.js
++++ b/node_modules/ts-poet/build/Import.js
+@@ -256,6 +256,18 @@ function emitImports(imports, ourModulePath, importMappings, forceRequireImports
+     if (imports.length == 0) {
+         return "";
+     }
++   // HACK: take the project root import path from $PROJECT
++    const thisProject = process.env.PROJECT;
++    let ourModuleImportPath = path.normalize(ourModulePath);
++    // HACK: if this is an import from our project, set the path accordingly
++    // github.com/aperturerobotics/protobuf-project/example/example -> ./example/example
++    if (thisProject) {
++      if (ourModuleImportPath.startsWith(thisProject)) {
++        ourModuleImportPath = './' + ourModuleImportPath.substr(thisProject.length + 1);
++      } else {
++        ourModuleImportPath = '@go/' + ourModuleImportPath;
++      }
++    }
+     let result = "";
+     // Group the imports by source module they're imported from
+     const importsByModule = (0, utils_1.groupBy)(imports.filter((it) => it.source !== undefined &&
+@@ -269,7 +281,18 @@ function emitImports(imports, ourModulePath, importMappings, forceRequireImports
+         if (modulePath in importMappings) {
+             modulePath = importMappings[modulePath];
+         }
+-        const importPath = maybeAdjustExtension(maybeRelativePath(ourModulePath, modulePath), importExtensions);
++        if (thisProject) {
++          if (modulePath.startsWith('./')) {
++            if (modulePath.substring(2).startsWith(thisProject)) {
++              modulePath = './' + modulePath.substring(3 + thisProject.length);
++            } else if (modulePath.startsWith('./google/protobuf')) {
++              modulePath = '@aperturerobotics/ts-proto-common-types/' + path.normalize(modulePath);
++            } else {
++              modulePath = '@go/' + path.normalize(modulePath);
++            }
++          }
++        }
++        const importPath = maybeAdjustExtension(maybeRelativePath(ourModuleImportPath, modulePath), importExtensions);
+         // Output star imports individually
+         unique(filterInstances(imports, ImportsAll).map((i) => i.symbol)).forEach((symbol) => {
+             result += `import * as ${symbol} from '${importPath}';\n`;
