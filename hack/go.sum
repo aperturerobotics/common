@@ -80,7 +80,9 @@ github.com/aperturerobotics/goprotowrap v0.3.0/go.mod h1:ehsRFLviAKk5oiZK+i5oL4j
 github.com/aperturerobotics/starpc v0.20.1 h1:afZTndOJ62XHwn7JHo8xqqo9YO3FJzCrMvHuovvPkII=
 github.com/aperturerobotics/starpc v0.20.1/go.mod h1:0RYBcmV7HGTqsFuOEJBhK6FCXaJiMrh8jetELYjA+s0=
 github.com/aperturerobotics/starpc v0.21.5/go.mod h1:RmlSMCL1RsvwkBymOXJWWq8oqDLwQcN16y8RwVWqj6Q=
+github.com/aperturerobotics/starpc v0.22.0/go.mod h1:qy3w8McK017t9g4VbJ+l5ycl1XTu/TDRY4CprSSwVRM=
 github.com/aperturerobotics/ts-common v0.6.7/go.mod h1:v8EOsxQ0G1vgcU9qfaXVP9EweMBhz1KbYvOQ1GvrzNw=
+github.com/aperturerobotics/ts-common v0.7.0/go.mod h1:v8EOsxQ0G1vgcU9qfaXVP9EweMBhz1KbYvOQ1GvrzNw=
 github.com/ashanbrown/forbidigo v1.5.3 h1:jfg+fkm/snMx+V9FBwsl1d340BV/99kZGv5jN9hBoXk=
 github.com/ashanbrown/forbidigo v1.5.3/go.mod h1:Y8j9jy9ZYAEHXdu723cUlraTqbzjKF1MUyfOKL+AjcU=
 github.com/ashanbrown/forbidigo v1.6.0/go.mod h1:Y8j9jy9ZYAEHXdu723cUlraTqbzjKF1MUyfOKL+AjcU=
@@ -151,6 +153,7 @@ github.com/evanw/esbuild v0.19.3 h1:foPr0xwQM3lBWKBtscauTN9FrmJzRDVI2+EGOs82H/I=
 github.com/evanw/esbuild v0.19.3/go.mod h1:iINY06rn799hi48UqEnaQvVfZWe6W9bET78LbvN8VWk=
 github.com/evanw/esbuild v0.19.8/go.mod h1:D2vIQZqV/vIf/VRHtViaUtViZmG7o+kKmlBfVQuRi48=
 github.com/evanw/esbuild v0.19.9/go.mod h1:D2vIQZqV/vIf/VRHtViaUtViZmG7o+kKmlBfVQuRi48=
+github.com/evanw/esbuild v0.19.10/go.mod h1:D2vIQZqV/vIf/VRHtViaUtViZmG7o+kKmlBfVQuRi48=
 github.com/fatih/color v1.15.0 h1:kOqh6YHBtK8aywxGerMG2Eq3H6Qgoqeo13Bk2Mv/nBs=
 github.com/fatih/color v1.15.0/go.mod h1:0h5ZqXfHYED7Bhv2ZJamyIOUej9KtShiJESRwBDUSsw=
 github.com/fatih/structtag v1.2.0 h1:/OdNE99OxoI/PqaW/SuSK9uxxT3f/tcSZgon/ssNSx4=
