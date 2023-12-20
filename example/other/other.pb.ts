@@ -57,12 +57,12 @@ export const OtherMsg = {
       | Iterable<OtherMsg | OtherMsg[]>,
   ): AsyncIterable<Uint8Array> {
     for await (const pkt of source) {
-      if (Array.isArray(pkt)) {
-        for (const p of pkt) {
+      if (globalThis.Array.isArray(pkt)) {
+        for (const p of pkt as any) {
           yield* [OtherMsg.encode(p).finish()]
         }
       } else {
-        yield* [OtherMsg.encode(pkt).finish()]
+        yield* [OtherMsg.encode(pkt as any).finish()]
       }
     }
   },
@@ -75,18 +75,20 @@ export const OtherMsg = {
       | Iterable<Uint8Array | Uint8Array[]>,
   ): AsyncIterable<OtherMsg> {
     for await (const pkt of source) {
-      if (Array.isArray(pkt)) {
-        for (const p of pkt) {
+      if (globalThis.Array.isArray(pkt)) {
+        for (const p of pkt as any) {
           yield* [OtherMsg.decode(p)]
         }
       } else {
-        yield* [OtherMsg.decode(pkt)]
+        yield* [OtherMsg.decode(pkt as any)]
       }
     }
   },
 
   fromJSON(object: any): OtherMsg {
-    return { fooField: isSet(object.fooField) ? Number(object.fooField) : 0 }
+    return {
+      fooField: isSet(object.fooField) ? globalThis.Number(object.fooField) : 0,
+    }
   },
 
   toJSON(message: OtherMsg): unknown {
@@ -119,18 +121,18 @@ type Builtin =
 export type DeepPartial<T> = T extends Builtin
   ? T
   : T extends Long
-  ? string | number | Long
-  : T extends Array<infer U>
-  ? Array<DeepPartial<U>>
-  : T extends ReadonlyArray<infer U>
-  ? ReadonlyArray<DeepPartial<U>>
-  : T extends { $case: string }
-  ? { [K in keyof Omit<T, '$case'>]?: DeepPartial<T[K]> } & {
-      $case: T['$case']
-    }
-  : T extends {}
-  ? { [K in keyof T]?: DeepPartial<T[K]> }
-  : Partial<T>
+    ? string | number | Long
+    : T extends globalThis.Array<infer U>
+      ? globalThis.Array<DeepPartial<U>>
+      : T extends ReadonlyArray<infer U>
+        ? ReadonlyArray<DeepPartial<U>>
+        : T extends { $case: string }
+          ? { [K in keyof Omit<T, '$case'>]?: DeepPartial<T[K]> } & {
+              $case: T['$case']
+            }
+          : T extends {}
+            ? { [K in keyof T]?: DeepPartial<T[K]> }
+            : Partial<T>
 
 type KeysOfUnion<T> = T extends T ? keyof T : never
 export type Exact<P, I extends P> = P extends Builtin
