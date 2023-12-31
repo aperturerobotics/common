@@ -17,7 +17,8 @@
     {
       "matchPackageNames": [
         "github.com/aperturerobotics/ts-common",
-        "@aperturerobotics/ts-common"
+        "@aperturerobotics/ts-common",
+        "starpc"
       ],
       "enabled": false
     }
