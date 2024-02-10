@@ -2,10 +2,10 @@ name: Tests
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "main" ]
   pull_request:
     # The branches below must be a subset of the branches above
-    branches: [ "master" ]
+    branches: [ "main" ]
 
 # Builds images for target boards.
 permissions:
@@ -16,8 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go: ['1.21']
-        node: [18.x, 21.x]
+        go: ['1.22']
+        node: [21.x]
     timeout-minutes: 10
     steps:
       - name: Harden Runner
