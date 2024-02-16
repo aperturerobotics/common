@@ -71,7 +71,7 @@
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-unused-imports": "^3.0.0",
     "long": "^5.2.3",
-    "starpc": "^0.23.0",
+    "starpc": "^0.25.5",
     "utf-8-validate": "^6.0.3"
   },
   "peerDependencies": {
