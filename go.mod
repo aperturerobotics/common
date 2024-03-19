@@ -7,4 +7,4 @@ replace (
 	google.golang.org/protobuf => github.com/aperturerobotics/protobuf-go v1.32.1-0.20240118233629-6aeee82c476f // aperture
 )
 
-require google.golang.org/protobuf v1.32.0
+require google.golang.org/protobuf v1.33.0

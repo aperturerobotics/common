@@ -59,19 +59,19 @@
     "prettier": "^3.0.3",
     "protobufjs": "^7.2.5",
     "ts-poet": "6.7.0",
-    "ts-proto": "^1.166.1",
-    "typescript": "^5.2.2"
+    "ts-proto": "^1.169.1",
+    "typescript": "^5.4.2"
   },
   "dependencies": {
-    "@typescript-eslint/eslint-plugin": "^7.0.0",
-    "@typescript-eslint/parser": "^7.0.0",
+    "@typescript-eslint/eslint-plugin": "^7.3.1",
+    "@typescript-eslint/parser": "^7.3.1",
     "bufferutil": "^4.0.7",
-    "eslint": "^8.56.0",
+    "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-unused-imports": "^3.0.0",
     "long": "^5.2.3",
-    "starpc": "^0.26.0",
+    "starpc": "^0.27.2",
     "utf-8-validate": "^6.0.3"
   },
   "peerDependencies": {
