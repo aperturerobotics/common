@@ -21,7 +21,6 @@
   "files": [
     "!**/*.tsbuildinfo",
     ".eslintrc.js",
-    ".eslintignore",
     ".gitignore",
     "Makefile",
     "dist",
@@ -44,7 +43,7 @@
     "demo": "make demo",
     "lint": "npm run lint:go && npm run lint:js",
     "lint:go": "make lint",
-    "lint:js": "eslint -c .eslintrc.js './example/**/*.{ts,tsx}'",
+    "lint:js": "ESLINT_USE_FLAT_CONFIG=false eslint -c .eslintrc.js ./",
     "patch": "patch-package --use-yarn --patch-dir ./patches",
     "prepare": "npm run patch && go mod vendor",
     "precommit": "npm run format"

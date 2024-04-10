@@ -14,5 +14,14 @@ module.exports = {
   rules: {
     '@typescript-eslint/explicit-module-boundary-types': 'off',
     '@typescript-eslint/no-non-null-assertion': 'off',
-  }
+  },
+  ignorePatterns: [
+    "node_modules",
+    "dist",
+    "coverage",
+    "bundle",
+    "runtime",
+    "vendor",
+    ".eslintrc.js"
+  ]
 }
