@@ -20,8 +20,7 @@
   },
   "files": [
     "!**/*.tsbuildinfo",
-    ".eslintrc.js",
-    ".eslintignore",
+    "eslint.config.js",
     ".gitignore",
     "Makefile",
     "dist",
@@ -44,7 +43,7 @@
     "demo": "make demo",
     "lint": "npm run lint:go && npm run lint:js",
     "lint:go": "make lint",
-    "lint:js": "eslint -c .eslintrc.js './example/**/*.{ts,tsx}'",
+    "lint:js": "eslint -c eslint.config.js ./",
     "patch": "patch-package --use-yarn --patch-dir ./patches",
     "prepare": "npm run patch && go mod vendor",
     "precommit": "npm run format"
@@ -72,6 +71,7 @@
     "eslint-plugin-unused-imports": "^3.0.0",
     "long": "^5.2.3",
     "starpc": "^0.28.0",
+    "typescript-eslint": "^7.6.0",
     "utf-8-validate": "^6.0.3"
   },
   "peerDependencies": {
