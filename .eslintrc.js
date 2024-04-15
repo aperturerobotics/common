@@ -22,6 +22,7 @@ module.exports = {
     "bundle",
     "runtime",
     "vendor",
-    ".eslintrc.js"
+    ".eslintrc.js",
+    "wasm_exec.js"
   ]
 }

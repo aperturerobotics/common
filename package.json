@@ -36,7 +36,12 @@
     "deps": "depcheck --ignores bufferutil,utf-8-validate,ts-proto,ts-poet,esbuild,starpc,protobufjs",
     "codegen": "npm run gen",
     "ci": "npm run build && npm run lint:js && npm run lint:go",
-    "format": "prettier --write './!(vendor|dist)/**/(*.ts|*.tsx|*.js|*.html|*.css)'",
+    "format": "npm run format:go && npm run format:js && npm run format:config",
+    "format:config": "prettier --write tsconfig.json package.json",
+    "format:go": "make format",
+    "format:js": "npm run format:js:changed",
+    "format:js:changed": "git diff --name-only --diff-filter=d HEAD | grep '\\(\\.ts\\|\\.tsx\\|\\.html\\|\\.css\\|\\.scss\\)$' | xargs -I {} prettier --write {}",
+    "format:js:all": "prettier --write './!(vendor|dist)/**/(*.ts|*.tsx|*.js|*.html|*.css)'",
     "gen": "make genproto",
     "test": "make test && npm run check",
     "test:js": "echo No JS tests.",
@@ -58,19 +63,19 @@
     "prettier": "^3.0.3",
     "protobufjs": "^7.2.5",
     "ts-poet": "6.8.1",
-    "ts-proto": "^1.169.1",
-    "typescript": "^5.4.2"
+    "ts-proto": "^1.172.0",
+    "typescript": "^5.4.5"
   },
   "dependencies": {
-    "@typescript-eslint/eslint-plugin": "^7.3.1",
-    "@typescript-eslint/parser": "^7.3.1",
+    "@typescript-eslint/eslint-plugin": "^7.7.0",
+    "@typescript-eslint/parser": "^7.7.0",
     "bufferutil": "^4.0.7",
     "eslint": "^9.0.0",
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-unused-imports": "^3.0.0",
     "long": "^5.2.3",
-    "starpc": "^0.28.0",
+    "starpc": "^0.28.1",
     "utf-8-validate": "^6.0.3"
   },
   "peerDependencies": {
