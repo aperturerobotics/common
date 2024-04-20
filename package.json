@@ -70,12 +70,12 @@
     "@typescript-eslint/eslint-plugin": "^7.7.0",
     "@typescript-eslint/parser": "^7.7.0",
     "bufferutil": "^4.0.7",
-    "eslint": "^9.0.0",
+    "eslint": "^9.1.0",
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-unused-imports": "^3.0.0",
     "long": "^5.2.3",
-    "starpc": "^0.28.1",
+    "starpc": "^0.30.0",
     "utf-8-validate": "^6.0.3"
   },
   "peerDependencies": {

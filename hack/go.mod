@@ -10,7 +10,7 @@ replace (
 )
 
 require (
-	github.com/aperturerobotics/ts-common v0.0.0-00010101000000-000000000000
+	github.com/aperturerobotics/ts-common v0.10.0 // main
 	github.com/golangci/golangci-lint v1.55.2
 	github.com/psampaz/go-mod-outdated v0.9.0
 	golang.org/x/tools v0.20.0
@@ -19,8 +19,8 @@ require (
 
 require (
 	github.com/aperturerobotics/goprotowrap v0.3.1 // master
-	github.com/aperturerobotics/protobuf-go-lite v0.2.3 // master
-	github.com/aperturerobotics/starpc v0.22.8
+	github.com/aperturerobotics/protobuf-go-lite v0.3.1 // latest
+	github.com/aperturerobotics/starpc v0.30.0 // latest
 )
 
 require (
@@ -135,6 +135,7 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.5 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/polyfloyd/go-errorlint v1.4.5 // indirect
 	github.com/prometheus/client_golang v1.12.1 // indirect
