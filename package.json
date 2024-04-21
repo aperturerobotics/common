@@ -30,7 +30,8 @@
     "patches"
   ],
   "scripts": {
-    "build": "tsc --project tsconfig.json --noEmit false --module ES6 --target es2022 --outDir ./dist/",
+    "build": "npm run clean && tsc --project tsconfig.json --noEmit false --module ES6 --target es2022 --outDir ./dist/",
+    "clean": "rimraf ./dist",
     "check": "npm run typecheck",
     "typecheck": "tsc --noEmit",
     "deps": "depcheck --ignores bufferutil,utf-8-validate,ts-proto,ts-poet,esbuild,starpc,protobufjs",
@@ -62,6 +63,7 @@
     "patch-package": "^8.0.0",
     "prettier": "^3.0.3",
     "protobufjs": "^7.2.5",
+    "rimraf": "^5.0.5",
     "ts-poet": "6.8.1",
     "ts-proto": "^1.172.0",
     "typescript": "^5.4.5"
