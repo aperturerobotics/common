@@ -11,8 +11,8 @@ GO_MOD_OUTDATED=hack/bin/go-mod-outdated
 GOLIST=go list -f "{{ .Dir }}" -m
 
 export GO111MODULE=on
-undefine GOOS
 undefine GOARCH
+undefine GOOS
 
 all:
 
@@ -24,12 +24,6 @@ $(PROTOC_GEN_GO):
 	go build -v \
 		-o ./bin/protoc-gen-go-lite \
 		github.com/aperturerobotics/protobuf-go-lite/cmd/protoc-gen-go-lite
-
-$(PROTOC_GEN_STARPC):
-	cd ./hack; \
-	go build -v \
-		-o ./bin/protoc-gen-go-starpc \
-		github.com/aperturerobotics/starpc/cmd/protoc-gen-go-starpc
 
 $(GOIMPORTS):
 	cd ./hack; \
@@ -61,33 +55,40 @@ $(GO_MOD_OUTDATED):
 		-o ./bin/go-mod-outdated \
 		github.com/psampaz/go-mod-outdated
 
+$(PROTOC_GEN_STARPC):
+	cd ./hack; \
+	go build -v \
+		-o ./bin/protoc-gen-go-starpc \
+		github.com/aperturerobotics/starpc/cmd/protoc-gen-go-starpc
+
+node_modules:
+	yarn install
+
 .PHONY: genproto
 genproto: vendor node_modules $(GOIMPORTS) $(PROTOWRAP) $(PROTOC_GEN_GO) $(PROTOC_GEN_STARPC)
 	shopt -s globstar; \
 	set -eo pipefail; \
 	export PROJECT=$$(go list -m); \
 	export PATH=$$(pwd)/hack/bin:$${PATH}; \
-	mkdir -p $$(pwd)/vendor/$$(dirname $${PROJECT}); \
+	export OUT=$$(pwd)/vendor; \
+	mkdir -p $${OUT}/$$(dirname $${PROJECT}); \
 	rm $$(pwd)/vendor/$${PROJECT} || true; \
 	ln -s $$(pwd) $$(pwd)/vendor/$${PROJECT} ; \
 	protogen() { \
 		$(PROTOWRAP) \
-			-I $$(pwd)/vendor \
-			--plugin=./node_modules/.bin/protoc-gen-ts_proto \
-			--go-lite_out=$$(pwd)/vendor \
+			-I $${OUT} \
+			--plugin=./node_modules/.bin/protoc-gen-es \
+			--plugin=./node_modules/.bin/protoc-gen-es-starpc \
+			--go-lite_out=$${OUT} \
 			--go-lite_opt=features=marshal+unmarshal+size+equal+json+clone \
-			--go-starpc_out=$$(pwd)/vendor \
-			--ts_proto_out=$$(pwd)/vendor \
-			--ts_proto_opt=esModuleInterop=true \
-			--ts_proto_opt=fileSuffix=.pb \
-			--ts_proto_opt=importSuffix=.js \
-			--ts_proto_opt=forceLong=long \
-			--ts_proto_opt=oneof=unions \
-			--ts_proto_opt=outputServices=default,outputServices=generic-definitions \
-			--ts_proto_opt=useAbortSignal=true \
-			--ts_proto_opt=useAsyncIterable=true \
-			--ts_proto_opt=useDate=true \
-			--proto_path $$(pwd)/vendor \
+			--go-starpc_out=$${OUT} \
+			--es_out=$${OUT} \
+			--es_opt target=ts \
+			--es_opt ts_nocheck=false \
+			--es-starpc_out=$${OUT} \
+			--es-starpc_opt target=ts \
+			--es-starpc_opt ts_nocheck=false \
+			--proto_path $${OUT} \
 			--print_structure \
 			--only_specified_files \
 			$$(\
@@ -100,9 +101,6 @@ genproto: vendor node_modules $(GOIMPORTS) $(PROTOWRAP) $(PROTOC_GEN_GO) $(PROTO
 	rm $$(pwd)/vendor/$${PROJECT} || true
 	$(GOIMPORTS) -w ./
 	npm run format:js
-
-node_modules:
-	yarn install
 
 .PHONY: gen
 gen: genproto
@@ -117,17 +115,17 @@ list: $(GO_MOD_OUTDATED)
 
 .PHONY: lint
 lint: $(GOLANGCI_LINT)
-	$(GOLANGCI_LINT) run --timeout=10m
+	$(GOLANGCI_LINT) run
 
 .PHONY: fix
 fix: $(GOLANGCI_LINT)
-	$(GOLANGCI_LINT) run --fix --timeout=10m
+	$(GOLANGCI_LINT) run --fix
+
+.PHONY: test
+test:
+	go test -v ./...
 
 .PHONY: format
 format: $(GOFUMPT) $(GOIMPORTS)
 	$(GOIMPORTS) -w ./
 	$(GOFUMPT) -w ./
-
-.PHONY: test
-test:
-	go test -v ./...
