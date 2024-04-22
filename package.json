@@ -33,7 +33,7 @@
     "clean": "rimraf ./dist",
     "check": "npm run typecheck",
     "typecheck": "tsc --noEmit",
-    "deps": "depcheck --ignores bufferutil,utf-8-validate,ts-proto,ts-poet,esbuild,starpc,protobufjs,rimraf",
+    "deps": "depcheck --ignores bufferutil,esbuild,starpc,rimraf,@bufbuild/protoc-gen-es",
     "codegen": "npm run gen",
     "ci": "npm run build && npm run lint:js && npm run lint:go",
     "format": "npm run format:go && npm run format:js && npm run format:config",
@@ -59,9 +59,7 @@
   "devDependencies": {
     "@bufbuild/protoc-gen-es": "^1.8.0",
     "depcheck": "^1.4.6",
-    "patch-package": "^8.0.0",
     "prettier": "^3.0.3",
-    "protobufjs": "^7.2.5",
     "rimraf": "^5.0.5",
     "typescript": "^5.4.5"
   },
@@ -74,8 +72,7 @@
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-unused-imports": "^3.0.0",
-    "starpc": "^0.31.1",
-    "utf-8-validate": "^6.0.3"
+    "starpc": "^0.31.1"
   },
   "peerDependencies": {
     "ts-poet": "6.8.1"
