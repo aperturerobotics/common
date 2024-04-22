@@ -1,7 +1,7 @@
 {
-  "name": "@aperturerobotics/ts-common",
-  "description": "Common project configuration files.",
-  "version": "0.11.1",
+  "name": "@aptre/common",
+  "description": "Common project configuration files and dependencies.",
+  "version": "v0.12.0",
   "license": "MIT",
   "author": {
     "name": "Aperture Robotics LLC.",
@@ -16,7 +16,7 @@
     }
   ],
   "repository": {
-    "url": "git+ssh://git@github.com/aperturerobotics/ts-common.git"
+    "url": "git+ssh://git@github.com/aperturerobotics/common.git"
   },
   "files": [
     "!**/*.tsbuildinfo",
@@ -72,7 +72,5 @@
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-unused-imports": "^3.0.0",
     "starpc": "^0.31.1"
-  },
-  "peerDependencies": {
   }
 }
