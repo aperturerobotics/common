@@ -62,6 +62,17 @@ To format the Go and TypeScript files:
 
  - `yarn format`
 
+## Eject
+
+You can "eject" and copy all the project files directly to your repo:
+
+```
+# NOTE: not a full list of files
+cp ./vendor/github.com/aperturerobotics/common/{Makefile,.eslintrc.js,.eslintignore} ./
+```
+
+While not implemented yet, "make eject" will do this for you.
+
 ## Developing on MacOS
 
 On MacOS, some homebrew packages are required for `yarn gen`:

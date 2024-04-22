@@ -1,6 +1,11 @@
 # https://github.com/aperturerobotics/template
 
+# PROJECT_DIR is overridden by projects that import this file.
+COMMON_DIR = $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
+PROJECT_DIR := $(COMMON_DIR)
 SHELL:=bash
+MAKEFLAGS += --no-print-directory
+
 PROTOWRAP=tools/bin/protowrap
 PROTOC_GEN_GO=tools/bin/protoc-gen-go-lite
 PROTOC_GEN_STARPC=tools/bin/protoc-gen-go-starpc
@@ -15,9 +20,6 @@ undefine GOARCH
 undefine GOOS
 
 all:
-
-vendor:
-	go mod vendor
 
 $(PROTOC_GEN_GO):
 	cd ./tools; \
@@ -64,19 +66,23 @@ $(PROTOC_GEN_STARPC):
 node_modules:
 	yarn install
 
+.PHONY: protodeps
+protodeps: $(GOIMPORTS) $(PROTOWRAP) $(PROTOC_GEN_GO) $(PROTOC_GEN_STARPC)
+
 .PHONY: genproto
-genproto: vendor node_modules $(GOIMPORTS) $(PROTOWRAP) $(PROTOC_GEN_GO) $(PROTOC_GEN_STARPC)
+genproto: protodeps
 	shopt -s globstar; \
 	set -eo pipefail; \
-	export PROJECT=$$(go list -m); \
 	export PATH=$$(pwd)/tools/bin:$${PATH}; \
+	cd $(PROJECT_DIR); \
+	export PROJECT=$$(go list -m); \
 	export OUT=./vendor; \
 	mkdir -p $${OUT}/$$(dirname $${PROJECT}); \
 	rm ./vendor/$${PROJECT} || true; \
 	ln -s $$(pwd) ./vendor/$${PROJECT} ; \
 	protogen() { \
 		PROTO_FILES=$$(git ls-files "$$1"); \
-		$(PROTOWRAP) \
+		$(COMMON_DIR)/$(PROTOWRAP) \
 			-I $${OUT} \
 			--plugin=./node_modules/.bin/protoc-gen-es \
 			--plugin=./node_modules/.bin/protoc-gen-es-starpc \
@@ -116,33 +122,39 @@ genproto: vendor node_modules $(GOIMPORTS) $(PROTOWRAP) $(PROTOC_GEN_GO) $(PROTO
 		done; \
 	}; \
 	protogen "./*.proto"; \
-	rm -f ./vendor/$${PROJECT}
-	$(GOIMPORTS) -w ./
+	rm -f ./vendor/$${PROJECT}; \
+	$(COMMON_DIR)/$(GOIMPORTS) -w ./
 
 .PHONY: gen
 gen: genproto
 
 .PHONY: outdated
 outdated: $(GO_MOD_OUTDATED)
-	go list -mod=mod -u -m -json all | $(GO_MOD_OUTDATED) -update -direct
+	cd $(PROJECT_DIR); \
+	go list -mod=mod -u -m -json all | $(COMMON_DIR)/$(GO_MOD_OUTDATED) -update -direct
 
 .PHONY: list
 list: $(GO_MOD_OUTDATED)
-	go list -mod=mod -u -m -json all | $(GO_MOD_OUTDATED)
+	cd $(PROJECT_DIR); \
+	go list -mod=mod -u -m -json all | $(COMMON_DIR)/$(GO_MOD_OUTDATED)
 
 .PHONY: lint
 lint: $(GOLANGCI_LINT)
-	$(GOLANGCI_LINT) run
+	cd $(PROJECT_DIR); \
+	$(COMMON_DIR)/$(GOLANGCI_LINT) run
 
 .PHONY: fix
 fix: $(GOLANGCI_LINT)
-	$(GOLANGCI_LINT) run --fix
+	cd $(PROJECT_DIR); \
+	$(COMMON_DIR)/$(GOLANGCI_LINT) run --fix
 
 .PHONY: test
 test:
+	cd $(PROJECT_DIR); \
 	go test -v ./...
 
 .PHONY: format
 format: $(GOFUMPT) $(GOIMPORTS)
-	$(GOIMPORTS) -w ./
-	$(GOFUMPT) -w ./
+	cd $(PROJECT_DIR); \
+	$(COMMON_DIR)/$(GOIMPORTS) -w ./; \
+	$(COMMON_DIR)/$(GOFUMPT) -w ./

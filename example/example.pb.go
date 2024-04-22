@@ -9,9 +9,9 @@ import (
 	strconv "strconv"
 	strings "strings"
 
+	other "github.com/aperturerobotics/common/example/other"
 	protobuf_go_lite "github.com/aperturerobotics/protobuf-go-lite"
 	json "github.com/aperturerobotics/protobuf-go-lite/json"
-	other "github.com/aperturerobotics/common/example/other"
 	errors "github.com/pkg/errors"
 )
 
