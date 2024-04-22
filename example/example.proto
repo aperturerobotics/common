@@ -1,7 +1,7 @@
 syntax = "proto3";
 package example;
 
-import "github.com/aperturerobotics/ts-common/example/other/other.proto";
+import "github.com/aperturerobotics/common/example/other/other.proto";
 
 // ExampleMsg is an example message.
 message ExampleMsg {

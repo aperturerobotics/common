@@ -2,7 +2,7 @@ module hack
 
 go 1.22
 
-replace github.com/aperturerobotics/ts-common => ../
+replace github.com/aperturerobotics/common => ../
 
 replace (
 	github.com/sirupsen/logrus => github.com/aperturerobotics/logrus v1.9.4-0.20240119050608-13332fb58195 // aperture
@@ -10,7 +10,7 @@ replace (
 )
 
 require (
-	github.com/aperturerobotics/ts-common v0.10.0 // main
+	github.com/aperturerobotics/common v0.10.0 // main
 	github.com/golangci/golangci-lint v1.55.2
 	github.com/psampaz/go-mod-outdated v0.9.0
 	golang.org/x/tools v0.20.0
