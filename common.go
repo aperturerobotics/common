@@ -1,4 +1,4 @@
-package tscommon
+package common
 
 // _ enables embedding
 import _ "embed"
