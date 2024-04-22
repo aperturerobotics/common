@@ -5,7 +5,7 @@ go 1.22
 toolchain go1.22.2
 
 require (
-	github.com/aperturerobotics/protobuf-go-lite v0.4.1
+	github.com/aperturerobotics/protobuf-go-lite v0.5.0 // latest
 	github.com/pkg/errors v0.9.1
 )
 
