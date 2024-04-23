@@ -12,6 +12,12 @@
       "matchManagers": ["gomod"],
       "matchDepTypes": ["replace"],
       "enabled": false
+    },
+    {
+      "matchPaths": ["tools"],
+      "postUpgradeTasks": {
+        "commands": ["go generate -v"]
+      }
     }
   ]
 }

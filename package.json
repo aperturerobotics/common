@@ -26,6 +26,9 @@
     "dist",
     "go.mod",
     "go.sum",
+    "go.mod.tools",
+    "go.sum.tools",
+    "deps.go.tools",
     "tsconfig.json"
   ],
   "scripts": {
