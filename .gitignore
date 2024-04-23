@@ -2,7 +2,8 @@
 /coverage
 /build
 /.log
-/.snowpack
+/.tools
+/.aider*
 
 # misc
 .DS_Store
@@ -16,11 +17,10 @@ yarn-debug.log*
 yarn-error.log*
 
 .#*
+debug.test*
 /dist
 .*.swp
 .vs/
 .vscode/
 !.vscode/launch.json
-
-vendor/
-debug.test
+/vendor/

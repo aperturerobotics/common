@@ -1,70 +1,64 @@
 # https://github.com/aperturerobotics/template
 
-# PROJECT_DIR is overridden by projects that import this file.
 COMMON_DIR = $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 PROJECT_DIR := $(COMMON_DIR)
+
+TOOLS_DIR := .tools
+TOOLS_BIN := $(TOOLS_DIR)/bin
+PROJECT_TOOLS_DIR := $(PROJECT_DIR)/.tools
+PROJECT_TOOLS_DIR_REL := $(shell realpath --relative-to $(COMMON_DIR) $(PROJECT_TOOLS_DIR))
+
 SHELL:=bash
 MAKEFLAGS += --no-print-directory
-
-PROTOWRAP=tools/bin/protowrap
-PROTOC_GEN_GO=tools/bin/protoc-gen-go-lite
-PROTOC_GEN_STARPC=tools/bin/protoc-gen-go-starpc
-GOIMPORTS=tools/bin/goimports
-GOFUMPT=tools/bin/gofumpt
-GOLANGCI_LINT=tools/bin/golangci-lint
-GO_MOD_OUTDATED=tools/bin/go-mod-outdated
-GOLIST=go list -f "{{ .Dir }}" -m
 
 export GO111MODULE=on
 undefine GOARCH
 undefine GOOS
 
-all:
+# List of available Go tool binaries
+PROTOWRAP=$(TOOLS_BIN)/protowrap
+PROTOC_GEN_GO=$(TOOLS_BIN)/protoc-gen-go-lite
+PROTOC_GEN_STARPC=$(TOOLS_BIN)/protoc-gen-go-starpc
+GOIMPORTS=$(TOOLS_BIN)/goimports
+GOFUMPT=$(TOOLS_BIN)/gofumpt
+GOLANGCI_LINT=$(TOOLS_BIN)/golangci-lint
+GO_MOD_OUTDATED=$(TOOLS_BIN)/go-mod-outdated
 
-$(PROTOC_GEN_GO):
-	cd ./tools; \
+# Default protogen targets and arguments
+PROTOGEN_TARGETS ?= "./*.proto"
+PROTOGEN_ARGS ?=
+GO_LITE_OPT_FEATURES ?= marshal+unmarshal+size+equal+json+clone+text
+
+.PHONY: all
+all: protodeps
+
+# Setup the .tools directory to hold the build tools in the project repo
+$(PROJECT_TOOLS_DIR):
+	@mkdir -p $(PROJECT_TOOLS_DIR)
+	@cp -a ./tools/. $(PROJECT_TOOLS_DIR)
+	@cd $(PROJECT_TOOLS_DIR) && \
+		sed -i -e "#github.com/aperturerobotics/common#d" go.mod go.sum tools.go
+
+# Build tool rule
+define build_tool
+$(PROJECT_DIR)/$(1): $(PROJECT_TOOLS_DIR)
+	cd $(PROJECT_TOOLS_DIR_REL); \
 	go build -v \
-		-o ./bin/protoc-gen-go-lite \
-		github.com/aperturerobotics/protobuf-go-lite/cmd/protoc-gen-go-lite
+		-o ./bin/$(shell basename $(1)) \
+		$(2)
 
-$(GOIMPORTS):
-	cd ./tools; \
-	go build -v \
-		-o ./bin/goimports \
-		golang.org/x/tools/cmd/goimports
+.PHONY: $(1)
+$(1): $(PROJECT_DIR)/$(1)
+endef
 
-$(GOFUMPT):
-	cd ./tools; \
-	go build -v \
-		-o ./bin/gofumpt \
-		mvdan.cc/gofumpt
-
-$(PROTOWRAP):
-	cd ./tools; \
-	go build -v \
-		-o ./bin/protowrap \
-		github.com/aperturerobotics/goprotowrap/cmd/protowrap
-
-$(GOLANGCI_LINT):
-	cd ./tools; \
-	go build -v \
-		-o ./bin/golangci-lint \
-		github.com/golangci/golangci-lint/cmd/golangci-lint
-
-$(GO_MOD_OUTDATED):
-	cd ./tools; \
-	go build -v \
-		-o ./bin/go-mod-outdated \
-		github.com/psampaz/go-mod-outdated
-
-$(PROTOC_GEN_STARPC):
-	cd ./tools; \
-	go build -v \
-		-o ./bin/protoc-gen-go-starpc \
-		github.com/aperturerobotics/starpc/cmd/protoc-gen-go-starpc
-
-node_modules:
-	yarn install
+# Mappings for build tool to Go import path
+$(eval $(call build_tool,$(PROTOC_GEN_GO),github.com/aperturerobotics/protobuf-go-lite/cmd/protoc-gen-go-lite))
+$(eval $(call build_tool,$(GOIMPORTS),golang.org/x/tools/cmd/goimports))
+$(eval $(call build_tool,$(GOFUMPT),mvdan.cc/gofumpt))
+$(eval $(call build_tool,$(PROTOWRAP),github.com/aperturerobotics/goprotowrap/cmd/protowrap))
+$(eval $(call build_tool,$(GOLANGCI_LINT),github.com/golangci/golangci-lint/cmd/golangci-lint))
+$(eval $(call build_tool,$(GO_MOD_OUTDATED),github.com/psampaz/go-mod-outdated))
+$(eval $(call build_tool,$(PROTOC_GEN_STARPC),github.com/aperturerobotics/starpc/cmd/protoc-gen-go-starpc))
 
 .PHONY: protodeps
 protodeps: $(GOIMPORTS) $(PROTOWRAP) $(PROTOC_GEN_GO) $(PROTOC_GEN_STARPC)
@@ -73,7 +67,7 @@ protodeps: $(GOIMPORTS) $(PROTOWRAP) $(PROTOC_GEN_GO) $(PROTOC_GEN_STARPC)
 genproto: protodeps
 	shopt -s globstar; \
 	set -eo pipefail; \
-	export PATH=$$(pwd)/tools/bin:$${PATH}; \
+	export PATH=$$(pwd)/$(TOOLS_DIR)/bin:$${PATH}; \
 	cd $(PROJECT_DIR); \
 	export PROJECT=$$(go list -m); \
 	export OUT=./vendor; \
@@ -82,12 +76,12 @@ genproto: protodeps
 	ln -s $$(pwd) ./vendor/$${PROJECT} ; \
 	protogen() { \
 		PROTO_FILES=$$(git ls-files "$$1"); \
-		$(COMMON_DIR)/$(PROTOWRAP) \
+		$(PROTOWRAP) \
 			-I $${OUT} \
 			--plugin=./node_modules/.bin/protoc-gen-es \
 			--plugin=./node_modules/.bin/protoc-gen-es-starpc \
 			--go-lite_out=$${OUT} \
-			--go-lite_opt=features=marshal+unmarshal+size+equal+json+clone+text \
+			--go-lite_opt=features=$(GO_LITE_OPT_FEATURES) \
 			--go-starpc_out=$${OUT} \
 			--es_out=$${OUT} \
 			--es_opt target=ts \
@@ -98,6 +92,7 @@ genproto: protodeps
 			--proto_path $${OUT} \
 			--print_structure \
 			--only_specified_files \
+			$(PROTOGEN_ARGS) \
 			$$(echo "$$PROTO_FILES" | xargs printf -- "./vendor/$${PROJECT}/%s "); \
 		for proto_file in $${PROTO_FILES}; do \
 			proto_dir=$$(dirname $$proto_file); \
@@ -121,9 +116,9 @@ genproto: protodeps
 			done; \
 		done; \
 	}; \
-	protogen "./*.proto"; \
+	protogen "$(PROTOGEN_TARGETS)"; \
 	rm -f ./vendor/$${PROJECT}; \
-	$(COMMON_DIR)/$(GOIMPORTS) -w ./
+	$(GOIMPORTS) -w ./
 
 .PHONY: gen
 gen: genproto
@@ -131,22 +126,22 @@ gen: genproto
 .PHONY: outdated
 outdated: $(GO_MOD_OUTDATED)
 	cd $(PROJECT_DIR); \
-	go list -mod=mod -u -m -json all | $(COMMON_DIR)/$(GO_MOD_OUTDATED) -update -direct
+	go list -mod=mod -u -m -json all | $(GO_MOD_OUTDATED) -update -direct
 
 .PHONY: list
 list: $(GO_MOD_OUTDATED)
 	cd $(PROJECT_DIR); \
-	go list -mod=mod -u -m -json all | $(COMMON_DIR)/$(GO_MOD_OUTDATED)
+	go list -mod=mod -u -m -json all | $(GO_MOD_OUTDATED)
 
 .PHONY: lint
 lint: $(GOLANGCI_LINT)
 	cd $(PROJECT_DIR); \
-	$(COMMON_DIR)/$(GOLANGCI_LINT) run
+	$(GOLANGCI_LINT) run
 
 .PHONY: fix
 fix: $(GOLANGCI_LINT)
 	cd $(PROJECT_DIR); \
-	$(COMMON_DIR)/$(GOLANGCI_LINT) run --fix
+	$(GOLANGCI_LINT) run --fix
 
 .PHONY: test
 test:
@@ -155,6 +150,5 @@ test:
 
 .PHONY: format
 format: $(GOFUMPT) $(GOIMPORTS)
-	cd $(PROJECT_DIR); \
-	$(COMMON_DIR)/$(GOIMPORTS) -w ./; \
-	$(COMMON_DIR)/$(GOFUMPT) -w ./
+	$(GOIMPORTS) -w ./; \
+	$(GOFUMPT) -w ./
