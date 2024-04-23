@@ -175,7 +175,19 @@ release: $(GORELEASER)
 	cd $(PROJECT_DIR); \
 	$(GORELEASER) release $(GORELEASER_OPTS)
 
-.PHONY: build-release
-build-release: $(GORELEASER)
+.PHONY: release-bundle
+release-bundle: $(GORELEASER)
 	cd $(PROJECT_DIR); \
-	$(GORELEASER) release --skip-publish $(GORELEASER_OPTS)
+	$(GORELEASER) check; \
+	$(GORELEASER) release --snapshot --clean --skip-publish $(GORELEASER_OPTS)
+
+.PHONY: release-build
+release-build: $(GORELEASER)
+	cd $(PROJECT_DIR); \
+	$(GORELEASER) check; \
+	$(GORELEASER) build --single-target --snapshot --clean $(GORELEASER_OPTS)
+
+.PHONY: release-check
+release-check: $(GORELEASER)
+	cd $(PROJECT_DIR); \
+	$(GORELEASER) check
