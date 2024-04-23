@@ -18,14 +18,14 @@ undefine GOOS
 # List of available Go tool binaries
 PROTOWRAP=$(TOOLS_BIN)/protowrap
 PROTOC_GEN_GO=$(TOOLS_BIN)/protoc-gen-go-lite
-PROTOC_GEN_STARPC=$(TOOLS_BIN)/protoc-gen-go-starpc
+PROTOC_GEN_GO_STARPC=$(TOOLS_BIN)/protoc-gen-go-starpc
 GOIMPORTS=$(TOOLS_BIN)/goimports
 GOFUMPT=$(TOOLS_BIN)/gofumpt
 GOLANGCI_LINT=$(TOOLS_BIN)/golangci-lint
 GO_MOD_OUTDATED=$(TOOLS_BIN)/go-mod-outdated
 
 # Default protogen targets and arguments
-PROTOGEN_TARGETS ?= "./*.proto"
+PROTOGEN_TARGETS ?= ./*.proto
 PROTOGEN_ARGS ?=
 GO_LITE_OPT_FEATURES ?= marshal+unmarshal+size+equal+json+clone+text
 
@@ -50,31 +50,32 @@ endef
 
 # Mappings for build tool to Go import path
 $(eval $(call build_tool,$(PROTOC_GEN_GO),github.com/aperturerobotics/protobuf-go-lite/cmd/protoc-gen-go-lite))
+$(eval $(call build_tool,$(PROTOC_GEN_GO_STARPC),github.com/aperturerobotics/starpc/cmd/protoc-gen-go-starpc))
 $(eval $(call build_tool,$(GOIMPORTS),golang.org/x/tools/cmd/goimports))
 $(eval $(call build_tool,$(GOFUMPT),mvdan.cc/gofumpt))
 $(eval $(call build_tool,$(PROTOWRAP),github.com/aperturerobotics/goprotowrap/cmd/protowrap))
 $(eval $(call build_tool,$(GOLANGCI_LINT),github.com/golangci/golangci-lint/cmd/golangci-lint))
 $(eval $(call build_tool,$(GO_MOD_OUTDATED),github.com/psampaz/go-mod-outdated))
-$(eval $(call build_tool,$(PROTOC_GEN_STARPC),github.com/aperturerobotics/starpc/cmd/protoc-gen-go-starpc))
 
 .PHONY: protodeps
-protodeps: $(GOIMPORTS) $(PROTOWRAP) $(PROTOC_GEN_GO) $(PROTOC_GEN_STARPC)
+protodeps: $(GOIMPORTS) $(PROTOWRAP) $(PROTOC_GEN_GO) $(PROTOC_GEN_GO_STARPC)
 
 .PHONY: genproto
 genproto: protodeps
 	shopt -s globstar; \
 	set -eo pipefail; \
-	export PATH=$$(pwd)/$(TOOLS_DIR)/bin:$${PATH}; \
 	cd $(PROJECT_DIR); \
 	export PROJECT=$$(go list -m); \
 	export OUT=./vendor; \
 	mkdir -p $${OUT}/$$(dirname $${PROJECT}); \
-	rm ./vendor/$${PROJECT} || true; \
+	rm -f ./vendor/$${PROJECT}; \
 	ln -s $$(pwd) ./vendor/$${PROJECT} ; \
 	protogen() { \
 		PROTO_FILES=$$(git ls-files "$$1"); \
 		$(PROTOWRAP) \
 			-I $${OUT} \
+			--plugin=$(PROTOC_GEN_GO) \
+			--plugin=$(PROTOC_GEN_GO_STARPC) \
 			--plugin=./node_modules/.bin/protoc-gen-es \
 			--plugin=./node_modules/.bin/protoc-gen-es-starpc \
 			--go-lite_out=$${OUT} \
