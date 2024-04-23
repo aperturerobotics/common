@@ -160,13 +160,16 @@ test:
 
 .PHONY: format
 format: $(GOFUMPT) $(GOIMPORTS)
+	cd $(PROJECT_DIR); \
 	$(GOIMPORTS) -w ./; \
 	$(GOFUMPT) -w ./
 
 .PHONY: release
 release: $(GORELEASER)
+	cd $(PROJECT_DIR); \
 	$(GORELEASER) release $(GORELEASER_OPTS)
 
 .PHONY: build-release
 build-release: $(GORELEASER)
+	cd $(PROJECT_DIR); \
 	$(GORELEASER) release --skip-publish $(GORELEASER_OPTS)
