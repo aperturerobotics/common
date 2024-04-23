@@ -58,6 +58,7 @@
   "devDependencies": {
     "@bufbuild/protoc-gen-es": "^1.8.0",
     "depcheck": "^1.4.6",
+    "pre-commit": "^1.2.2",
     "prettier": "^3.0.3",
     "rimraf": "^5.0.5",
     "typescript": "^5.4.5"
