@@ -17,20 +17,6 @@ export GO111MODULE=on
 undefine GOARCH
 undefine GOOS
 
-# List of available Go tool binaries
-PROTOWRAP=$(TOOLS_BIN)/protowrap
-PROTOC_GEN_GO=$(TOOLS_BIN)/protoc-gen-go-lite
-PROTOC_GEN_GO_STARPC=$(TOOLS_BIN)/protoc-gen-go-starpc
-GOIMPORTS=$(TOOLS_BIN)/goimports
-GOFUMPT=$(TOOLS_BIN)/gofumpt
-GOLANGCI_LINT=$(TOOLS_BIN)/golangci-lint
-GO_MOD_OUTDATED=$(TOOLS_BIN)/go-mod-outdated
-
-# Default protogen targets and arguments
-PROTOGEN_TARGETS ?= ./*.proto
-PROTOGEN_ARGS ?=
-GO_LITE_OPT_FEATURES ?= marshal+unmarshal+size+equal+json+clone+text
-
 .PHONY: all
 all: protodeps
 
@@ -46,13 +32,23 @@ $(PROJECT_TOOLS_DIR):
 define build_tool
 $(PROJECT_DIR)/$(1): $(PROJECT_TOOLS_DIR)
 	cd $(PROJECT_TOOLS_DIR_REL); \
-	go build -v \
+	go build -mod=readonly -v \
 		-o ./bin/$(shell basename $(1)) \
 		$(2)
 
 .PHONY: $(1)
 $(1): $(PROJECT_DIR)/$(1)
 endef
+
+# List of available Go tool binaries
+PROTOWRAP=$(TOOLS_BIN)/protowrap
+PROTOC_GEN_GO=$(TOOLS_BIN)/protoc-gen-go-lite
+PROTOC_GEN_GO_STARPC=$(TOOLS_BIN)/protoc-gen-go-starpc
+GOIMPORTS=$(TOOLS_BIN)/goimports
+GOFUMPT=$(TOOLS_BIN)/gofumpt
+GOLANGCI_LINT=$(TOOLS_BIN)/golangci-lint
+GO_MOD_OUTDATED=$(TOOLS_BIN)/go-mod-outdated
+GORELEASER=$(TOOLS_BIN)/goreleaser
 
 # Mappings for build tool to Go import path
 $(eval $(call build_tool,$(PROTOC_GEN_GO),github.com/aperturerobotics/protobuf-go-lite/cmd/protoc-gen-go-lite))
@@ -62,9 +58,15 @@ $(eval $(call build_tool,$(GOFUMPT),mvdan.cc/gofumpt))
 $(eval $(call build_tool,$(PROTOWRAP),github.com/aperturerobotics/goprotowrap/cmd/protowrap))
 $(eval $(call build_tool,$(GOLANGCI_LINT),github.com/golangci/golangci-lint/cmd/golangci-lint))
 $(eval $(call build_tool,$(GO_MOD_OUTDATED),github.com/psampaz/go-mod-outdated))
+$(eval $(call build_tool,$(GORELEASER),github.com/goreleaser/goreleaser))
 
 .PHONY: protodeps
 protodeps: $(GOIMPORTS) $(PROTOWRAP) $(PROTOC_GEN_GO) $(PROTOC_GEN_GO_STARPC) $(PROJECT_DIR)/node_modules
+
+# Default protogen targets and arguments
+PROTOGEN_TARGETS ?= ./*.proto
+PROTOGEN_ARGS ?=
+GO_LITE_OPT_FEATURES ?= marshal+unmarshal+size+equal+json+clone+text
 
 .PHONY: genproto
 genproto: protodeps
@@ -160,3 +162,11 @@ test:
 format: $(GOFUMPT) $(GOIMPORTS)
 	$(GOIMPORTS) -w ./; \
 	$(GOFUMPT) -w ./
+
+.PHONY: release
+release: $(GORELEASER)
+	$(GORELEASER) release $(GORELEASER_OPTS)
+
+.PHONY: build-release
+build-release: $(GORELEASER)
+	$(GORELEASER) release --skip-publish $(GORELEASER_OPTS)

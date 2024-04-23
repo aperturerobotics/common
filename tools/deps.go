@@ -4,8 +4,6 @@
 package hack
 
 import (
-	// _ imports the parent project.
-	// this forces the versions in hack to be at least the versions in ..
 	_ "github.com/aperturerobotics/common"
 
 	// _ imports protowrap
@@ -26,4 +24,7 @@ import (
 	_ "golang.org/x/tools/cmd/goimports"
 	// _ imports gofumpt
 	_ "mvdan.cc/gofumpt"
+
+	// _ imports goreleaser
+	_ "github.com/goreleaser/goreleaser"
 )
