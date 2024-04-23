@@ -10,7 +10,7 @@ replace (
 )
 
 require (
-	github.com/aperturerobotics/common v0.12.3 // latest
+	github.com/aperturerobotics/common v0.12.5 // latest
 	github.com/aperturerobotics/goprotowrap v0.3.1 // latest
 	github.com/aperturerobotics/protobuf-go-lite v0.5.0 // latest
 	github.com/aperturerobotics/starpc v0.31.5 // latest
