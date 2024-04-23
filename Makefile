@@ -34,10 +34,7 @@ all: protodeps
 
 # Setup the .tools directory to hold the build tools in the project repo
 $(PROJECT_TOOLS_DIR):
-	@mkdir -p $(PROJECT_TOOLS_DIR)
-	@cp -a ./tools/. $(PROJECT_TOOLS_DIR)
-	@cd $(PROJECT_TOOLS_DIR) && \
-		sed -i -e "#github.com/aperturerobotics/common#d" go.mod go.sum tools.go
+	@cd $(PROJECT_DIR); go run -v github.com/aperturerobotics/common $(TOOLS_DIR)
 
 # Build tool rule
 define build_tool
