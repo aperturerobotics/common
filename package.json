@@ -45,7 +45,7 @@
     "format:js": "npm run format:js:changed",
     "format:js:changed": "git diff --name-only --diff-filter=d HEAD | grep '\\(\\.ts\\|\\.tsx\\|\\.html\\|\\.css\\|\\.scss\\)$' | xargs -I {} prettier --write {}",
     "format:js:all": "prettier --write './!(vendor|dist)/**/(*.ts|*.tsx|*.js|*.html|*.css)'",
-    "gen": "make genproto",
+    "gen": "rimraf ./.tools && go mod tidy && cd ./tools && go mod tidy && cd ../ && bash embed.bash && npm run format && make genproto",
     "test": "make test && npm run check",
     "test:js": "echo No JS tests.",
     "demo": "make demo",
@@ -53,7 +53,7 @@
     "lint:go": "make lint",
     "lint:js": "ESLINT_USE_FLAT_CONFIG=false eslint -c .eslintrc.js ./",
     "prepare": "go mod vendor",
-    "precommit": "npm run format"
+    "precommit": "npm run gen"
   },
   "devDependencies": {
     "@bufbuild/protoc-gen-es": "^1.8.0",

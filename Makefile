@@ -77,9 +77,11 @@ genproto: protodeps
 	export OUT=./vendor; \
 	mkdir -p $${OUT}/$$(dirname $${PROJECT}); \
 	rm -f ./vendor/$${PROJECT}; \
-	ln -s $$(pwd) ./vendor/$${PROJECT} ; \
+	ln -s $$(pwd) ./vendor/$${PROJECT}; \
 	protogen() { \
 		PROTO_FILES=$$(git ls-files "$$1"); \
+		FMT_GO_FILES=(); \
+		FMT_TS_FILES=(); \
 		$(PROTOWRAP) \
 			-I $${OUT} \
 			--plugin=$(PROTOC_GEN_GO) \
@@ -104,10 +106,9 @@ genproto: protodeps
 			proto_dir=$$(dirname $$proto_file); \
 			proto_name=$${proto_file%".proto"}; \
 			GO_FILES=$$(git ls-files ":(glob)$${proto_dir}/${proto_name}*.pb.go"); \
-			if [ -n "$$GO_FILES" ]; then \
-				$(GOIMPORTS) -w $${GO_FILES[@]}; \
-			fi; \
+			if [ -n "$$GO_FILES" ]; then FMT_GO_FILES+=($${GO_FILES[@]}); fi; \
 			TS_FILES=$$(git ls-files ":(glob)$${proto_dir}/${proto_name}*_*pb.ts"); \
+			if [ -n "$$TS_FILES" ]; then FMT_TS_FILES+=($${TS_FILES[@]}); fi; \
 			if [ -z "$$TS_FILES" ]; then continue; fi; \
 			for ts_file in $${TS_FILES}; do \
 				ts_file_dir=$$(dirname $$ts_file); \
@@ -124,8 +125,13 @@ genproto: protodeps
 					sed -i -e "s|$$import_path|$$go_import_path|g" $$ts_file; \
 				done; \
 			done; \
-			prettier --config $(TOOLS_DIR)/.prettierrc.yaml -w $${TS_FILES[@]}; \
 		done; \
+		if [ -n "$${FMT_GO_FILES}" ]; then \
+			$(GOIMPORTS) -w $${FMT_GO_FILES[@]}; \
+		fi; \
+		if [ -n "$${FMT_TS_FILES}" ]; then \
+			prettier --config $(TOOLS_DIR)/.prettierrc.yaml -w $${FMT_TS_FILES[@]}; \
+		fi; \
 	}; \
 	protogen "$(PROTOGEN_TARGETS)"; \
 	rm -f ./vendor/$${PROJECT}
