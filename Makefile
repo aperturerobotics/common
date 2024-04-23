@@ -1,12 +1,14 @@
 # https://github.com/aperturerobotics/template
 
+# Projects can override PROJECT_DIR with the path to their project.
 COMMON_DIR = $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 PROJECT_DIR := $(COMMON_DIR)
+PROJECT_DIR_REL = $(shell realpath --relative-to $(COMMON_DIR) $(PROJECT_DIR))
 
 TOOLS_DIR := .tools
 TOOLS_BIN := $(TOOLS_DIR)/bin
 PROJECT_TOOLS_DIR := $(PROJECT_DIR)/.tools
-PROJECT_TOOLS_DIR_REL := $(shell realpath --relative-to $(COMMON_DIR) $(PROJECT_TOOLS_DIR))
+PROJECT_TOOLS_DIR_REL = $(shell realpath --relative-to $(COMMON_DIR) $(PROJECT_TOOLS_DIR))
 
 SHELL:=bash
 MAKEFLAGS += --no-print-directory
@@ -31,6 +33,10 @@ GO_LITE_OPT_FEATURES ?= marshal+unmarshal+size+equal+json+clone+text
 
 .PHONY: all
 all: protodeps
+
+# Setup node_modules
+$(PROJECT_DIR)/node_modules:
+	cd $(PROJECT_DIR_REL); yarn install
 
 # Setup the .tools directory to hold the build tools in the project repo
 $(PROJECT_TOOLS_DIR):
@@ -58,11 +64,11 @@ $(eval $(call build_tool,$(GOLANGCI_LINT),github.com/golangci/golangci-lint/cmd/
 $(eval $(call build_tool,$(GO_MOD_OUTDATED),github.com/psampaz/go-mod-outdated))
 
 .PHONY: protodeps
-protodeps: $(GOIMPORTS) $(PROTOWRAP) $(PROTOC_GEN_GO) $(PROTOC_GEN_GO_STARPC)
+protodeps: $(GOIMPORTS) $(PROTOWRAP) $(PROTOC_GEN_GO) $(PROTOC_GEN_GO_STARPC) $(PROJECT_DIR)/node_modules
 
 .PHONY: genproto
 genproto: protodeps
-	shopt -s globstar; \
+	@shopt -s globstar; \
 	set -eo pipefail; \
 	cd $(PROJECT_DIR); \
 	export PROJECT=$$(go list -m); \
