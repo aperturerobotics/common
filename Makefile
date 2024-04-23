@@ -101,9 +101,14 @@ genproto: protodeps
 		for proto_file in $${PROTO_FILES}; do \
 			proto_dir=$$(dirname $$proto_file); \
 			proto_name=$${proto_file%".proto"}; \
-			TS_FILES=$$(git ls-files ":(glob)$${proto_dir}/${proto_name}*_pb.ts"); \
+			GO_FILES=$$(git ls-files ":(glob)$${proto_dir}/${proto_name}*.pb.go"); \
+			if [ -n "$$GO_FILES" ]; then \
+				$(GOIMPORTS) -w $${GO_FILES[@]}; \
+			fi; \
+			TS_FILES=$$(git ls-files ":(glob)$${proto_dir}/${proto_name}*_*pb.ts"); \
 			if [ -z "$$TS_FILES" ]; then continue; fi; \
 			for ts_file in $${TS_FILES}; do \
+				prettier --config $(TOOLS_DIR)/.prettierrc.yaml -w $$ts_file; \
 				ts_file_dir=$$(dirname $$ts_file); \
 				relative_path=$${ts_file_dir#"./"}; \
 				depth=$$(echo $$relative_path | awk -F/ '{print NF+1}'); \
@@ -121,8 +126,7 @@ genproto: protodeps
 		done; \
 	}; \
 	protogen "$(PROTOGEN_TARGETS)"; \
-	rm -f ./vendor/$${PROJECT}; \
-	$(GOIMPORTS) -w ./
+	rm -f ./vendor/$${PROJECT}
 
 .PHONY: gen
 gen: genproto

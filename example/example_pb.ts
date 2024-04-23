@@ -2,9 +2,16 @@
 // @generated from file github.com/aperturerobotics/common/example/example.proto (package example, syntax proto3)
 /* eslint-disable */
 
-import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialMessage, PlainMessage } from "@bufbuild/protobuf";
-import { Message, proto3 } from "@bufbuild/protobuf";
-import { OtherMsg } from "./other/other_pb.js";
+import type {
+  BinaryReadOptions,
+  FieldList,
+  JsonReadOptions,
+  JsonValue,
+  PartialMessage,
+  PlainMessage,
+} from '@bufbuild/protobuf'
+import { Message, proto3 } from '@bufbuild/protobuf'
+import { OtherMsg } from './other/other_pb.js'
 
 /**
  * ExampleMsg is an example message.
@@ -17,41 +24,57 @@ export class ExampleMsg extends Message<ExampleMsg> {
    *
    * @generated from field: string example_field = 1;
    */
-  exampleField = "";
+  exampleField = ''
 
   /**
    * OtherMsg is an example of an imported message field.
    *
    * @generated from field: example.other.OtherMsg other_msg = 2;
    */
-  otherMsg?: OtherMsg;
+  otherMsg?: OtherMsg
 
   constructor(data?: PartialMessage<ExampleMsg>) {
-    super();
-    proto3.util.initPartial(data, this);
+    super()
+    proto3.util.initPartial(data, this)
   }
 
-  static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "example.ExampleMsg";
+  static readonly runtime: typeof proto3 = proto3
+  static readonly typeName = 'example.ExampleMsg'
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "example_field", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "other_msg", kind: "message", T: OtherMsg },
-  ]);
+    {
+      no: 1,
+      name: 'example_field',
+      kind: 'scalar',
+      T: 9 /* ScalarType.STRING */,
+    },
+    { no: 2, name: 'other_msg', kind: 'message', T: OtherMsg },
+  ])
 
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ExampleMsg {
-    return new ExampleMsg().fromBinary(bytes, options);
+  static fromBinary(
+    bytes: Uint8Array,
+    options?: Partial<BinaryReadOptions>,
+  ): ExampleMsg {
+    return new ExampleMsg().fromBinary(bytes, options)
   }
 
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ExampleMsg {
-    return new ExampleMsg().fromJson(jsonValue, options);
+  static fromJson(
+    jsonValue: JsonValue,
+    options?: Partial<JsonReadOptions>,
+  ): ExampleMsg {
+    return new ExampleMsg().fromJson(jsonValue, options)
   }
 
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ExampleMsg {
-    return new ExampleMsg().fromJsonString(jsonString, options);
+  static fromJsonString(
+    jsonString: string,
+    options?: Partial<JsonReadOptions>,
+  ): ExampleMsg {
+    return new ExampleMsg().fromJsonString(jsonString, options)
   }
 
-  static equals(a: ExampleMsg | PlainMessage<ExampleMsg> | undefined, b: ExampleMsg | PlainMessage<ExampleMsg> | undefined): boolean {
-    return proto3.util.equals(ExampleMsg, a, b);
+  static equals(
+    a: ExampleMsg | PlainMessage<ExampleMsg> | undefined,
+    b: ExampleMsg | PlainMessage<ExampleMsg> | undefined,
+  ): boolean {
+    return proto3.util.equals(ExampleMsg, a, b)
   }
 }
-

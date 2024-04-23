@@ -55,10 +55,6 @@
     "prepare": "go mod vendor",
     "precommit": "npm run format"
   },
-  "prettier": {
-    "semi": false,
-    "singleQuote": true
-  },
   "devDependencies": {
     "@bufbuild/protoc-gen-es": "^1.8.0",
     "depcheck": "^1.4.6",

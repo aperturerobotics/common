@@ -24,7 +24,7 @@ func ExtractCommonFiles(outputPath string) error {
 // We copy some files to use for the tools so that they are not interpeted as a separate go module.
 //
 //go:generate bash embed.bash
-//go:embed deps.go.tools go.mod.tools go.sum.tools
+//go:embed deps.go.tools go.mod.tools go.sum.tools .prettierrc.yaml
 var ToolsFiles embed.FS
 
 // ExtractToolsFiles copies the contents of ToolsFiles to the given output path.
@@ -64,7 +64,7 @@ func extractFiles(fsys embed.FS, outputPath string, remapPath func(string) strin
 		}
 		defer inputFile.Close()
 
-		outputFile, err := os.OpenFile(outputFilePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+		outputFile, err := os.OpenFile(outputFilePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
 		if err != nil {
 			return err
 		}
