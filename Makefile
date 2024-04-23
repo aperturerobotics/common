@@ -110,7 +110,6 @@ genproto: protodeps
 			TS_FILES=$$(git ls-files ":(glob)$${proto_dir}/${proto_name}*_*pb.ts"); \
 			if [ -z "$$TS_FILES" ]; then continue; fi; \
 			for ts_file in $${TS_FILES}; do \
-				prettier --config $(TOOLS_DIR)/.prettierrc.yaml -w $$ts_file; \
 				ts_file_dir=$$(dirname $$ts_file); \
 				relative_path=$${ts_file_dir#"./"}; \
 				depth=$$(echo $$relative_path | awk -F/ '{print NF+1}'); \
@@ -125,6 +124,7 @@ genproto: protodeps
 					sed -i -e "s|$$import_path|$$go_import_path|g" $$ts_file; \
 				done; \
 			done; \
+			prettier --config $(TOOLS_DIR)/.prettierrc.yaml -w $${TS_FILES[@]}; \
 		done; \
 	}; \
 	protogen "$(PROTOGEN_TARGETS)"; \
