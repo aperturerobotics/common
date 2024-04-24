@@ -1,5 +1,6 @@
 node_modules/
 vendor/
+/.tools
 *.pb.go
 *.pb.ts
 *_*pb.ts
