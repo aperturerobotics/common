@@ -175,7 +175,7 @@ release: $(GORELEASER)
 	cd $(PROJECT_DIR); \
 	$(GORELEASER) release $(GORELEASER_OPTS)
 
-.PHONY: release-bundle
+.PHONY: release-bundl\e
 release-bundle: $(GORELEASER)
 	cd $(PROJECT_DIR); \
 	$(GORELEASER) check; \
