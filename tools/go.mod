@@ -12,7 +12,7 @@ replace (
 require (
 	github.com/aperturerobotics/common v0.12.5 // latest
 	github.com/aperturerobotics/goprotowrap v0.3.1 // latest
-	github.com/aperturerobotics/protobuf-go-lite v0.5.0 // latest
+	github.com/aperturerobotics/protobuf-go-lite v0.6.0 // latest
 	github.com/aperturerobotics/starpc v0.31.5 // latest
 	github.com/golangci/golangci-lint v1.57.2 // latest
 	github.com/goreleaser/goreleaser v1.25.1 // latest
