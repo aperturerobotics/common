@@ -36,7 +36,7 @@
     "clean": "rimraf ./dist",
     "check": "npm run typecheck",
     "typecheck": "tsc --noEmit",
-    "deps": "depcheck --ignores bufferutil,esbuild,starpc,rimraf,@bufbuild/protoc-gen-es",
+    "deps": "depcheck --ignores bufferutil,esbuild,starpc,rimraf,pre-commit",
     "codegen": "npm run gen",
     "ci": "npm run build && npm run lint:js && npm run lint:go",
     "format": "npm run format:go && npm run format:js && npm run format:config",
@@ -52,11 +52,10 @@
     "lint": "npm run lint:go && npm run lint:js",
     "lint:go": "make lint",
     "lint:js": "ESLINT_USE_FLAT_CONFIG=false eslint -c .eslintrc.js ./",
-    "prepare": "go mod vendor && npm run gen",
+    "prepare": "go mod vendor && bash embed.bash",
     "precommit": "npm run gen"
   },
   "devDependencies": {
-    "@bufbuild/protoc-gen-es": "^1.8.0",
     "depcheck": "^1.4.6",
     "pre-commit": "^1.2.2",
     "prettier": "^3.0.3",
@@ -64,6 +63,7 @@
     "typescript": "^5.4.5"
   },
   "dependencies": {
+    "@aptre/protobuf-es-lite": "^0.1.2",
     "@bufbuild/protobuf": "^1.8.0",
     "@typescript-eslint/eslint-plugin": "^7.7.0",
     "@typescript-eslint/parser": "^7.7.0",
@@ -71,6 +71,6 @@
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-unused-imports": "^3.0.0",
-    "starpc": "^0.31.1"
+    "starpc": "^0.31.6"
   }
 }

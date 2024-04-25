@@ -90,10 +90,10 @@ genproto: protodeps
 			--plugin=./node_modules/.bin/protoc-gen-es-starpc \
 			--go-lite_out=$${OUT} \
 			--go-lite_opt=features=$(GO_LITE_OPT_FEATURES) \
+			--es-lite_out=$${OUT} \
+			--es-lite_opt target=ts \
+			--es-lite_opt ts_nocheck=false \
 			--go-starpc_out=$${OUT} \
-			--es_out=$${OUT} \
-			--es_opt target=ts \
-			--es_opt ts_nocheck=false \
 			--es-starpc_out=$${OUT} \
 			--es-starpc_opt target=ts \
 			--es-starpc_opt ts_nocheck=false \
