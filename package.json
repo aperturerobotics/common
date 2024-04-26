@@ -65,7 +65,7 @@
     "typescript": "^5.4.5"
   },
   "dependencies": {
-    "@aptre/protobuf-es-lite": "^0.2.5",
+    "@aptre/protobuf-es-lite": "^0.2.6",
     "@bufbuild/protobuf": "^1.8.0",
     "@typescript-eslint/eslint-plugin": "^7.7.0",
     "@typescript-eslint/parser": "^7.7.0",
@@ -73,6 +73,6 @@
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-react-hooks": "^4.6.1",
     "eslint-plugin-unused-imports": "^3.0.0",
-    "starpc": "^0.31.9"
+    "starpc": "^0.31.10"
   }
 }
