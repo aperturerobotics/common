@@ -41,7 +41,7 @@ export const ExampleMsg: MessageType<ExampleMsg> = createMessageType({
       kind: 'scalar',
       T: 9 /* ScalarType.STRING */,
     },
-    { no: 2, name: 'other_msg', kind: 'message', T: OtherMsg },
+    { no: 2, name: 'other_msg', kind: 'message', T: () => OtherMsg },
   ] as readonly PartialFieldInfo[],
   packedByDefault: true,
 })
