@@ -6,6 +6,7 @@ import {
   createMessageType,
   Message,
   MessageType,
+  PartialFieldInfo,
 } from '@aptre/protobuf-es-lite'
 import { OtherMsg } from './other/other_pb.js'
 
@@ -22,14 +23,13 @@ export interface ExampleMsg extends Message<ExampleMsg> {
    *
    * @generated from field: string example_field = 1;
    */
-  exampleField: string
-
+  exampleField?: string
   /**
    * OtherMsg is an example of an imported message field.
    *
    * @generated from field: example.other.OtherMsg other_msg = 2;
    */
-  otherMsg: OtherMsg
+  otherMsg?: OtherMsg
 }
 
 export const ExampleMsg: MessageType<ExampleMsg> = createMessageType({
@@ -42,6 +42,6 @@ export const ExampleMsg: MessageType<ExampleMsg> = createMessageType({
       T: 9 /* ScalarType.STRING */,
     },
     { no: 2, name: 'other_msg', kind: 'message', T: OtherMsg },
-  ],
+  ] as readonly PartialFieldInfo[],
   packedByDefault: true,
 })

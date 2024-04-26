@@ -53,24 +53,26 @@
     "lint:go": "make lint",
     "lint:js": "ESLINT_USE_FLAT_CONFIG=false eslint -c .eslintrc.js ./",
     "prepare": "go mod vendor && bash embed.bash",
-    "precommit": "npm run gen"
+    "release:version": "npm version patch -m \"release: v%s\" --no-git-tag-version",
+    "release:commit": "git reset && git add package.json && git commit -s -m \"release: v$npm_package_version\" && git tag v$npm_package_version",
+    "release:publish": "git push && git push --tags && npm run build && npm publish",
+    "release": "npm run release:version && npm run release:commit"
   },
   "devDependencies": {
     "depcheck": "^1.4.6",
-    "pre-commit": "^1.2.2",
     "prettier": "^3.0.3",
     "rimraf": "^5.0.5",
     "typescript": "^5.4.5"
   },
   "dependencies": {
-    "@aptre/protobuf-es-lite": "^0.1.2",
+    "@aptre/protobuf-es-lite": "^0.2.3",
     "@bufbuild/protobuf": "^1.8.0",
     "@typescript-eslint/eslint-plugin": "^7.7.0",
     "@typescript-eslint/parser": "^7.7.0",
     "eslint": "^9.1.0",
     "eslint-config-prettier": "^9.0.0",
-    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-hooks": "^4.6.1",
     "eslint-plugin-unused-imports": "^3.0.0",
-    "starpc": "^0.31.6"
+    "starpc": "^0.31.7"
   }
 }

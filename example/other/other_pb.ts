@@ -6,6 +6,7 @@ import {
   createMessageType,
   Message,
   MessageType,
+  PartialFieldInfo,
 } from '@aptre/protobuf-es-lite'
 
 export const protobufPackage = 'example.other'
@@ -21,13 +22,13 @@ export interface OtherMsg extends Message<OtherMsg> {
    *
    * @generated from field: uint32 foo_field = 1;
    */
-  fooField: number
+  fooField?: number
 }
 
 export const OtherMsg: MessageType<OtherMsg> = createMessageType({
   typeName: 'example.other.OtherMsg',
   fields: [
     { no: 1, name: 'foo_field', kind: 'scalar', T: 13 /* ScalarType.UINT32 */ },
-  ],
+  ] as readonly PartialFieldInfo[],
   packedByDefault: true,
 })
