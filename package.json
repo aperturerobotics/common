@@ -65,14 +65,13 @@
     "typescript": "^5.4.5"
   },
   "dependencies": {
-    "@aptre/protobuf-es-lite": "^0.2.7",
-    "@bufbuild/protobuf": "^1.8.0",
-    "@typescript-eslint/eslint-plugin": "^7.7.0",
-    "@typescript-eslint/parser": "^7.7.0",
+    "@aptre/protobuf-es-lite": "^0.2.14",
+    "@typescript-eslint/eslint-plugin": "^7.8.0",
+    "@typescript-eslint/parser": "^7.8.0",
     "eslint": "^9.1.0",
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-react-hooks": "^4.6.1",
     "eslint-plugin-unused-imports": "^3.0.0",
-    "starpc": "^0.31.11"
+    "starpc": "^0.31.12"
   }
 }
