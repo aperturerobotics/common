@@ -107,7 +107,7 @@ genproto: protodeps
 			proto_name=$${proto_file%".proto"}; \
 			GO_FILES=$$(git ls-files ":(glob)$${proto_dir}/${proto_name}*.pb.go"); \
 			if [ -n "$$GO_FILES" ]; then FMT_GO_FILES+=($${GO_FILES[@]}); fi; \
-			TS_FILES=$$(git ls-files ":(glob)$${proto_dir}/${proto_name}*_*pb.ts"); \
+			TS_FILES=$$(git ls-files ":(glob)$${proto_dir}/${proto_name}*.pb.ts"); \
 			if [ -n "$$TS_FILES" ]; then FMT_TS_FILES+=($${TS_FILES[@]}); fi; \
 			if [ -z "$$TS_FILES" ]; then continue; fi; \
 			for ts_file in $${TS_FILES}; do \
