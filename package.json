@@ -18,6 +18,14 @@
   "repository": {
     "url": "git+ssh://git@github.com/aperturerobotics/common.git"
   },
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/common.js",
+      "require": "./dist/common.js",
+      "types": "./dist/common.d.ts"
+    }
+  },
   "files": [
     "!**/*.tsbuildinfo",
     ".eslintrc.js",
@@ -32,7 +40,7 @@
     "tsconfig.json"
   ],
   "scripts": {
-    "build": "npm run clean && tsc --project tsconfig.json --noEmit false --module ES6 --target es2022 --outDir ./dist/",
+    "build": "npm run clean && tsc --project tsconfig.json --noEmit false --outDir ./dist/",
     "clean": "rimraf ./dist",
     "check": "npm run typecheck",
     "typecheck": "tsc --noEmit",
