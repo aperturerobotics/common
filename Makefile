@@ -82,21 +82,31 @@ genproto: protodeps
 		PROTO_FILES=$$(git ls-files "$$1"); \
 		FMT_GO_FILES=(); \
 		FMT_TS_FILES=(); \
+		PROTOWRAP_OPTS=(); \
+		if [ -f "go.mod" ]; then \
+			PROTOWRAP_OPTS+=( \
+				--plugin=$(PROTOC_GEN_GO) \
+				--plugin=$(PROTOC_GEN_GO_STARPC) \
+				--go-lite_out=$${OUT} \
+				--go-lite_opt=features=$(GO_LITE_OPT_FEATURES) \
+				--go-starpc_out=$${OUT} \
+			); \
+		fi; \
+		if [ -f "package.json" ]; then \
+			PROTOWRAP_OPTS+=( \
+				--plugin=./node_modules/.bin/protoc-gen-es \
+				--plugin=./node_modules/.bin/protoc-gen-es-starpc \
+				--es-lite_out=$${OUT} \
+				--es-lite_opt target=ts \
+				--es-lite_opt ts_nocheck=false \
+				--es-starpc_out=$${OUT} \
+				--es-starpc_opt target=ts \
+				--es-starpc_opt ts_nocheck=false \
+			); \
+		fi; \
 		$(PROTOWRAP) \
 			-I $${OUT} \
-			--plugin=$(PROTOC_GEN_GO) \
-			--plugin=$(PROTOC_GEN_GO_STARPC) \
-			--plugin=./node_modules/.bin/protoc-gen-es \
-			--plugin=./node_modules/.bin/protoc-gen-es-starpc \
-			--go-lite_out=$${OUT} \
-			--go-lite_opt=features=$(GO_LITE_OPT_FEATURES) \
-			--es-lite_out=$${OUT} \
-			--es-lite_opt target=ts \
-			--es-lite_opt ts_nocheck=false \
-			--go-starpc_out=$${OUT} \
-			--es-starpc_out=$${OUT} \
-			--es-starpc_opt target=ts \
-			--es-starpc_opt ts_nocheck=false \
+			"$${PROTOWRAP_OPTS[@]}" \
 			--proto_path $${OUT} \
 			--print_structure \
 			--only_specified_files \

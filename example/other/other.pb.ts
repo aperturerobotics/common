@@ -2,10 +2,10 @@
 // @generated from file github.com/aperturerobotics/common/example/other/other.proto (package example.other, syntax proto3)
 /* eslint-disable */
 
-import type { MessageType, PartialFieldInfo } from "@aptre/protobuf-es-lite";
-import { createMessageType, Message } from "@aptre/protobuf-es-lite";
+import type { MessageType, PartialFieldInfo } from '@aptre/protobuf-es-lite'
+import { createMessageType, Message } from '@aptre/protobuf-es-lite'
 
-export const protobufPackage = "example.other";
+export const protobufPackage = 'example.other'
 
 /**
  * OtherMsg is a different message from ExampleMsg.
@@ -18,17 +18,13 @@ export type OtherMsg = Message<{
    *
    * @generated from field: uint32 foo_field = 1;
    */
-  fooField?: number;
+  fooField?: number
+}>
 
-}>;
-
-export const OtherMsg: MessageType<OtherMsg> = createMessageType(
-  {
-    typeName: "example.other.OtherMsg",
-    fields: [
-        { no: 1, name: "foo_field", kind: "scalar", T: 13 /* ScalarType.UINT32 */ },
-    ] as readonly PartialFieldInfo[],
-    packedByDefault: true,
-  },
-);
-
+export const OtherMsg: MessageType<OtherMsg> = createMessageType({
+  typeName: 'example.other.OtherMsg',
+  fields: [
+    { no: 1, name: 'foo_field', kind: 'scalar', T: 13 /* ScalarType.UINT32 */ },
+  ] as readonly PartialFieldInfo[],
+  packedByDefault: true,
+})
