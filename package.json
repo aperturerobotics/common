@@ -28,7 +28,7 @@
   },
   "files": [
     "!**/*.tsbuildinfo",
-    ".eslintrc.js",
+    ".eslintrc.cjs",
     ".gitignore",
     "Makefile",
     "dist",
@@ -59,7 +59,7 @@
     "demo": "make demo",
     "lint": "npm run lint:go && npm run lint:js",
     "lint:go": "make lint",
-    "lint:js": "ESLINT_USE_FLAT_CONFIG=false eslint -c .eslintrc.js ./",
+    "lint:js": "ESLINT_USE_FLAT_CONFIG=false eslint -c .eslintrc.cjs ./",
     "prepare": "go mod vendor && bash embed.bash",
     "release:version": "npm version patch -m \"release: v%s\" --no-git-tag-version",
     "release:commit": "git reset && git add package.json && git commit -s -m \"release: v$npm_package_version\" && git tag v$npm_package_version",

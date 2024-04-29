@@ -11,7 +11,7 @@ import (
 
 // CommonFiles contains the set of embedded common files.
 //
-//go:embed tsconfig.json Makefile .eslintrc.js .eslintignore .gitignore
+//go:embed tsconfig.json Makefile .eslintrc.cjs .eslintignore .gitignore
 var CommonFiles embed.FS
 
 // ExtractCommonFiles copies the contents of CommonFiles to the given output path.
