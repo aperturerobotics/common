@@ -14,10 +14,8 @@
       "enabled": false
     },
     {
-      "matchPaths": ["tools"],
-      "postUpgradeTasks": {
-        "commands": ["go generate -v"]
-      }
+      "matchPackageNames": ["github.com/aperturerobotics/common"],
+      "enabled": false
     }
   ]
 }
