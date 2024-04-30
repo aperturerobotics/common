@@ -16,6 +16,10 @@
     {
       "matchPackageNames": ["github.com/aperturerobotics/common"],
       "enabled": false
+    },
+    {
+      "matchPackageNames": ["eslint"],
+      "allowedVersions": "<9.0.0"
     }
   ]
 }
