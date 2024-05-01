@@ -3,7 +3,7 @@
 /* eslint-disable */
 
 import type { MessageType, PartialFieldInfo } from '@aptre/protobuf-es-lite'
-import { createMessageType, Message } from '@aptre/protobuf-es-lite'
+import { createMessageType, Message, ScalarType } from '@aptre/protobuf-es-lite'
 
 export const protobufPackage = 'example.other'
 
@@ -21,10 +21,11 @@ export type OtherMsg = Message<{
   fooField?: number
 }>
 
+// OtherMsg contains the message type declaration for OtherMsg.
 export const OtherMsg: MessageType<OtherMsg> = createMessageType({
   typeName: 'example.other.OtherMsg',
   fields: [
-    { no: 1, name: 'foo_field', kind: 'scalar', T: 13 /* ScalarType.UINT32 */ },
+    { no: 1, name: 'foo_field', kind: 'scalar', T: ScalarType.UINT32 },
   ] as readonly PartialFieldInfo[],
   packedByDefault: true,
 })

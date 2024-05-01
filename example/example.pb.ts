@@ -3,7 +3,7 @@
 /* eslint-disable */
 
 import type { MessageType, PartialFieldInfo } from '@aptre/protobuf-es-lite'
-import { createMessageType, Message } from '@aptre/protobuf-es-lite'
+import { createMessageType, Message, ScalarType } from '@aptre/protobuf-es-lite'
 import { OtherMsg } from './other/other.pb.js'
 
 export const protobufPackage = 'example'
@@ -28,15 +28,11 @@ export type ExampleMsg = Message<{
   otherMsg?: OtherMsg
 }>
 
+// ExampleMsg contains the message type declaration for ExampleMsg.
 export const ExampleMsg: MessageType<ExampleMsg> = createMessageType({
   typeName: 'example.ExampleMsg',
   fields: [
-    {
-      no: 1,
-      name: 'example_field',
-      kind: 'scalar',
-      T: 9 /* ScalarType.STRING */,
-    },
+    { no: 1, name: 'example_field', kind: 'scalar', T: ScalarType.STRING },
     { no: 2, name: 'other_msg', kind: 'message', T: () => OtherMsg },
   ] as readonly PartialFieldInfo[],
   packedByDefault: true,
