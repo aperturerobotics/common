@@ -75,16 +75,16 @@
     "typescript": "^5.4.5"
   },
   "dependencies": {
-    "@aptre/protobuf-es-lite": "^0.4.1",
+    "@aptre/protobuf-es-lite": "^0.4.3",
     "@typescript-eslint/eslint-plugin": "^7.8.0",
     "@typescript-eslint/parser": "^7.8.0",
-    "eslint": "^8.0.0",
+    "eslint": "^9.1.1",
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-react-hooks": "^4.6.1",
     "eslint-plugin-unused-imports": "^3.2.0",
     "starpc": "^0.32.0"
   },
   "resolutions": {
-    "@aptre/protobuf-es-lite": "0.4.2"
+    "@aptre/protobuf-es-lite": "0.4.3"
   }
 }
