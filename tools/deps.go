@@ -27,4 +27,7 @@ import (
 
 	// _ imports goreleaser
 	_ "github.com/goreleaser/goreleaser"
+
+	// _ imports wasmbrowsertest
+	_ "github.com/agnivade/wasmbrowsertest"
 )

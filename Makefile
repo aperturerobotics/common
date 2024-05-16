@@ -7,7 +7,8 @@ PROJECT_DIR_REL = $(shell realpath --relative-to $(COMMON_DIR) $(PROJECT_DIR))
 
 TOOLS_DIR := .tools
 TOOLS_BIN := $(TOOLS_DIR)/bin
-PROJECT_TOOLS_DIR := $(PROJECT_DIR)/.tools
+
+PROJECT_TOOLS_DIR := $(PROJECT_DIR)/$(TOOLS_DIR)
 PROJECT_TOOLS_DIR_REL = $(shell realpath --relative-to $(COMMON_DIR) $(PROJECT_TOOLS_DIR))
 
 SHELL:=bash
@@ -49,6 +50,7 @@ GOFUMPT=$(TOOLS_BIN)/gofumpt
 GOLANGCI_LINT=$(TOOLS_BIN)/golangci-lint
 GO_MOD_OUTDATED=$(TOOLS_BIN)/go-mod-outdated
 GORELEASER=$(TOOLS_BIN)/goreleaser
+WASMBROWSERTEST=$(TOOLS_BIN)/wasmbrowsertest
 
 # Mappings for build tool to Go import path
 $(eval $(call build_tool,$(PROTOC_GEN_GO),github.com/aperturerobotics/protobuf-go-lite/cmd/protoc-gen-go-lite))
@@ -59,6 +61,7 @@ $(eval $(call build_tool,$(PROTOWRAP),github.com/aperturerobotics/goprotowrap/cm
 $(eval $(call build_tool,$(GOLANGCI_LINT),github.com/golangci/golangci-lint/cmd/golangci-lint))
 $(eval $(call build_tool,$(GO_MOD_OUTDATED),github.com/psampaz/go-mod-outdated))
 $(eval $(call build_tool,$(GORELEASER),github.com/goreleaser/goreleaser))
+$(eval $(call build_tool,$(WASMBROWSERTEST),github.com/agnivade/wasmbrowsertest))
 
 .PHONY: protodeps
 protodeps: $(GOIMPORTS) $(PROTOWRAP) $(PROTOC_GEN_GO) $(PROTOC_GEN_GO_STARPC) $(PROJECT_DIR)/node_modules
@@ -173,6 +176,11 @@ fix: $(GOLANGCI_LINT)
 test:
 	cd $(PROJECT_DIR); \
 	go test -v ./...
+
+.PHONY: test-browser
+test-browser: $(WASMBROWSERTEST)
+	cd $(PROJECT_DIR); \
+	GOOS=js GOARCH=wasm go test -exec $(WASMBROWSERTEST) -v ./...
 
 .PHONY: format
 format: $(GOFUMPT) $(GOIMPORTS)

@@ -47,12 +47,16 @@ The Makefile will download the tools using Go to a bin dir.
 
 The available make targets are:
 
- - `genproto`: Generate protobuf files.
- - `test`: run go test -v ./...
- - `lint`: run golangci-lint on the project.
- - `fix`: run golangci-lint --fix on the project.
- - `list`: list go module dependencies
- - `outdated`: list outdated go module dependencies
+ - `gen`: Generate protobuf files.
+ - `test`: Run go tests. 
+ - `test-browser`: Run go tests in a web browser with WebAssembly.
+ - `lint`: Run golangci-lint on the project.
+ - `fix`: Run golangci-lint with --fix on the project.
+ - `format`: Format Go and TypeScript code.
+ - `release`: Create a new release using goreleaser.
+ - `release-bundle`: Create a bundled snapshot release using goreleaser. 
+ - `release-build`: Build a snapshot release using goreleaser.
+ - `release-check`: Run goreleaser checks.
 
 To generate the TypeScript and Go code:
 
