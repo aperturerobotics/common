@@ -141,8 +141,8 @@ github.com/aperturerobotics/protobuf-go v1.33.1-0.20240411062030-e36f75e0a3b8 h1
 github.com/aperturerobotics/protobuf-go v1.33.1-0.20240411062030-e36f75e0a3b8/go.mod h1:c6P6GXX6sHbq/GpV6MGZEdwhWPcYBgnhAHhKbcUYpos=
 github.com/aperturerobotics/protobuf-go-lite v0.6.5 h1:AuPPcZ7ZaJe9ZYYC4gF7/5/Xbn9Mt9uXyV3+ADWy+Ys=
 github.com/aperturerobotics/protobuf-go-lite v0.6.5/go.mod h1:YTbfnUj3feSULhs8VgepAHFnF3wUc0CPj4jd2axy21I=
-github.com/aperturerobotics/starpc v0.32.8 h1:ZDKVV/NxGbk0TVfBUk7NvHC8EEoV2xzd/jgQaQuR5No=
-github.com/aperturerobotics/starpc v0.32.8/go.mod h1:MgtaylA8mI6DAuRaKVWTvVuc5kH/uEgbdYMD2MAGnZY=
+github.com/aperturerobotics/starpc v0.32.9 h1:RVhpoLzY5SMz+9To4mg1sqO70LpWDLvRYCKJQnYKv/s=
+github.com/aperturerobotics/starpc v0.32.9/go.mod h1:V/wN7Y+OHchsdZ8DcTS1qSUVs7yWJZuaGA0g/aLiq1w=
 github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5 h1:0CwZNZbxp69SHPdPJAN/hZIm0C4OItdklCFmMRWYpio=
 github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5/go.mod h1:wHh0iHkYZB8zMSxRWpUBQtwG5a7fFgvEO+odwuTv2gs=
 github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 h1:DklsrG3dyBCFEj5IhUbnKptjxatkF07cF2ak3yi77so=
