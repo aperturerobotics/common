@@ -29,6 +29,9 @@ $(PROJECT_DIR)/node_modules:
 $(PROJECT_TOOLS_DIR):
 	@cd $(PROJECT_DIR); go run -v github.com/aperturerobotics/common $(TOOLS_DIR)
 
+.PHONY: tools
+tools: $(PROJECT_TOOLS_DIR)
+
 # Build tool rule
 define build_tool
 $(PROJECT_DIR)/$(1): $(PROJECT_TOOLS_DIR)
