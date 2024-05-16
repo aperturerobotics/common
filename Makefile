@@ -79,6 +79,7 @@ genproto: protodeps
 	@shopt -s globstar; \
 	set -eo pipefail; \
 	cd $(PROJECT_DIR); \
+	export PROTOBUF_GO_TYPES_PKG=github.com/aperturerobotics/protobuf-go-lite/types; \
 	export PROJECT=$$(go list -m); \
 	export OUT=./vendor; \
 	mkdir -p $${OUT}/$$(dirname $${PROJECT}); \

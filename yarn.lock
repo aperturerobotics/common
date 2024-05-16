@@ -21,6 +21,14 @@
     "@typescript/vfs" "^1.5.0"
     lz-string "^1.5.0"
 
+"@aptre/protobuf-es-lite@^0.4.4":
+  version "0.4.4"
+  resolved "https://registry.yarnpkg.com/@aptre/protobuf-es-lite/-/protobuf-es-lite-0.4.4.tgz#2c5a305bd984a197c4b0fa57a5d23165ddac6535"
+  integrity sha512-fw5ukLnaK0b27oFir5vxucL/g7cv7Dv7298rBWNH2VcFVkYmr1dDJTAWpoSPc9OvJbGFX5rvdg0b8pRn5ZM0FA==
+  dependencies:
+    "@typescript/vfs" "^1.5.0"
+    lz-string "^1.5.0"
+
 "@babel/code-frame@^7.0.0", "@babel/code-frame@^7.23.5", "@babel/code-frame@^7.24.2":
   version "7.24.2"
   resolved "https://registry.yarnpkg.com/@babel/code-frame/-/code-frame-7.24.2.tgz#718b4b19841809a58b29b68cde80bc5e1aa6d9ae"
