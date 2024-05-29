@@ -83,7 +83,7 @@
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-react-hooks": "^4.6.1",
     "eslint-plugin-unused-imports": "^4.0.0",
-    "starpc": "^0.32.11",
+    "starpc": "^0.32.12",
     "vitest": "^1.6.0"
   },
   "resolutions": {
