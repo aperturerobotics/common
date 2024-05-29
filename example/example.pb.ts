@@ -2,9 +2,9 @@
 // @generated from file github.com/aperturerobotics/common/example/example.proto (package example, syntax proto3)
 /* eslint-disable */
 
-import type { MessageType, PartialFieldInfo } from '@aptre/protobuf-es-lite'
-import { createMessageType, Message, ScalarType } from '@aptre/protobuf-es-lite'
 import { OtherMsg } from './other/other.pb.js'
+import type { MessageType, PartialFieldInfo } from '@aptre/protobuf-es-lite'
+import { createMessageType, ScalarType } from '@aptre/protobuf-es-lite'
 
 export const protobufPackage = 'example'
 
@@ -13,7 +13,7 @@ export const protobufPackage = 'example'
  *
  * @generated from message example.ExampleMsg
  */
-export type ExampleMsg = Message<{
+export interface ExampleMsg {
   /**
    * ExampleField is an example field.
    *
@@ -26,7 +26,7 @@ export type ExampleMsg = Message<{
    * @generated from field: example.other.OtherMsg other_msg = 2;
    */
   otherMsg?: OtherMsg
-}>
+}
 
 // ExampleMsg contains the message type declaration for ExampleMsg.
 export const ExampleMsg: MessageType<ExampleMsg> = createMessageType({
