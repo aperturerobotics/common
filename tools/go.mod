@@ -13,7 +13,7 @@ require (
 	github.com/aperturerobotics/common v0.15.4 // latest
 	github.com/aperturerobotics/goprotowrap v0.3.1 // latest
 	github.com/aperturerobotics/protobuf-go-lite v0.6.5 // latest
-	github.com/aperturerobotics/starpc v0.32.13 // latest
+	github.com/aperturerobotics/starpc v0.32.14 // latest
 )
 
 require (
@@ -440,7 +440,7 @@ require (
 	go.uber.org/zap v1.27.0 // indirect
 	gocloud.dev v0.37.0 // indirect
 	golang.org/x/crypto v0.24.0 // indirect
-	golang.org/x/exp v0.0.0-20240506185415-9bf2ced13842 // indirect
+	golang.org/x/exp v0.0.0-20240613232115-7f521ea00fb8 // indirect
 	golang.org/x/exp/typeparams v0.0.0-20240314144324-c7f7c6466f7f // indirect
 	golang.org/x/mod v0.18.0 // indirect
 	golang.org/x/net v0.26.0 // indirect
