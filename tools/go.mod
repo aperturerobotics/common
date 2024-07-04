@@ -25,7 +25,7 @@ require (
 
 require (
 	github.com/agnivade/wasmbrowsertest v0.8.0
-	github.com/goreleaser/goreleaser v1.26.2
+	github.com/goreleaser/goreleaser/v2 v2.0.1
 )
 
 require (

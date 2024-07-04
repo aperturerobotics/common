@@ -63,7 +63,7 @@ $(eval $(call build_tool,$(GOFUMPT),mvdan.cc/gofumpt))
 $(eval $(call build_tool,$(PROTOWRAP),github.com/aperturerobotics/goprotowrap/cmd/protowrap))
 $(eval $(call build_tool,$(GOLANGCI_LINT),github.com/golangci/golangci-lint/cmd/golangci-lint))
 $(eval $(call build_tool,$(GO_MOD_OUTDATED),github.com/psampaz/go-mod-outdated))
-$(eval $(call build_tool,$(GORELEASER),github.com/goreleaser/goreleaser))
+$(eval $(call build_tool,$(GORELEASER),github.com/goreleaser/goreleaser/v2))
 $(eval $(call build_tool,$(WASMBROWSERTEST),github.com/agnivade/wasmbrowsertest))
 
 .PHONY: protodeps

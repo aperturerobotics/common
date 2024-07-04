@@ -26,7 +26,7 @@ import (
 	_ "mvdan.cc/gofumpt"
 
 	// _ imports goreleaser
-	_ "github.com/goreleaser/goreleaser"
+	_ "github.com/goreleaser/goreleaser/v2"
 
 	// _ imports wasmbrowsertest
 	_ "github.com/agnivade/wasmbrowsertest"
