@@ -184,7 +184,7 @@ test:
 .PHONY: test-browser
 test-browser: $(WASMBROWSERTEST)
 	cd $(PROJECT_DIR); \
-	GOOS=js GOARCH=wasm go test -exec $(WASMBROWSERTEST) -v ./...
+	GOOS=js GOARCH=wasm go test -exec $(WASMBROWSERTEST) -tags "webtests" -v ./...
 
 .PHONY: format
 format: $(GOFUMPT) $(GOIMPORTS)
