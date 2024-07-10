@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/aperturerobotics/common/example"
-	"github.com/aperturerobotics/common/example/other"
+	example_other "github.com/aperturerobotics/common/example/other"
 )
 
 func TestExampleMsg(t *testing.T) {
