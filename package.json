@@ -79,7 +79,7 @@
     "@aptre/protobuf-es-lite": "^0.4.5",
     "@typescript-eslint/eslint-plugin": "^7.15.0",
     "@typescript-eslint/parser": "^7.15.0",
-    "eslint": "^9.6.0",
+    "eslint": "^8.0.0",
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-react-hooks": "^4.6.1",
     "eslint-plugin-unused-imports": "^4.0.0",
