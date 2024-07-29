@@ -15,7 +15,7 @@ require (
 	github.com/aperturerobotics/common v0.15.4 // latest
 	github.com/aperturerobotics/goprotowrap v0.3.1 // latest
 	github.com/aperturerobotics/protobuf-go-lite v0.6.5 // latest
-	github.com/aperturerobotics/starpc v0.32.16 // latest
+	github.com/aperturerobotics/starpc v0.33.6 // latest
 )
 
 require (
@@ -28,6 +28,13 @@ require (
 require (
 	github.com/agnivade/wasmbrowsertest v0.8.0
 	github.com/goreleaser/goreleaser/v2 v2.1.0
+)
+
+// fixes checksum issues with GOPROXY=direct
+replace (
+	github.com/anchore/go-macholibre => github.com/paralin/anchore-go-macholibre v0.0.0-20240116161251-5df1434a0b50
+	github.com/anchore/quill => github.com/paralin/anchore-quill v0.0.0-20240723141717-8850f7e3f65b
+	github.com/whyrusleeping/cbor-gen => github.com/whyrusleeping/cbor-gen v0.1.3-0.20240725173408-cdbc4c7ebb52
 )
 
 require (
@@ -86,7 +93,7 @@ require (
 	github.com/ashanbrown/forbidigo v1.6.0 // indirect
 	github.com/ashanbrown/makezero v1.1.1 // indirect
 	github.com/atc0005/go-teams-notify/v2 v2.10.0 // indirect
-	github.com/aws/aws-sdk-go v1.54.18 // indirect
+	github.com/aws/aws-sdk-go v1.55.0 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.26.1 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.6.1 // indirect
 	github.com/aws/aws-sdk-go-v2/config v1.27.13 // indirect
@@ -115,7 +122,7 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bkielbasa/cyclop v1.2.1 // indirect
 	github.com/blacktop/go-dwarf v1.0.10 // indirect
-	github.com/blacktop/go-macho v1.1.225 // indirect
+	github.com/blacktop/go-macho v1.1.228 // indirect
 	github.com/blakesmith/ar v0.0.0-20190502131153-809d4375e1fb // indirect
 	github.com/blizzy78/varnamelen v0.8.0 // indirect
 	github.com/bluesky-social/indigo v0.0.0-20240411170459-440932307e0d // indirect
@@ -139,8 +146,8 @@ require (
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/charithe/durationcheck v0.0.10 // indirect
 	github.com/charmbracelet/bubbletea v0.26.6 // indirect
-	github.com/charmbracelet/lipgloss v0.12.0 // indirect
-	github.com/charmbracelet/x/ansi v0.1.3 // indirect
+	github.com/charmbracelet/lipgloss v0.12.1 // indirect
+	github.com/charmbracelet/x/ansi v0.1.4 // indirect
 	github.com/charmbracelet/x/exp/ordered v0.1.0 // indirect
 	github.com/charmbracelet/x/input v0.1.0 // indirect
 	github.com/charmbracelet/x/term v0.1.1 // indirect
@@ -444,7 +451,7 @@ require (
 	go.uber.org/zap v1.27.0 // indirect
 	gocloud.dev v0.37.0 // indirect
 	golang.org/x/crypto v0.25.0 // indirect
-	golang.org/x/exp v0.0.0-20240613232115-7f521ea00fb8 // indirect
+	golang.org/x/exp v0.0.0-20240707233637-46b078467d37 // indirect
 	golang.org/x/exp/typeparams v0.0.0-20240314144324-c7f7c6466f7f // indirect
 	golang.org/x/mod v0.19.0 // indirect
 	golang.org/x/net v0.27.0 // indirect

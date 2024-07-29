@@ -23,6 +23,7 @@ module.exports = {
     "runtime",
     "vendor",
     ".eslintrc.js",
-    "wasm_exec.js"
+    "wasm_exec.js",
+    "tailwind.config.js"
   ]
 }
