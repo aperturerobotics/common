@@ -36,7 +36,7 @@ replace (
 
 require (
 	github.com/agnivade/wasmbrowsertest v0.9.0 // cancelCtx
-	github.com/goreleaser/goreleaser/v2 v2.3.1
+	github.com/goreleaser/goreleaser/v2 v2.3.2
 )
 
 require (
