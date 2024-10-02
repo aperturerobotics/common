@@ -184,7 +184,7 @@ test:
 .PHONY: test-browser
 test-browser: $(WASMBROWSERTEST)
 	cd $(PROJECT_DIR); \
-	GOOS=js GOARCH=wasm \
+	GOOS=js GOARCH=wasm GOTOOLCHAIN=local \
 	go test -exec $$(realpath $(WASMBROWSERTEST)) \
 		-tags "webtests" \
 		-v ./...
