@@ -44,7 +44,7 @@
     "clean": "rimraf ./dist",
     "check": "npm run typecheck",
     "typecheck": "tsc --noEmit",
-    "deps": "depcheck --ignores bufferutil,esbuild,starpc,rimraf,pre-commit",
+    "deps": "depcheck --ignores bufferutil,esbuild,starpc,rimraf",
     "codegen": "npm run gen",
     "ci": "npm run build && npm run lint:js && npm run lint:go",
     "format": "npm run format:go && npm run format:js && npm run format:config",
