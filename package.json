@@ -80,11 +80,11 @@
     "@typescript-eslint/eslint-plugin": "^8.18.0",
     "@typescript-eslint/parser": "^8.18.0",
     "eslint": "^9.16.0",
-    "eslint-config-prettier": "^9.0.0",
+    "eslint-config-prettier": "^10.0.0",
     "eslint-plugin-react-hooks": "^5.1.0",
     "eslint-plugin-unused-imports": "^4.0.0",
     "starpc": "^0.36.0",
-    "vitest": "^2.1.8"
+    "vitest": "^3.0.0"
   },
   "resolutions": {
     "@aptre/protobuf-es-lite": "0.4.8"
