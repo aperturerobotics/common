@@ -13,7 +13,7 @@ replace (
 
 require (
 	github.com/aperturerobotics/common v0.19.1 // latest
-	github.com/aperturerobotics/goprotowrap v0.3.1 // latest
+	github.com/aperturerobotics/goprotowrap v0.3.2 // latest
 	github.com/aperturerobotics/protobuf-go-lite v0.8.0 // latest
 	github.com/aperturerobotics/starpc v0.37.0 // latest
 )
