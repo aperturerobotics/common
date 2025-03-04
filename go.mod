@@ -1,6 +1,6 @@
 module github.com/aperturerobotics/common
 
-go 1.23
+go 1.24
 
 // This fork uses protobuf-go-lite. This replace can be safely removed but optimizes binary size.
 replace github.com/libp2p/go-libp2p => github.com/aperturerobotics/go-libp2p v0.37.1-0.20241111002741-5cfbb50b74e0 // aperture
