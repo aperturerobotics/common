@@ -389,7 +389,7 @@
     uint8arraylist "^2.4.8"
     uint8arrays "^5.1.0"
 
-"@libp2p/interface@^2.0.0", "@libp2p/interface@^2.5.0", "@libp2p/interface@^2.6.1":
+"@libp2p/interface@^2.0.0", "@libp2p/interface@^2.6.1":
   version "2.6.1"
   resolved "https://registry.yarnpkg.com/@libp2p/interface/-/interface-2.6.1.tgz#7fec02d428016967cc5ff003bce22739d8e0bfaa"
   integrity sha512-iCH686hAGu1p8nSCCTTDz5jyJ89D9HvhpnmVehknVjNLO63TPAntsaDzEs6wi2nsUJ3xThsXEbani6Ij5dL8Vg==
@@ -401,7 +401,7 @@
     progress-events "^1.0.1"
     uint8arraylist "^2.4.8"
 
-"@libp2p/logger@^5.1.11", "@libp2p/logger@^5.1.8":
+"@libp2p/logger@^5.1.11":
   version "5.1.11"
   resolved "https://registry.yarnpkg.com/@libp2p/logger/-/logger-5.1.11.tgz#dfaee83f3e98798c059dd03e7d36ba469051f74a"
   integrity sha512-0TLX/jp/PzPc3Zdm9SSTNouwUo2G+/umK6/0Sk7TntPpwTd8bsBHhLkX/7nIdZeWwmjHB+COMA3GNzJso6BNuQ==
@@ -2179,16 +2179,16 @@ stackback@0.0.2:
   resolved "https://registry.yarnpkg.com/stackback/-/stackback-0.0.2.tgz#1ac8a0d9483848d1695e418b6d031a3c3ce68e3b"
   integrity sha512-1XMJE5fQo1jGH6Y/7ebnwPOBEkIEnT4QF32d5R1+VXdXveM0IBMJt8zfaxX1P3QhVwrYe+576+jkANtSS2mBbw==
 
-starpc@^0.36.0:
-  version "0.36.4"
-  resolved "https://registry.yarnpkg.com/starpc/-/starpc-0.36.4.tgz#df1f9f3bfdbf0ab0647e4282ab980c3e0890fee5"
-  integrity sha512-I1VEY7Qx6QxvIK7dyi0n3tpNV6+NLM5yuWda12wgvBMQvHJHJHa7An1VhaXLHkD22nL8CjZGxmdzn7x1GZfS4A==
+starpc@^0.37.0:
+  version "0.37.0"
+  resolved "https://registry.yarnpkg.com/starpc/-/starpc-0.37.0.tgz#e211066611f1684855e3a26fe4e0527ba7985372"
+  integrity sha512-zXjl5cYISkL9b/ynHJaDqbenri7Cakmmgn7za2tW6+8uyrlMVLzYlsC/eUOxmn1uCtAopNB+DcXVBXgSsNnIQg==
   dependencies:
     "@aptre/it-ws" "^1.0.1"
     "@aptre/protobuf-es-lite" "^0.4.6"
     "@chainsafe/libp2p-yamux" "^7.0.1"
-    "@libp2p/interface" "^2.5.0"
-    "@libp2p/logger" "^5.1.8"
+    "@libp2p/interface" "^2.6.1"
+    "@libp2p/logger" "^5.1.11"
     event-iterator "^2.0.0"
     isomorphic-ws "^5.0.0"
     it-first "^3.0.6"
@@ -2196,7 +2196,7 @@ starpc@^0.36.0:
     it-pushable "^3.2.3"
     it-stream-types "^2.0.2"
     uint8arraylist "^2.4.7"
-    ws "^8.17.0"
+    ws "^8.18.1"
 
 std-env@^3.8.0:
   version "3.8.1"
@@ -2466,7 +2466,7 @@ wrap-ansi@^8.1.0:
     string-width "^5.0.1"
     strip-ansi "^7.0.1"
 
-ws@^8.17.0, ws@^8.17.1:
+ws@^8.17.1, ws@^8.18.1:
   version "8.18.1"
   resolved "https://registry.yarnpkg.com/ws/-/ws-8.18.1.tgz#ea131d3784e1dfdff91adb0a4a116b127515e3cb"
   integrity sha512-RKW2aJZMXeMxVpnZ6bck+RswznaxmzdULiBr6KY7XkTnW8uvt0iT9H5DkHUChXrc+uurzwa0rVI16n/Xzjdz1w==
