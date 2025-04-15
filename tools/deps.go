@@ -14,9 +14,9 @@ import (
 	_ "github.com/aperturerobotics/starpc/cmd/protoc-gen-go-starpc"
 
 	// _ imports golangci-lint
-	_ "github.com/golangci/golangci-lint/pkg/golinters"
+	_ "github.com/golangci/golangci-lint/v2/pkg/golinters"
 	// _ imports golangci-lint commands
-	_ "github.com/golangci/golangci-lint/pkg/commands"
+	_ "github.com/golangci/golangci-lint/v2/pkg/commands"
 
 	// _ imports go-mod-outdated
 	_ "github.com/psampaz/go-mod-outdated"
