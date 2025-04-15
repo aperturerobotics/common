@@ -20,15 +20,8 @@ linters:
     - misspell
     - revive
     - unconvert
-    # Note: goimports is now primarily a formatter, enabled below.
-    # Note: gosimple, govet, ineffassign, staticcheck, typecheck, unused
-    # are often covered by newer linters or presets, but were explicitly
-    # enabled before. They might be implicitly enabled by defaults or
-    # covered by other enabled linters now. Check golangci-lint documentation
-    # if their specific checks are still needed.
   disable:
     - errcheck
-    # Note: maligned was removed/deprecated in newer golangci-lint versions.
   settings:
     depguard:
       rules:
@@ -59,9 +52,6 @@ linters:
         - all
         - '-SA1012' # Allow passing nil contexts.
         - '-ST1003' # Example of disabling another check if needed
-    # Note: Maligned settings are removed as the linter is often deprecated/removed.
-    # maligned:
-    #   suggest-new: true
 
   # Exclusions based on common patterns and presets.
   exclusions:
