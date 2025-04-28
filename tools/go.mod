@@ -16,7 +16,7 @@ require (
 	github.com/aperturerobotics/goprotowrap v0.3.2 // latest
 	github.com/aperturerobotics/protobuf-go-lite v0.9.1 // latest
 	github.com/aperturerobotics/starpc v0.38.1 // latest
-	github.com/paralin/goscript v0.0.11 // master
+	github.com/paralin/goscript v0.0.12-0.20250428020839-5ecdad772720 // master
 )
 
 require (
