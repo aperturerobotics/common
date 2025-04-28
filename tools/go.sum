@@ -161,12 +161,14 @@ github.com/aperturerobotics/cli v1.0.0 h1:s3xT2h7eBih4/4yZKTn/HQ6P+qpk6ygWZl2416
 github.com/aperturerobotics/cli v1.0.0/go.mod h1:wtlINjMcKuwyV1x4ftReuA6hHZcPB8kPMXHyQqGFCSc=
 github.com/aperturerobotics/goprotowrap v0.3.2 h1:Nb79Q6KEV3VjUEUNcYCfn9/C8uY5U71CFF16E/kokqE=
 github.com/aperturerobotics/goprotowrap v0.3.2/go.mod h1:5tRlYsb4VF0ySzx2/My3u9PtzTWNu5o2bqYHj0TRw+U=
+github.com/aperturerobotics/goscript v0.0.14 h1:88NFy2nzhhTUx9TOrkkS8MjdHd45BbsFQr32deI6fc0=
+github.com/aperturerobotics/goscript v0.0.14/go.mod h1:ebf1LJu3helsB0pOu3PhqBOACcj+RVagY/yAI5PmyP4=
 github.com/aperturerobotics/protobuf-go v1.33.1-0.20240516052628-4470bc019102 h1:jjQCud+wqlAoe+35nfTyuDzGk3tiG5t1BMFlRXHvg3A=
 github.com/aperturerobotics/protobuf-go v1.33.1-0.20240516052628-4470bc019102/go.mod h1:c6P6GXX6sHbq/GpV6MGZEdwhWPcYBgnhAHhKbcUYpos=
 github.com/aperturerobotics/protobuf-go-lite v0.9.1 h1:P1knXKnwLJpVE8fmeXYGckKu79IhqUvKRdCfJNR0MwQ=
 github.com/aperturerobotics/protobuf-go-lite v0.9.1/go.mod h1:fULrxQxEBWKQm7vvju9AfjTp9yfHoLgwMQWTiZQ2tg0=
-github.com/aperturerobotics/starpc v0.38.1 h1:pdDfhrTn6nsEtn+/qYbFNgXRHnlJNb/MdbF9CMqgMoA=
-github.com/aperturerobotics/starpc v0.38.1/go.mod h1:IT2VZ+tDYFleXhcOSvxcUe1fyVk8rD6JCISwjFeA6OA=
+github.com/aperturerobotics/starpc v0.39.0 h1:n/NR16KdzulIZFTf6PYo53mFHti4vg+O65kgaBGEXh4=
+github.com/aperturerobotics/starpc v0.39.0/go.mod h1:GVNyIvtGf/VO/MpWLCPiGMT9GVBFcdruSivsgD4oKcE=
 github.com/arbovm/levenshtein v0.0.0-20160628152529-48b4e1c0c4d0 h1:jfIu9sQUG6Ig+0+Ap1h4unLjW6YQJpKZVmUzxsD4E/Q=
 github.com/arbovm/levenshtein v0.0.0-20160628152529-48b4e1c0c4d0/go.mod h1:t2tdKJDJF9BV14lnkjHmOQgcvEKgtqs5a1N3LNdJhGE=
 github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5 h1:0CwZNZbxp69SHPdPJAN/hZIm0C4OItdklCFmMRWYpio=
@@ -901,8 +903,6 @@ github.com/paralin/anchore-go-macholibre v0.0.0-20240802084318-6c3d7de41333 h1:8
 github.com/paralin/anchore-go-macholibre v0.0.0-20240802084318-6c3d7de41333/go.mod h1:xz7uczAHBrEQ3+kIb4bnsp74JqcKpBid+gznZil1X0Q=
 github.com/paralin/anchore-quill v0.0.0-20240802084019-e89215594f6d h1:H/2lrCzxQKKGpt0Jh1vdf0jnIgJXEP9cCK4UPhxhSWM=
 github.com/paralin/anchore-quill v0.0.0-20240802084019-e89215594f6d/go.mod h1:d2weSmkaiWjIo/jR/3AhsuedYyZeibXfmJxV7qPd3Zk=
-github.com/paralin/goscript v0.0.12-0.20250428021110-26aa7e66b647 h1:2osbFzdJxmdzvCps3PjtsNZ4wwOVlwaMYuiR7rSxRNs=
-github.com/paralin/goscript v0.0.12-0.20250428021110-26aa7e66b647/go.mod h1:pU8LUzfo66W2ELoozR2TvLUePz2Tc0RN1bn5wqJIt6E=
 github.com/pborman/getopt v0.0.0-20180811024354-2b5b3bfb099b/go.mod h1:85jBQOZwpVEaDAr341tbn15RS4fCAsIst0qp7i8ex1o=
 github.com/pelletier/go-toml v1.9.5 h1:4yBQzkHv+7BHq2PQUZF3Mx0IYxG7LsP222s7Agd3ve8=
 github.com/pelletier/go-toml v1.9.5/go.mod h1:u1nR/EPcESfeI/szUZKdtJ0xRNbUoANCkoOuaOx1Y+c=

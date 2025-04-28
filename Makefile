@@ -66,7 +66,7 @@ $(eval $(call build_tool,$(GOLANGCI_LINT),github.com/golangci/golangci-lint/v2/c
 $(eval $(call build_tool,$(GO_MOD_OUTDATED),github.com/psampaz/go-mod-outdated))
 $(eval $(call build_tool,$(GORELEASER),github.com/goreleaser/goreleaser/v2))
 $(eval $(call build_tool,$(WASMBROWSERTEST),github.com/agnivade/wasmbrowsertest))
-$(eval $(call build_tool,$(GOSCRIPT),github.com/paralin/goscript/cmd/goscript))
+$(eval $(call build_tool,$(GOSCRIPT),github.com/aperturerobotics/goscript/cmd/goscript))
 
 .PHONY: protodeps
 protodeps: $(GOIMPORTS) $(PROTOWRAP) $(PROTOC_GEN_GO) $(PROTOC_GEN_GO_STARPC) $(PROJECT_DIR)/node_modules
