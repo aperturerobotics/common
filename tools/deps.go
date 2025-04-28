@@ -30,4 +30,7 @@ import (
 
 	// _ imports wasmbrowsertest
 	_ "github.com/agnivade/wasmbrowsertest"
+
+	// _ imports goscript
+	_ "github.com/paralin/goscript/cmd/goscript"
 )
