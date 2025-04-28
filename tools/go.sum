@@ -901,8 +901,8 @@ github.com/paralin/anchore-go-macholibre v0.0.0-20240802084318-6c3d7de41333 h1:8
 github.com/paralin/anchore-go-macholibre v0.0.0-20240802084318-6c3d7de41333/go.mod h1:xz7uczAHBrEQ3+kIb4bnsp74JqcKpBid+gznZil1X0Q=
 github.com/paralin/anchore-quill v0.0.0-20240802084019-e89215594f6d h1:H/2lrCzxQKKGpt0Jh1vdf0jnIgJXEP9cCK4UPhxhSWM=
 github.com/paralin/anchore-quill v0.0.0-20240802084019-e89215594f6d/go.mod h1:d2weSmkaiWjIo/jR/3AhsuedYyZeibXfmJxV7qPd3Zk=
-github.com/paralin/goscript v0.0.11-0.20250428011047-ae1d1c7c9c23 h1:wm6zaqbD6sVrVCE/1pXgu3PeQNnH/T9C0f6AjXcJDJc=
-github.com/paralin/goscript v0.0.11-0.20250428011047-ae1d1c7c9c23/go.mod h1:pU8LUzfo66W2ELoozR2TvLUePz2Tc0RN1bn5wqJIt6E=
+github.com/paralin/goscript v0.0.11 h1:5Ujk+HtN7Lz1yYZh1IuQjuoVyjmV/k9J50SXokqi5DY=
+github.com/paralin/goscript v0.0.11/go.mod h1:pU8LUzfo66W2ELoozR2TvLUePz2Tc0RN1bn5wqJIt6E=
 github.com/pborman/getopt v0.0.0-20180811024354-2b5b3bfb099b/go.mod h1:85jBQOZwpVEaDAr341tbn15RS4fCAsIst0qp7i8ex1o=
 github.com/pelletier/go-toml v1.9.5 h1:4yBQzkHv+7BHq2PQUZF3Mx0IYxG7LsP222s7Agd3ve8=
 github.com/pelletier/go-toml v1.9.5/go.mod h1:u1nR/EPcESfeI/szUZKdtJ0xRNbUoANCkoOuaOx1Y+c=
