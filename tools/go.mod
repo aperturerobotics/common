@@ -13,9 +13,9 @@ replace (
 require (
 	github.com/aperturerobotics/common v0.22.3-0.20250428021130-9962fbac3e3c // latest
 	github.com/aperturerobotics/goprotowrap v0.3.2 // latest
-	github.com/aperturerobotics/goscript v0.0.18 // master
+	github.com/aperturerobotics/goscript v0.0.23 // master
 	github.com/aperturerobotics/protobuf-go-lite v0.9.1 // latest
-	github.com/aperturerobotics/starpc v0.39.0 // latest
+	github.com/aperturerobotics/starpc v0.39.1 // latest
 )
 
 require (
