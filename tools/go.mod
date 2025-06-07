@@ -13,9 +13,9 @@ replace (
 require (
 	github.com/aperturerobotics/common v0.22.3-0.20250428021130-9962fbac3e3c // latest
 	github.com/aperturerobotics/goprotowrap v0.3.2 // latest
-	github.com/aperturerobotics/goscript v0.0.18 // master
+	github.com/aperturerobotics/goscript v0.0.53 // master
 	github.com/aperturerobotics/protobuf-go-lite v0.9.1 // latest
-	github.com/aperturerobotics/starpc v0.39.0 // latest
+	github.com/aperturerobotics/starpc v0.39.1 // latest
 )
 
 require (
@@ -23,7 +23,7 @@ require (
 	github.com/golangci/golangci-lint/v2 v2.1.6
 	github.com/goreleaser/goreleaser/v2 v2.9.0 // latest
 	github.com/psampaz/go-mod-outdated v0.9.0 // latest
-	golang.org/x/tools v0.33.0 // latest
+	golang.org/x/tools v0.34.0 // latest
 	google.golang.org/grpc v1.71.1 // indirect; latest
 	mvdan.cc/gofumpt v0.8.0 // latest
 )
