@@ -19,7 +19,7 @@
     "strict": true,
     "lib": ["webworker", "dom"]
   },
-  "exclude": ["node_modules", "vendor", "dist"],
+  "exclude": ["node_modules", "vendor", "dist", "tools/vendor"],
   "ts-node": {
     "esm": true,
     "experimentalSpecifierResolution": true

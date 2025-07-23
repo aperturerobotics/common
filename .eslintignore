@@ -4,3 +4,4 @@ coverage
 bundle
 runtime
 vendor
+tools/vendor
