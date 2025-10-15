@@ -160,11 +160,14 @@ require (
 	github.com/charmbracelet/colorprofile v0.3.2 // indirect
 	github.com/charmbracelet/fang v0.4.3 // indirect
 	github.com/charmbracelet/lipgloss v1.1.0 // indirect
-	github.com/charmbracelet/lipgloss/v2 v2.0.0-beta1 // indirect
+	github.com/charmbracelet/lipgloss/v2 v2.0.0-beta.3.0.20250917201909-41ff0bf215ea // indirect
+	github.com/charmbracelet/ultraviolet v0.0.0-20250915111650-81d4262876ef // indirect
 	github.com/charmbracelet/x/ansi v0.10.1 // indirect
 	github.com/charmbracelet/x/cellbuf v0.0.13 // indirect
 	github.com/charmbracelet/x/exp/charmtone v0.0.0-20250603201427-c31516f43444 // indirect
 	github.com/charmbracelet/x/term v0.2.1 // indirect
+	github.com/charmbracelet/x/termios v0.1.1 // indirect
+	github.com/charmbracelet/x/windows v0.2.2 // indirect
 	github.com/chrismellard/docker-credential-acr-env v0.0.0-20230304212654-82a0ddb27589 // indirect
 	github.com/chromedp/cdproto v0.0.0-20240801214329-3f85d328b335 // indirect
 	github.com/chromedp/chromedp v0.10.0 // indirect
@@ -529,14 +532,4 @@ require (
 	sigs.k8s.io/kind v0.27.0 // indirect
 	sigs.k8s.io/yaml v1.6.0 // indirect
 	software.sslmate.com/src/go-pkcs12 v0.5.0 // indirect
-)
-
-// fixes checksum issues with GOPROXY=direct
-replace (
-	github.com/anchore/go-macholibre => github.com/paralin/anchore-go-macholibre v0.0.0-20240802084318-6c3d7de41333 // drop-test-fixtures
-	// see: https://github.com/anchore/quill/issues/472#issuecomment-2264867577
-	github.com/anchore/quill => github.com/paralin/anchore-quill v0.0.0-20240802084019-e89215594f6d // drop-test-fixtures
-	// see: https://github.com/anchore/quill/issues/472#issuecomment-2264867577
-	github.com/goreleaser/quill => github.com/paralin/anchore-quill v0.0.0-20241211005828-f4519d421cac // goreleaser
-	github.com/whyrusleeping/cbor-gen => github.com/whyrusleeping/cbor-gen v0.1.3-0.20240725173408-cdbc4c7ebb52
 )
