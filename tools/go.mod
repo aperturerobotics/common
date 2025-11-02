@@ -15,17 +15,17 @@ require (
 	github.com/aperturerobotics/goprotowrap v0.3.2 // latest
 	github.com/aperturerobotics/goscript v0.0.58 // master
 	github.com/aperturerobotics/protobuf-go-lite v0.11.0 // latest
-	github.com/aperturerobotics/starpc v0.39.8 // latest
+	github.com/aperturerobotics/starpc v0.39.10 // latest
 )
 
 require (
 	github.com/agnivade/wasmbrowsertest v0.11.0 // cancelCtx
-	github.com/golangci/golangci-lint/v2 v2.4.0
-	github.com/goreleaser/goreleaser/v2 v2.11.2 // latest
+	github.com/golangci/golangci-lint/v2 v2.6.0
+	github.com/goreleaser/goreleaser/v2 v2.12.7 // latest
 	github.com/psampaz/go-mod-outdated v0.9.0 // latest
-	golang.org/x/tools v0.36.0 // latest
+	golang.org/x/tools v0.38.0 // latest
 	google.golang.org/grpc v1.73.0 // indirect; latest
-	mvdan.cc/gofumpt v0.8.0 // latest
+	mvdan.cc/gofumpt v0.9.2 // latest
 )
 
 require (
