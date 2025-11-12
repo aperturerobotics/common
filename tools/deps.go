@@ -30,7 +30,6 @@ import (
 
 	// _ imports wasmbrowsertest
 	_ "github.com/agnivade/wasmbrowsertest"
-
 	// _ imports goscript
-	_ "github.com/aperturerobotics/goscript/cmd/goscript"
+	// _ "github.com/aperturerobotics/goscript/cmd/goscript"
 )

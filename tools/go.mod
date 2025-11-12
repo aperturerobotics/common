@@ -13,7 +13,7 @@ replace (
 require (
 	github.com/aperturerobotics/common v0.22.11 // latest
 	github.com/aperturerobotics/goprotowrap v0.3.2 // latest
-	github.com/aperturerobotics/goscript v0.0.58 // master
+	// github.com/aperturerobotics/goscript v0.0.58 // master
 	github.com/aperturerobotics/protobuf-go-lite v0.11.0 // latest
 	github.com/aperturerobotics/starpc v0.39.10 // latest
 )
@@ -97,7 +97,6 @@ require (
 	github.com/anchore/go-logger v0.0.0-20241005132348-65b4486fbb28 // indirect
 	github.com/anchore/go-macholibre v0.0.0-20220308212642-53e6d0aaf6fb // indirect
 	github.com/anchore/quill v0.5.1 // indirect
-	github.com/aperturerobotics/cli v1.0.0 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/ashanbrown/forbidigo/v2 v2.3.0 // indirect
 	github.com/ashanbrown/makezero/v2 v2.1.0 // indirect
@@ -474,7 +473,6 @@ require (
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	github.com/xen0n/gosmopolitan v1.3.0 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
-	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
 	github.com/yagipy/maintidx v1.0.0 // indirect
 	github.com/yeya24/promlinter v0.3.0 // indirect
 	github.com/ykadowak/zerologlint v0.1.5 // indirect

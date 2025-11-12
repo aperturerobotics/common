@@ -187,12 +187,8 @@ github.com/anchore/quill v0.5.1/go.mod h1:tAzfFxVluL2P1cT+xEy+RgQX1hpNuliUC5dTYS
 github.com/andreyvit/diff v0.0.0-20170406064948-c7f18ee00883/go.mod h1:rCTlJbsFo29Kk6CurOXKm700vrz8f0KW0JNfpkRJY/8=
 github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be h1:9AeTilPcZAjCFIImctFaOjnTIavg87rW78vTPkQqLI8=
 github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be/go.mod h1:ySMOLuWl6zY27l47sB3qLNK6tF2fkHG55UZxx8oIVo4=
-github.com/aperturerobotics/cli v1.0.0 h1:s3xT2h7eBih4/4yZKTn/HQ6P+qpk6ygWZl2416xAI1M=
-github.com/aperturerobotics/cli v1.0.0/go.mod h1:wtlINjMcKuwyV1x4ftReuA6hHZcPB8kPMXHyQqGFCSc=
 github.com/aperturerobotics/goprotowrap v0.3.2 h1:Nb79Q6KEV3VjUEUNcYCfn9/C8uY5U71CFF16E/kokqE=
 github.com/aperturerobotics/goprotowrap v0.3.2/go.mod h1:5tRlYsb4VF0ySzx2/My3u9PtzTWNu5o2bqYHj0TRw+U=
-github.com/aperturerobotics/goscript v0.0.58 h1:fghZ+5SO5F4fgmnudIyRzrtA1uVnBz1In7UH+7VG2Mo=
-github.com/aperturerobotics/goscript v0.0.58/go.mod h1:PtShEZz/oPeI2DGNpNJXq/7fJhzbjuVD92dLsHePJL8=
 github.com/aperturerobotics/protobuf-go v1.33.1-0.20240516052628-4470bc019102 h1:jjQCud+wqlAoe+35nfTyuDzGk3tiG5t1BMFlRXHvg3A=
 github.com/aperturerobotics/protobuf-go v1.33.1-0.20240516052628-4470bc019102/go.mod h1:c6P6GXX6sHbq/GpV6MGZEdwhWPcYBgnhAHhKbcUYpos=
 github.com/aperturerobotics/protobuf-go-lite v0.11.0 h1:IAaZISqrEpodqECYxk0yKWgROEbZtMhs7bErP+Zma9o=
@@ -1234,8 +1230,6 @@ github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 h1:nIPpBwaJSVYIxUFsDv3M8ofm
 github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8/go.mod h1:HUYIGzjTL3rfEspMxjDjgmT5uz5wzYJKVo23qUhYTos=
 github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e h1:JVG44RsyaB9T2KIHavMF/ppJZNG9ZpyihvCd0w101no=
 github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e/go.mod h1:RbqR21r5mrJuqunuUZ/Dhy/avygyECGrLceyNeo4LiM=
-github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 h1:gEOO8jv9F4OT7lGCjxCBTO/36wtF6j2nSip77qHd4x4=
-github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1/go.mod h1:Ohn+xnUBiLI6FVj/9LpzZWtj1/D6lUovWYBkxHVV3aM=
 github.com/yagipy/maintidx v1.0.0 h1:h5NvIsCz+nRDapQ0exNv4aJ0yXSI0420omVANTv3GJM=
 github.com/yagipy/maintidx v1.0.0/go.mod h1:0qNf/I/CCZXSMhsRsrEPDZ+DkekpKLXAJfsTACwgXLk=
 github.com/yeya24/promlinter v0.3.0 h1:JVDbMp08lVCP7Y6NP3qHroGAO6z2yGKQtS5JsjqtoFs=
