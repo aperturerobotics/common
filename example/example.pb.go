@@ -233,6 +233,7 @@ func (x *ExampleMsg) MarshalProtoText() string {
 func (x *ExampleMsg) String() string {
 	return x.MarshalProtoText()
 }
+
 func (m *ExampleMsg) UnmarshalVT(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0

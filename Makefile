@@ -69,7 +69,7 @@ $(eval $(call build_tool,$(WASMBROWSERTEST),github.com/agnivade/wasmbrowsertest)
 # $(eval $(call build_tool,$(GOSCRIPT),github.com/aperturerobotics/goscript/cmd/goscript))
 
 .PHONY: protodeps
-protodeps: $(GOIMPORTS) $(PROTOWRAP) $(PROTOC_GEN_GO) $(PROTOC_GEN_GO_STARPC) $(PROJECT_DIR)/node_modules
+protodeps: $(GOFUMPT) $(PROTOWRAP) $(PROTOC_GEN_GO) $(PROTOC_GEN_GO_STARPC) $(PROJECT_DIR)/node_modules
 
 # Default protogen targets and arguments
 PROTOGEN_TARGETS ?= ./*.proto
@@ -146,7 +146,7 @@ genproto: protodeps
 			done; \
 		done; \
 		if [ -n "$${FMT_GO_FILES}" ]; then \
-			$(GOIMPORTS) -w $${FMT_GO_FILES[@]}; \
+			$(GOFUMPT) -w $${FMT_GO_FILES[@]}; \
 		fi; \
 		if [ -n "$${FMT_TS_FILES}" ]; then \
 			prettier --config $(TOOLS_DIR)/.prettierrc.yaml -w $${FMT_TS_FILES[@]}; \
@@ -192,10 +192,17 @@ test-browser: $(WASMBROWSERTEST)
 		-v ./...
 
 .PHONY: format
-format: $(GOFUMPT) $(GOIMPORTS)
+format: gofumpt
+
+.PHONY: gofumpt
+gofumpt: $(GOFUMPT)
 	cd $(PROJECT_DIR); \
-	$(GOIMPORTS) -w ./; \
 	$(GOFUMPT) -w ./
+
+.PHONY: goimports
+goimports: $(GOIMPORTS)
+	cd $(PROJECT_DIR); \
+	$(GOIMPORTS) -w ./
 
 .PHONY: release
 release: $(GORELEASER)
