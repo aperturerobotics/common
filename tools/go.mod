@@ -11,11 +11,11 @@ replace (
 )
 
 require (
-	github.com/aperturerobotics/common v0.22.11 // latest
+	github.com/aperturerobotics/common v0.23.0 // latest
 	github.com/aperturerobotics/goprotowrap v0.3.2 // latest
 	// github.com/aperturerobotics/goscript v0.0.61 // master
 	github.com/aperturerobotics/protobuf-go-lite v0.11.0 // latest
-	github.com/aperturerobotics/starpc v0.39.10 // latest
+	github.com/aperturerobotics/starpc v0.41.0 // latest
 )
 
 require (

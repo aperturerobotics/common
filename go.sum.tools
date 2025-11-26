@@ -193,8 +193,8 @@ github.com/aperturerobotics/protobuf-go v1.33.1-0.20240516052628-4470bc019102 h1
 github.com/aperturerobotics/protobuf-go v1.33.1-0.20240516052628-4470bc019102/go.mod h1:c6P6GXX6sHbq/GpV6MGZEdwhWPcYBgnhAHhKbcUYpos=
 github.com/aperturerobotics/protobuf-go-lite v0.11.0 h1:IAaZISqrEpodqECYxk0yKWgROEbZtMhs7bErP+Zma9o=
 github.com/aperturerobotics/protobuf-go-lite v0.11.0/go.mod h1:c4kGy7Dkfz6B1m0t4QBIMQoNeQ7m+nYj3Qxxnlwhygo=
-github.com/aperturerobotics/starpc v0.39.10 h1:j6E9PQaj08jNrpWmYf8WvWQ6OwWJvOqdHUyUzBCQhsM=
-github.com/aperturerobotics/starpc v0.39.10/go.mod h1:rLC0m8lFh+oISGaRpJ6QuEP1z7ocbTLGb4QA8dijUWw=
+github.com/aperturerobotics/starpc v0.41.0 h1:NG81ny5BeVzsUV56aZreL2Z0xiD42tjvPlnGDBfVpDQ=
+github.com/aperturerobotics/starpc v0.41.0/go.mod h1:TtXAw1hXQ2LNFaBz2yhZQg+BwFV9qvmZ2CpftuOavF0=
 github.com/arbovm/levenshtein v0.0.0-20160628152529-48b4e1c0c4d0 h1:jfIu9sQUG6Ig+0+Ap1h4unLjW6YQJpKZVmUzxsD4E/Q=
 github.com/arbovm/levenshtein v0.0.0-20160628152529-48b4e1c0c4d0/go.mod h1:t2tdKJDJF9BV14lnkjHmOQgcvEKgtqs5a1N3LNdJhGE=
 github.com/armon/go-socks5 v0.0.0-20160902184237-e75332964ef5 h1:0CwZNZbxp69SHPdPJAN/hZIm0C4OItdklCFmMRWYpio=
