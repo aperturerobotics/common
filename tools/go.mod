@@ -20,8 +20,8 @@ require (
 
 require (
 	github.com/agnivade/wasmbrowsertest v0.11.0 // cancelCtx
-	github.com/golangci/golangci-lint/v2 v2.6.2
-	github.com/goreleaser/goreleaser/v2 v2.12.7 // latest
+	github.com/golangci/golangci-lint/v2 v2.7.1
+	github.com/goreleaser/goreleaser/v2 v2.13.0 // latest
 	github.com/psampaz/go-mod-outdated v0.9.0 // latest
 	golang.org/x/tools v0.39.0 // latest
 	google.golang.org/grpc v1.75.0 // indirect; latest
