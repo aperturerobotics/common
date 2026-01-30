@@ -76,6 +76,9 @@ PROTOGEN_TARGETS ?= ./*.proto
 PROTOGEN_ARGS ?=
 GO_LITE_OPT_FEATURES ?= marshal+unmarshal+size+equal+json+clone+text
 
+# Cache file path (gitignored)
+PROTO_CACHE_FILE ?= .protoc-manifest.json
+
 .PHONY: genproto
 genproto: protodeps
 	@shopt -s globstar; \
@@ -113,12 +116,22 @@ genproto: protodeps
 				--es-starpc_opt ts_nocheck=false \
 			); \
 		fi; \
+		TOOL_VERSIONS="protoc=$$(protoc --version 2>/dev/null | head -1)"; \
+		if [ -f "$(TOOLS_DIR)/go.mod" ]; then \
+			TOOL_VERSIONS="$${TOOL_VERSIONS},protobuf-go-lite=$$(grep 'github.com/aperturerobotics/protobuf-go-lite ' $(TOOLS_DIR)/go.mod | awk '{print $$2}')"; \
+			TOOL_VERSIONS="$${TOOL_VERSIONS},starpc=$$(grep 'github.com/aperturerobotics/starpc ' $(TOOLS_DIR)/go.mod | awk '{print $$2}')"; \
+		fi; \
+		if [ -f "package.json" ]; then \
+			TOOL_VERSIONS="$${TOOL_VERSIONS},protobuf-es-lite=$$(grep '@aptre/protobuf-es-lite' package.json | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)"; \
+		fi; \
 		$(PROTOWRAP) \
 			-I $${OUT} \
 			"$${PROTOWRAP_OPTS[@]}" \
 			--proto_path $${OUT} \
 			--print_structure \
 			--only_specified_files \
+			--cache_file=$(PROTO_CACHE_FILE) \
+			--tool_versions="$${TOOL_VERSIONS}" \
 			$(PROTOGEN_ARGS) \
 			$$(echo "$$PROTO_FILES" | xargs printf -- "./vendor/$${PROJECT}/%s "); \
 		for proto_file in $${PROTO_FILES}; do \
@@ -225,3 +238,12 @@ release-build: $(GORELEASER)
 release-check: $(GORELEASER)
 	cd $(PROJECT_DIR); \
 	$(GORELEASER) check
+
+.PHONY: genproto-force
+genproto-force: PROTOGEN_ARGS += --force
+genproto-force: genproto
+
+.PHONY: clean-proto-cache
+clean-proto-cache:
+	cd $(PROJECT_DIR); \
+	rm -f $(PROTO_CACHE_FILE)

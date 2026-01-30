@@ -54,6 +54,7 @@
     "format:js:changed": "git diff --name-only --diff-filter=d HEAD | grep '\\(\\.ts\\|\\.tsx\\|\\.html\\|\\.css\\|\\.scss\\)$' | xargs -I {} prettier --write {}",
     "format:js:all": "prettier --write './!(vendor|dist)/**/(*.ts|*.tsx|*.js|*.html|*.css)'",
     "gen": "rimraf ./.tools && go mod tidy && cd ./tools && go mod tidy && cd ../ && bash embed.bash && npm run format && make genproto",
+    "gen:force": "rimraf ./.tools && go mod tidy && cd ./tools && go mod tidy && cd ../ && bash embed.bash && npm run format && make genproto-force",
     "demo": "make demo",
     "test": "npm run test:js && npm run test:go",
     "test:js": "vitest run && npm run typecheck",

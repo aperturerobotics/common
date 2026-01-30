@@ -1,4 +1,5 @@
 /node_modules
+.protoc-manifest.json
 /coverage
 /build
 /.log
