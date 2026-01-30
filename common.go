@@ -7,11 +7,18 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	// Embed protobuf C++ sources for vendoring.
+	_ "github.com/aperturerobotics/protobuf/src/google/protobuf"
+	// Embed utf8_range C++ sources for vendoring.
+	_ "github.com/aperturerobotics/protobuf/third_party/utf8_range"
+	// Embed abseil C++ sources for vendoring.
+	_ "github.com/aperturerobotics/abseil-cpp/absl"
 )
 
 // CommonFiles contains the set of embedded common files.
 //
-//go:embed tsconfig.json Makefile .eslintrc.cjs .eslintignore .gitignore
+//go:embed tsconfig.json .eslintrc.cjs .eslintignore .gitignore
 var CommonFiles embed.FS
 
 // ExtractCommonFiles copies the contents of CommonFiles to the given output path.

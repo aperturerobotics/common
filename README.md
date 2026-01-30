@@ -1,6 +1,6 @@
 ## Common
 
-This contains common files like the project Makefile.
+This contains common build tools and utilities for Aperture Robotics Go projects.
 
 See [template] for a project template that uses this package.
 
@@ -10,12 +10,24 @@ See [protobuf-project] for a more extensive example.
 
 [protobuf-project]: https://github.com/aperturerobotics/protobuf-project
 
+## Installation
+
+The `aptre` CLI tool replaces Make for building Go projects with protobuf support.
+
+```bash
+# Run directly
+go run github.com/aperturerobotics/common/cmd/aptre@latest <command>
+
+# Or install globally
+go install github.com/aperturerobotics/common/cmd/aptre@latest
+```
+
 ## Usage
 
 Start by downloading the dependencies:
 
 ```bash
-yarn
+bun i
 ```
 
 Protobuf imports use Go paths and package names:
@@ -37,63 +49,84 @@ message GetBusInfoResponse {
 To generate the protobuf files:
 
 ```bash
-$ git add -A
-$ yarn gen
+git add -A
+go run ./cmd/aptre generate
+# or with byarn
+bun run gen
 ```
 
-The Makefile will download the tools using Go to a bin dir.
+## Commands
 
-## Makefile
+The `aptre` CLI provides the following commands:
 
-The available make targets are:
+| Command          | Description                                  |
+| ---------------- | -------------------------------------------- |
+| `generate`       | Generate protobuf code (Go, TypeScript, C++) |
+| `clean`          | Remove generated files and cache             |
+| `deps`           | Ensure all dependencies are installed        |
+| `lint`           | Run golangci-lint                            |
+| `fix`            | Run golangci-lint with --fix                 |
+| `test`           | Run go test                                  |
+| `test --browser` | Run tests in browser with WebAssembly        |
+| `format`         | Format Go code with gofumpt                  |
+| `goimports`      | Run goimports                                |
+| `outdated`       | Show outdated dependencies                   |
+| `release run`    | Create a release using goreleaser            |
+| `release bundle` | Create a bundled snapshot release            |
+| `release build`  | Build a snapshot release                     |
+| `release check`  | Run goreleaser checks                        |
 
- - `gen`: Generate protobuf files.
- - `test`: Run go tests. 
- - `test-browser`: Run go tests in a web browser with WebAssembly.
- - `lint`: Run golangci-lint on the project.
- - `fix`: Run golangci-lint with --fix on the project.
- - `format`: Format Go and TypeScript code.
- - `release`: Create a new release using goreleaser.
- - `release-bundle`: Create a bundled snapshot release using goreleaser. 
- - `release-build`: Build a snapshot release using goreleaser.
- - `release-check`: Run goreleaser checks.
+### Examples
 
-To generate the TypeScript and Go code:
+```bash
+# Generate protobuf files
+go run ./cmd/aptre generate
 
- - `yarn gen`
+# Force regeneration (ignore cache)
+go run ./cmd/aptre generate --force
 
-To format the Go and TypeScript files:
+# Run tests
+go run ./cmd/aptre test
 
- - `yarn format`
+# Run browser/WASM tests
+go run ./cmd/aptre test --browser
 
-## Eject
+# Lint code
+go run ./cmd/aptre lint
 
-You can "eject" and copy all the project files directly to your repo:
+# Format code
+go run ./cmd/aptre format
 
+# Check for outdated dependencies
+go run ./cmd/aptre outdated
 ```
-# NOTE: not a full list of files
-cp ./vendor/github.com/aperturerobotics/common/{Makefile,.eslintrc.js,.eslintignore} ./
+
+## C++ Support
+
+C++ protobuf files (`.pb.cc` and `.pb.h`) are generated alongside the `.pb.go`
+files. Add `vendor/` to your include path and create a symlink for your project:
+
+```cmake
+# CMakeLists.txt
+set(VENDOR_LINK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/vendor/github.com/yourorg")
+if(NOT EXISTS "${VENDOR_LINK_DIR}/yourproject")
+    file(CREATE_LINK "${CMAKE_CURRENT_SOURCE_DIR}" "${VENDOR_LINK_DIR}/yourproject" SYMBOLIC)
+endif()
+
+include_directories(${PROJECT_SOURCE_DIR}/vendor)
 ```
 
-While not implemented yet, "make eject" will do this for you.
-
-## Developing on MacOS
-
-On MacOS, some homebrew packages are required for `yarn gen`:
-
-```
-brew install bash make coreutils gnu-sed findutils protobuf
-brew link --overwrite protobuf
+```cpp
+#include "github.com/yourorg/yourproject/example/example.pb.h"
 ```
 
-Add to your .bashrc or .zshrc:
+## Embedded Protoc
 
-```
-export PATH="/opt/homebrew/opt/coreutils/libexec/gnubin:$PATH"
-export PATH="/opt/homebrew/opt/gnu-sed/libexec/gnubin:$PATH"
-export PATH="/opt/homebrew/opt/findutils/libexec/gnubin:$PATH"
-export PATH="/opt/homebrew/opt/make/libexec/gnubin:$PATH"
-```
+The `aptre` tool uses an embedded WebAssembly version of protoc via [go-protoc-wasi].
+This means you don't need to install protoc separately - it works on any platform
+that supports Go.
+
+[go-protoc-wasi]: https://github.com/aperturerobotics/go-protoc-wasi
 
 ## Support
 

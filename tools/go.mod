@@ -14,7 +14,7 @@ require (
 	github.com/aperturerobotics/common v0.23.0 // latest
 	github.com/aperturerobotics/goprotowrap v0.4.1 // latest
 	// github.com/aperturerobotics/goscript v0.0.61 // master
-	github.com/aperturerobotics/protobuf-go-lite v0.11.0 // latest
+	github.com/aperturerobotics/protobuf-go-lite v0.12.0 // latest
 	github.com/aperturerobotics/starpc v0.42.0 // latest
 )
 
@@ -99,6 +99,8 @@ require (
 	github.com/alingse/asasalint v0.0.11 // indirect
 	github.com/alingse/nilnesserr v0.2.0 // indirect
 	github.com/anchore/go-macholibre v0.0.0-20250826193721-3cd206ca93aa // indirect
+	github.com/aperturerobotics/abseil-cpp v0.0.0-20260130220554-305ed0ea7006 // indirect
+	github.com/aperturerobotics/protobuf v0.0.0-20260131031545-7265127e58f9 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/ashanbrown/forbidigo/v2 v2.3.0 // indirect
 	github.com/ashanbrown/makezero/v2 v2.1.0 // indirect

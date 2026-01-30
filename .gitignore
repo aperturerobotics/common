@@ -25,3 +25,4 @@ debug.test*
 .vscode/
 !.vscode/launch.json
 /vendor/
+.opencode/tool-output
