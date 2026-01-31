@@ -14,7 +14,7 @@ require (
 	github.com/aperturerobotics/protobuf v0.0.0-20260131105503-b82131c27d52 // indirect; wasi
 	// github.com/aperturerobotics/goscript v0.0.61 // master
 	github.com/aperturerobotics/protobuf-go-lite v0.12.0 // latest
-	github.com/aperturerobotics/starpc v0.42.0 // latest
+	github.com/aperturerobotics/starpc v0.44.0 // latest
 )
 
 require (
@@ -27,7 +27,7 @@ require (
 	mvdan.cc/gofumpt v0.9.2 // latest
 )
 
-require github.com/aperturerobotics/common v0.27.0
+require github.com/aperturerobotics/common v0.27.1
 
 require (
 	4d63.com/gocheckcompilerdirectives v1.3.0 // indirect
@@ -442,7 +442,7 @@ require (
 	github.com/sigstore/sigstore v1.10.3 // indirect
 	github.com/sigstore/sigstore-go v1.1.4 // indirect
 	github.com/sigstore/timestamp-authority/v2 v2.0.3 // indirect
-	github.com/sirupsen/logrus v1.9.3 // indirect
+	github.com/sirupsen/logrus v1.9.4 // indirect
 	github.com/sivchari/containedctx v1.0.3 // indirect
 	github.com/skeema/knownhosts v1.3.1 // indirect
 	github.com/slack-go/slack v0.17.3 // indirect
