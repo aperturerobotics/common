@@ -84,13 +84,13 @@
     "eslint-config-prettier": "^10.0.0",
     "eslint-plugin-react-hooks": "^7.0.0",
     "eslint-plugin-unused-imports": "^4.0.0",
-    "starpc": "^0.42.0",
+    "starpc": "^0.44.0",
     "vitest": "^4.0.0"
   },
   "peerDependencies": {
     "@aptre/protobuf-es-lite": "^0.5.2"
   },
   "resolutions": {
-    "@aptre/protobuf-es-lite": "0.5.2"
+    "@aptre/protobuf-es-lite": "0.5.3"
   }
 }
