@@ -14,6 +14,17 @@ const (
 	CppBuildTag = "//go:build deps_only && cgo"
 )
 
+// goImportRemaps maps standard protobuf Go imports to protobuf-go-lite equivalents.
+var goImportRemaps = map[string]string{
+	"google.golang.org/protobuf/types/known/emptypb":     "github.com/aperturerobotics/protobuf-go-lite/types/known/emptypb",
+	"google.golang.org/protobuf/types/known/anypb":       "github.com/aperturerobotics/protobuf-go-lite/types/known/anypb",
+	"google.golang.org/protobuf/types/known/durationpb":  "github.com/aperturerobotics/protobuf-go-lite/types/known/durationpb",
+	"google.golang.org/protobuf/types/known/timestamppb": "github.com/aperturerobotics/protobuf-go-lite/types/known/timestamppb",
+	"google.golang.org/protobuf/types/known/wrapperspb":  "github.com/aperturerobotics/protobuf-go-lite/types/known/wrapperspb",
+	"google.golang.org/protobuf/types/known/structpb":    "github.com/aperturerobotics/protobuf-go-lite/types/known/structpb",
+	"google.golang.org/protobuf/types/known/fieldmaskpb": "github.com/aperturerobotics/protobuf-go-lite/types/known/fieldmaskpb",
+}
+
 // PostProcessor handles post-processing of generated files.
 type PostProcessor struct {
 	// ProjectDir is the project directory.
@@ -54,6 +65,18 @@ func (p *PostProcessor) ProcessGeneratedFiles(protoFile string) error {
 
 	for _, f := range append(ccFiles, hFiles...) {
 		if err := p.ProcessCppFile(f); err != nil {
+			return err
+		}
+	}
+
+	// Process Go files
+	goFiles, err := filepath.Glob(filepath.Join(searchDir, baseName+"*.pb.go"))
+	if err != nil {
+		return err
+	}
+
+	for _, f := range goFiles {
+		if err := p.ProcessGoFile(f); err != nil {
 			return err
 		}
 	}
@@ -132,6 +155,32 @@ func (p *PostProcessor) ProcessCppFile(filePath string) error {
 
 	if modified {
 		return os.WriteFile(filePath, []byte(strings.Join(lines, "\n")), 0o644)
+	}
+
+	return nil
+}
+
+// ProcessGoFile processes a Go file.
+// Rewrites standard protobuf imports to protobuf-go-lite equivalents.
+func (p *PostProcessor) ProcessGoFile(filePath string) error {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return err
+	}
+
+	content := string(data)
+	modified := false
+
+	// Replace each import path
+	for oldImport, newImport := range goImportRemaps {
+		if strings.Contains(content, oldImport) {
+			content = strings.ReplaceAll(content, oldImport, newImport)
+			modified = true
+		}
+	}
+
+	if modified {
+		return os.WriteFile(filePath, []byte(content), 0o644)
 	}
 
 	return nil
