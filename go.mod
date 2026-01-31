@@ -8,7 +8,7 @@ replace github.com/libp2p/go-libp2p => github.com/aperturerobotics/go-libp2p v0.
 replace github.com/ipfs/go-log/v2 => github.com/paralin/ipfs-go-logrus v0.0.0-20240410105224-e24cb05f9e98 // master
 
 require (
-	github.com/aperturerobotics/abseil-cpp v0.0.0-20260130220554-305ed0ea7006
+	github.com/aperturerobotics/abseil-cpp v0.0.0-20260131110040-4bb56e2f9017 // aperture-2
 	github.com/aperturerobotics/cli v1.1.0
 	github.com/aperturerobotics/go-protoc-wasi v0.0.0-20260131050911-b5f94b044584
 	github.com/aperturerobotics/protobuf v0.0.0-20260131033322-bd4a2148b9c4 // wasi

@@ -44,6 +44,8 @@ type Plugins struct {
 	ESLite *Plugin
 	// ESStarpc is the protoc-gen-es-starpc plugin.
 	ESStarpc *Plugin
+	// CppStarpc is the protoc-gen-starpc-cpp plugin.
+	CppStarpc *Plugin
 }
 
 // DiscoverPlugins finds and configures available plugins.
@@ -95,6 +97,18 @@ func DiscoverPlugins(cfg *Config) (*Plugins, error) {
 				Path:       goStarpcPath,
 				Type:       PluginTypeGo,
 				OutFlag:    "go-starpc_out",
+				Options:    map[string]string{},
+			}
+		}
+
+		cppStarpcPath := filepath.Join(toolsBin, "protoc-gen-starpc-cpp")
+		if _, err := os.Stat(cppStarpcPath); err == nil {
+			plugins.CppStarpc = &Plugin{
+				Name:       "starpc-cpp",
+				BinaryName: "protoc-gen-starpc-cpp",
+				Path:       cppStarpcPath,
+				Type:       PluginTypeCpp,
+				OutFlag:    "starpc-cpp_out",
 				Options:    map[string]string{},
 			}
 		}
@@ -174,6 +188,11 @@ func (p *Plugins) GetProtocArgs(outDir string) []string {
 		}
 	}
 
+	// C++ starpc plugin
+	if p.CppStarpc != nil {
+		args = append(args, fmt.Sprintf("--%s=%s", p.CppStarpc.OutFlag, outDir))
+	}
+
 	return args
 }
 
@@ -251,6 +270,10 @@ func (h *NativePluginHandler) findPluginPath(program string, searchPath bool) st
 		case "protoc-gen-es-starpc":
 			if h.Plugins.ESStarpc != nil {
 				return h.Plugins.ESStarpc.Path
+			}
+		case "protoc-gen-starpc-cpp":
+			if h.Plugins.CppStarpc != nil {
+				return h.Plugins.CppStarpc.Path
 			}
 		}
 	}

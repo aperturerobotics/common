@@ -354,6 +354,10 @@ func (g *Generator) getToolVersions() string {
 		scanner := bufio.NewScanner(bytes.NewReader(data))
 		for scanner.Scan() {
 			line := scanner.Text()
+			// Skip replace directives
+			if strings.Contains(line, "=>") {
+				continue
+			}
 			if strings.Contains(line, "github.com/aperturerobotics/protobuf-go-lite") {
 				parts := strings.Fields(line)
 				if len(parts) >= 2 {
