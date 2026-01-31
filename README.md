@@ -1,6 +1,6 @@
 # common
 
-[![GoDoc Widget]][GoDoc] [![Go Report Card Widget]][Go Report Card]
+[![GoDoc Widget]][GoDoc] [![Go Report Card Widget]][Go Report Card] [![npm Widget]][npm]
 
 > Common build tools and utilities for Aperture Robotics Go projects.
 
@@ -8,6 +8,8 @@
 [GoDoc Widget]: https://godoc.org/github.com/aperturerobotics/common?status.svg
 [Go Report Card Widget]: https://goreportcard.com/badge/github.com/aperturerobotics/common
 [Go Report Card]: https://goreportcard.com/report/github.com/aperturerobotics/common
+[npm]: https://www.npmjs.com/package/@aptre/common
+[npm Widget]: https://img.shields.io/npm/v/@aptre/common.svg
 
 ## Related Projects
 
