@@ -93,7 +93,7 @@ func (g *Generator) Generate(ctx context.Context) error {
 	defer g.cleanupVendorSymlink()
 
 	// Discover proto files
-	protoFiles, err := DiscoverProtoFiles(g.ProjectDir, g.Config.Targets)
+	protoFiles, err := DiscoverProtoFiles(g.ProjectDir, g.Config.Targets, g.Config.Exclude)
 	if err != nil {
 		return fmt.Errorf("failed to discover proto files: %w", err)
 	}

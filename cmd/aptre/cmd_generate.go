@@ -18,6 +18,11 @@ var generateCmd = &cli.Command{
 			Usage:   "Proto file patterns (can be specified multiple times)",
 			Value:   cli.NewStringSlice("./*.proto"),
 		},
+		&cli.StringSliceFlag{
+			Name:    "exclude",
+			Aliases: []string{"e"},
+			Usage:   "Proto file patterns to exclude (can be specified multiple times)",
+		},
 		&cli.BoolFlag{
 			Name:    "force",
 			Aliases: []string{"f"},
@@ -60,6 +65,7 @@ var generateCmd = &cli.Command{
 func runGenerate(c *cli.Context) error {
 	cfg := protogen.NewConfig()
 	cfg.Targets = c.StringSlice("targets")
+	cfg.Exclude = c.StringSlice("exclude")
 	cfg.Force = c.Bool("force")
 	cfg.CacheFile = c.String("cache-file")
 	cfg.Verbose = c.Bool("verbose")

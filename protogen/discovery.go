@@ -13,7 +13,8 @@ import (
 
 // DiscoverProtoFiles finds proto files matching the given patterns.
 // Uses git ls-files to find tracked proto files.
-func DiscoverProtoFiles(projectDir string, patterns []string) ([]string, error) {
+// excludePatterns allows excluding files that match certain patterns.
+func DiscoverProtoFiles(projectDir string, patterns, excludePatterns []string) ([]string, error) {
 	var allFiles []string
 	seen := make(map[string]struct{})
 
@@ -24,6 +25,10 @@ func DiscoverProtoFiles(projectDir string, patterns []string) ([]string, error) 
 		}
 		for _, f := range files {
 			if _, ok := seen[f]; !ok {
+				// Check if file matches any exclude pattern
+				if matchesAnyPattern(f, excludePatterns) {
+					continue
+				}
 				seen[f] = struct{}{}
 				allFiles = append(allFiles, f)
 			}
@@ -31,6 +36,23 @@ func DiscoverProtoFiles(projectDir string, patterns []string) ([]string, error) 
 	}
 
 	return allFiles, nil
+}
+
+// matchesAnyPattern checks if a file path matches any of the given glob patterns.
+func matchesAnyPattern(filePath string, patterns []string) bool {
+	for _, pattern := range patterns {
+		// Try matching against the full path
+		matched, err := filepath.Match(pattern, filePath)
+		if err == nil && matched {
+			return true
+		}
+		// Also try matching against just the filename
+		matched, err = filepath.Match(pattern, filepath.Base(filePath))
+		if err == nil && matched {
+			return true
+		}
+	}
+	return false
 }
 
 // discoverPattern finds proto files matching a single pattern using git ls-files.

@@ -19,6 +19,9 @@ type Config struct {
 	// Targets is the list of proto file glob patterns to process.
 	// Default: ["./*.proto"]
 	Targets []string
+	// Exclude is a list of proto file glob patterns to exclude.
+	// Files matching any of these patterns will be skipped.
+	Exclude []string
 	// Force regenerates all files regardless of cache.
 	Force bool
 	// CacheFile is the path to the cache file.
