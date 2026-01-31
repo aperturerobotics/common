@@ -10,11 +10,12 @@ replace github.com/ipfs/go-log/v2 => github.com/paralin/ipfs-go-logrus v0.0.0-20
 require (
 	github.com/aperturerobotics/abseil-cpp v0.0.0-20260130220554-305ed0ea7006
 	github.com/aperturerobotics/cli v1.1.0
-	github.com/aperturerobotics/go-protoc-wasi v0.0.0-20260131040241-876a19740f10
-	github.com/aperturerobotics/json-iterator-lite v1.0.1-0.20240713111131-be6bf89c3008 // indirect
-	github.com/aperturerobotics/protobuf v0.0.0-20260131031545-7265127e58f9
+	github.com/aperturerobotics/go-protoc-wasi v0.0.0-20260131050911-b5f94b044584
+	github.com/aperturerobotics/protobuf v0.0.0-20260131033322-bd4a2148b9c4 // wasi
 	github.com/aperturerobotics/protobuf-go-lite v0.12.0 // latest
 )
+
+require github.com/aperturerobotics/json-iterator-lite v1.0.1-0.20240713111131-be6bf89c3008 // indirect
 
 require (
 	github.com/tetratelabs/wazero v1.11.0
