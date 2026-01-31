@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	protoc "github.com/aperturerobotics/go-protoc-wasi"
 	"github.com/tetratelabs/wazero"
@@ -412,13 +413,39 @@ func (g *Generator) formatGeneratedFiles(protoFiles []string) error {
 	if len(goFiles) > 0 {
 		gofumptPath := filepath.Join(g.ProjectDir, g.Config.ToolsDir, "bin", "gofumpt")
 		if _, err := os.Stat(gofumptPath); err == nil {
-			args := append([]string{"-w"}, goFiles...)
-			cmd := exec.Command(gofumptPath, args...)
-			cmd.Dir = g.ProjectDir
-			cmd.Stdout = g.Stdout
-			cmd.Stderr = g.Stderr
-			if err := cmd.Run(); err != nil {
-				return fmt.Errorf("gofumpt failed: %w", err)
+			// Retry gofumpt up to 3 times with a small delay.
+			// This works around a race condition where gofumpt may see a file size
+			// mismatch if the file is still being flushed to disk after protoc writes.
+			var lastErr error
+			for attempt := 0; attempt < 3; attempt++ {
+				if attempt > 0 {
+					time.Sleep(100 * time.Millisecond)
+				}
+				args := append([]string{"-w"}, goFiles...)
+				cmd := exec.Command(gofumptPath, args...)
+				cmd.Dir = g.ProjectDir
+				// Capture stderr to check for the specific race condition error
+				var stderr bytes.Buffer
+				cmd.Stdout = g.Stdout
+				cmd.Stderr = &stderr
+				lastErr = cmd.Run()
+				if lastErr == nil {
+					break
+				}
+				// Check if this is the "size changed during reading" error
+				errOutput := stderr.String()
+				if !strings.Contains(errOutput, "changed during reading") {
+					// Different error, output it and fail
+					fmt.Fprint(g.Stderr, errOutput)
+					return fmt.Errorf("gofumpt failed: %w", lastErr)
+				}
+				// It's the race condition error, retry
+				if g.Verbose {
+					fmt.Fprintf(g.Stdout, "gofumpt race condition detected, retrying (attempt %d/3)...\n", attempt+1)
+				}
+			}
+			if lastErr != nil {
+				return fmt.Errorf("gofumpt failed after retries: %w", lastErr)
 			}
 		}
 	}
