@@ -187,7 +187,12 @@ func (p *PostProcessor) ProcessGoFile(filePath string) error {
 }
 
 // ProcessTsFile processes a TypeScript file.
-// Rewrites relative import paths to @go/ format.
+// Rewrites relative import paths to @go/ format for vendor dependencies.
+//
+// The generated TypeScript files contain relative imports based on the proto file paths.
+// For example, a file generated from "github.com/aperturerobotics/bifrost/daemon/api/api.proto"
+// might import from "../../../controllerbus/bus/api/api.pb.js" which needs to be rewritten
+// to "@go/github.com/aperturerobotics/controllerbus/bus/api/api.pb.js".
 func (p *PostProcessor) ProcessTsFile(filePath string) error {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
@@ -195,25 +200,21 @@ func (p *PostProcessor) ProcessTsFile(filePath string) error {
 	}
 
 	fileDir := filepath.Dir(filePath)
+	content := string(data)
 
-	// Calculate the depth of the file relative to the project root
-	relPath, err := filepath.Rel(p.ProjectDir, fileDir)
-	if err != nil {
-		return err
+	// Extract the proto source path from the generated file header.
+	// The header looks like: // @generated from file github.com/aperturerobotics/bifrost/daemon/api/api.proto
+	sourceProtoPath := extractProtoSourcePath(content)
+	if sourceProtoPath == "" {
+		// No source path found, skip processing
+		return nil
 	}
 
-	// Count directory depth
-	depth := strings.Count(relPath, string(filepath.Separator)) + 1
+	// Get the directory of the proto file (e.g., "github.com/aperturerobotics/bifrost/daemon/api")
+	protoDir := filepath.Dir(sourceProtoPath)
 
-	// Build the prefix pattern (e.g., "../../../" for depth 3)
-	var prefixParts []string
-	for i := 0; i < depth; i++ {
-		prefixParts = append(prefixParts, "..")
-	}
-	prefix := strings.Join(prefixParts, "/") + "/"
-
-	// Pattern to match imports like: from "../../../path/to/file"
-	importPattern := regexp.MustCompile(`from\s+"(` + regexp.QuoteMeta(prefix) + `[^"]+)"`)
+	// Pattern to match any relative imports starting with ../
+	importPattern := regexp.MustCompile(`from\s+"(\.\.\/[^"]+)"`)
 
 	modified := false
 	var result bytes.Buffer
@@ -226,18 +227,43 @@ func (p *PostProcessor) ProcessTsFile(filePath string) error {
 		if len(matches) > 1 {
 			importPath := matches[1]
 
-			// Resolve the import path to get the actual path
-			absImportPath := filepath.Join(fileDir, importPath)
-			relToVendor, err := filepath.Rel(p.VendorDir, absImportPath)
+			// Resolve the import path relative to the proto directory to get the full Go import path.
+			// For example:
+			//   protoDir = "github.com/aperturerobotics/bifrost/daemon/api"
+			//   importPath = "../../../controllerbus/bus/api/api.pb.js"
+			//   result = "github.com/aperturerobotics/controllerbus/bus/api/api.pb.js"
+			resolvedPath := resolveRelativeImport(protoDir, importPath)
 
-			if err == nil && !strings.HasPrefix(relToVendor, "..") {
-				// Convert to @go/ format
-				goImportPath := "@go/" + filepath.ToSlash(relToVendor)
-				newLine := strings.Replace(line, importPath, goImportPath, 1)
-				if newLine != line {
-					line = newLine
-					modified = true
+			// Check if this resolves to outside our module (i.e., it's a vendor dependency)
+			if !strings.HasPrefix(resolvedPath, p.ModulePath) {
+				// This is an external import - verify it exists in vendor and rewrite to @go/ format
+				vendorFilePath := filepath.Join(p.VendorDir, resolvedPath)
+				// Check for .ts file (the .js extension in import maps to .ts source)
+				tsPath := strings.TrimSuffix(vendorFilePath, ".js") + ".ts"
+
+				if fileExists(tsPath) || fileExists(vendorFilePath) {
+					goImportPath := "@go/" + resolvedPath
+					newLine := strings.Replace(line, importPath, goImportPath, 1)
+					if newLine != line {
+						line = newLine
+						modified = true
+					}
 				}
+			} else {
+				// This is an internal import within the same module.
+				// Check if it resolves to the vendor directory (self-referencing via full path).
+				absImportPath := filepath.Clean(filepath.Join(fileDir, importPath))
+				relToProject, err := filepath.Rel(p.ProjectDir, absImportPath)
+				if err == nil && strings.HasPrefix(relToProject, "vendor/") {
+					vendorPath := strings.TrimPrefix(relToProject, "vendor/")
+					goImportPath := "@go/" + filepath.ToSlash(vendorPath)
+					newLine := strings.Replace(line, importPath, goImportPath, 1)
+					if newLine != line {
+						line = newLine
+						modified = true
+					}
+				}
+				// Otherwise, leave internal relative imports as-is
 			}
 		}
 
@@ -259,6 +285,53 @@ func (p *PostProcessor) ProcessTsFile(filePath string) error {
 	}
 
 	return nil
+}
+
+// extractProtoSourcePath extracts the proto source path from a generated file's header.
+// It looks for a line like: // @generated from file github.com/aperturerobotics/bifrost/daemon/api/api.proto
+func extractProtoSourcePath(content string) string {
+	// Match the @generated from file comment
+	pattern := regexp.MustCompile(`@generated from file ([^\s(]+\.proto)`)
+	matches := pattern.FindStringSubmatch(content)
+	if len(matches) > 1 {
+		return matches[1]
+	}
+	return ""
+}
+
+// resolveRelativeImport resolves a relative import path against a base directory path.
+// For example:
+//
+//	baseDir = "github.com/aperturerobotics/bifrost/daemon/api"
+//	importPath = "../../../controllerbus/bus/api/api.pb.js"
+//	result = "github.com/aperturerobotics/controllerbus/bus/api/api.pb.js"
+func resolveRelativeImport(baseDir, importPath string) string {
+	// Split the base directory into parts
+	parts := strings.Split(baseDir, "/")
+
+	// Process each ../ in the import path
+	remaining := importPath
+	for strings.HasPrefix(remaining, "../") {
+		remaining = strings.TrimPrefix(remaining, "../")
+		if len(parts) > 0 {
+			parts = parts[:len(parts)-1]
+		}
+	}
+
+	// Combine the remaining base path with the import path
+	if len(parts) > 0 {
+		return strings.Join(parts, "/") + "/" + remaining
+	}
+	return remaining
+}
+
+// fileExists checks if a file exists and is not a directory.
+func fileExists(path string) bool {
+	info, err := os.Stat(path)
+	if err != nil {
+		return false
+	}
+	return !info.IsDir()
 }
 
 // ProcessAllCppFiles finds and processes all C++ files in a directory.
