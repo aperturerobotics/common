@@ -43,7 +43,31 @@ To:
 github.com/aperturerobotics/common v0.24.1 // cpp
 ```
 
-### 2. Delete the Makefile
+### 2. Update `deps.go`
+
+Create or update a `deps.go` file in the root of your project to ensure the
+aptre CLI is available as a dependency. This file uses a build tag so it's
+never actually compiled:
+
+```go
+//go:build deps_only
+
+package yourpackage
+
+import (
+	// _ imports common with the Makefile and tools
+	_ "github.com/aperturerobotics/common"
+	// _ imports common aptre cli
+	_ "github.com/aperturerobotics/common/cmd/aptre"
+)
+```
+
+Replace `yourpackage` with your module's package name.
+
+The `deps_only` build tag ensures this file is never compiled but the imports
+are tracked by `go mod tidy`, making the aptre CLI available via `go run`.
+
+### 3. Delete the Makefile
 
 The Makefile is no longer needed:
 
@@ -51,7 +75,7 @@ The Makefile is no longer needed:
 rm Makefile
 ```
 
-### 3. Update `package.json` Scripts
+### 4. Update `package.json` Scripts
 
 Replace Make-based scripts with `aptre` commands. Define a single `go:aptre`
 script and call it from other scripts using `npm run go:aptre -- <args>`.
@@ -123,7 +147,7 @@ Full example `package.json` scripts section:
 }
 ```
 
-### 4. Update GitHub Actions Workflows
+### 5. Update GitHub Actions Workflows
 
 Replace Make commands in CI workflows:
 
@@ -172,7 +196,7 @@ Also update the tools cache path:
     key: ${{ runner.os }}-aptre-tools-${{ hashFiles('**/go.sum') }}
 ```
 
-### 5. Regenerate Vendor Directory
+### 6. Regenerate Vendor Directory
 
 After updating dependencies:
 
@@ -181,7 +205,7 @@ go mod tidy
 go mod vendor
 ```
 
-### 6. Regenerate Proto Files
+### 7. Regenerate Proto Files
 
 Run the generator to create the new C++ files and update existing outputs:
 
@@ -199,7 +223,7 @@ This will generate:
 - `.pb.ts` - TypeScript protobuf code (if package.json exists)
 - `.pb.cc` / `.pb.h` - C++ protobuf code
 
-### 7. Update .gitignore (Optional)
+### 8. Update .gitignore (Optional)
 
 Add the cache file if not already present:
 
@@ -207,7 +231,7 @@ Add the cache file if not already present:
 .protoc-manifest.json
 ```
 
-### 8. Commit New Generated Files
+### 9. Commit New Generated Files
 
 The migration will create new C++ files that should be committed:
 
