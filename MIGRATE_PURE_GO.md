@@ -112,6 +112,12 @@ Full example `package.json` scripts section:
     "lint:js": "ESLINT_USE_FLAT_CONFIG=false eslint -c .eslintrc.cjs ./",
     "prepare": "go mod vendor && rimraf ./.tools",
     "go:aptre": "go run -mod=mod github.com/aperturerobotics/common/cmd/aptre",
+    "release": "npm run release:version && npm run release:commit",
+    "release:minor": "npm run release:version:minor && npm run release:commit",
+    "release:version": "npm version patch -m \"release: v%s\" --no-git-tag-version",
+    "release:version:minor": "npm version minor -m \"release: v%s\" --no-git-tag-version",
+    "release:commit": "git reset && git add package.json && git commit -s -m \"release: v$(node -p \"require('./package.json').version\")\" && git tag v$(node -p \"require('./package.json').version\")",
+    "release:publish": "git push && git push --tags",
     "precommit": "npm run format"
   }
 }
@@ -225,12 +231,37 @@ git commit -m "Migrate to aptre build system"
 | `make gofumpt`                 | `aptre format`           | `npm run format:go`                  |
 | `make goimports`               | `aptre goimports`        | `npm run go:aptre -- goimports`      |
 | `make outdated`                | `aptre outdated`         | `npm run go:aptre -- outdated`       |
-| `make release`                 | `aptre release run`      | `npm run go:aptre -- release run`    |
+| `make release`                 | n/a                      | `npm run release`                    |
+| `make release` (minor)         | n/a                      | `npm run release:minor`              |
 | `make release-bundle`          | `aptre release bundle`   | `npm run go:aptre -- release bundle` |
 | `make release-build`           | `aptre release build`    | `npm run go:aptre -- release build`  |
 | `make release-check`           | `aptre release check`    | `npm run go:aptre -- release check`  |
 | `make deps` / `make protodeps` | `aptre deps`             | `npm run go:aptre -- deps`           |
 | `make clean-proto-cache`       | `aptre clean`            | `npm run go:aptre -- clean`          |
+
+### Release Scripts
+
+The release scripts use npm version to bump the version in package.json and create
+a signed git commit with a tag:
+
+```json
+{
+  "scripts": {
+    "release": "npm run release:version && npm run release:commit",
+    "release:minor": "npm run release:version:minor && npm run release:commit",
+    "release:version": "npm version patch -m \"release: v%s\" --no-git-tag-version",
+    "release:version:minor": "npm version minor -m \"release: v%s\" --no-git-tag-version",
+    "release:commit": "git reset && git add package.json && git commit -s -m \"release: v$(node -p \"require('./package.json').version\")\" && git tag v$(node -p \"require('./package.json').version\")",
+    "release:publish": "git push && git push --tags"
+  }
+}
+```
+
+Usage:
+
+- `npm run release` - Create a patch release (e.g., 1.0.0 -> 1.0.1)
+- `npm run release:minor` - Create a minor release (e.g., 1.0.0 -> 1.1.0)
+- `npm run release:publish` - Push the release commit and tag to remote
 
 ## Using aptre Directly
 

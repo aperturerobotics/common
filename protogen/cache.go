@@ -7,11 +7,10 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"time"
 )
 
 // CacheVersion is the current cache format version.
-const CacheVersion = 1
+const CacheVersion = 2
 
 // Cache represents the protoc manifest cache.
 type Cache struct {
@@ -33,8 +32,6 @@ type PackageInfo struct {
 	GeneratedFiles []string `json:"generatedFiles"`
 	// ProtoFiles is the list of source proto file paths.
 	ProtoFiles []string `json:"protoFiles"`
-	// LastGenerated is the timestamp of the last generation.
-	LastGenerated time.Time `json:"lastGenerated"`
 }
 
 // NewCache creates a new empty cache.
@@ -139,7 +136,6 @@ func (c *Cache) UpdatePackage(packageKey string, protoFiles []string, generatedF
 		Hash:           hash,
 		GeneratedFiles: generatedFiles,
 		ProtoFiles:     protoFiles,
-		LastGenerated:  time.Now(),
 	}
 
 	return nil
