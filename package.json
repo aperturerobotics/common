@@ -1,7 +1,7 @@
 {
   "name": "@aptre/common",
   "description": "Common project configuration files and dependencies.",
-  "version": "0.26.9",
+  "version": "0.26.10",
   "license": "MIT",
   "author": {
     "name": "Aperture Robotics LLC.",
