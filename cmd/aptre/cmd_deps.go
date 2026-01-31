@@ -161,6 +161,7 @@ func ensureTool(toolsPath, toolName string, force, verbose bool) error {
 	}
 
 	// Build the tool
+	// #nosec G204 -- toolName and importPath come from hardcoded defaultTools list
 	cmd := exec.Command("go", "build", "-mod=readonly", "-v", "-o", filepath.Join("bin", toolName), importPath)
 	cmd.Dir = toolsPath
 	cmd.Stdout = os.Stdout
