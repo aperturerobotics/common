@@ -2,77 +2,34 @@ name: Tests
 
 on:
   push:
-    branches: [ "master" ]
-
+    branches: ['master']
   pull_request:
-    # The branches below must be a subset of the branches above
-    branches: [ "master" ]
+    branches: ['master']
 
-# Builds images for target boards.
 permissions:
   contents: read
 
 jobs:
   tests:
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        go: ['1.25']
-        node: [24.x]
-
     timeout-minutes: 10
-
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Setup Go ${{ matrix.go }}
-        uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-go@v5
         with:
-          go-version: ${{ matrix.go }}
-
-      - name: Setup Node.JS ${{ matrix.node }}
-        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
-        with:
-          node-version: ${{ matrix.node }}
-          cache: 'yarn'
-
-      - name: Yarn install
-        run: yarn install
-
+          go-version: '1.25'
+      - run: bun install
       - name: Cache tools
         uses: actions/cache@v5
         with:
           path: |
             ./.tools
           key: ${{ runner.os }}-aptre-tools-${{ hashFiles('**/go.sum') }}
-
-      - name: Build Javascript
-        run: yarn run build
-
-      - name: Test Go
-        run: make test
-
-      - name: Test Js
-        run: yarn test:js
-
-      - name: Lint Js
-        run: yarn run lint:js
-
-      - name: Lint Go
-        run: yarn run lint:go
-
-      - name: Depcheck Js
-        run: yarn run deps
-
-      - name: Check goreleaser
-        run: make release-check
-
-      # Issue: https://github.com/agnivade/wasmbrowsertest/pull/72/files
-      # Issue: https://github.com/agnivade/wasmbrowsertest/issues/60
-      # Remove the comment once fixed.
-      #
-      # - name: Install chrome
-      #   uses: browser-actions/setup-chrome@latest
-      # - name: Test with chrome
-      #   run: make test-browser || true
+      - run: bun run build
+      - run: bun run test:js
+      - run: bun run test:go
+      - run: bun run lint:js
+      - run: bun run lint:go
+      - run: bun run deps
+      - run: go run ./cmd/aptre release check

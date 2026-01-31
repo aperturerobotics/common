@@ -1,14 +1,18 @@
-## Common
+# common
 
-This contains common build tools and utilities for Aperture Robotics Go projects.
+[![GoDoc Widget]][GoDoc] [![Go Report Card Widget]][Go Report Card]
 
-See [template] for a project template that uses this package.
+> Common build tools and utilities for Aperture Robotics Go projects.
 
-[template]: https://github.com/aperturerobotics/template
+[GoDoc]: https://godoc.org/github.com/aperturerobotics/common
+[GoDoc Widget]: https://godoc.org/github.com/aperturerobotics/common?status.svg
+[Go Report Card Widget]: https://goreportcard.com/badge/github.com/aperturerobotics/common
+[Go Report Card]: https://goreportcard.com/report/github.com/aperturerobotics/common
 
-See [protobuf-project] for a more extensive example.
+## Related Projects
 
-[protobuf-project]: https://github.com/aperturerobotics/protobuf-project
+- [template](https://github.com/aperturerobotics/template) - Project template using this package
+- [protobuf-project](https://github.com/aperturerobotics/protobuf-project) - More extensive example
 
 ## Installation
 
@@ -51,7 +55,7 @@ To generate the protobuf files:
 ```bash
 git add -A
 go run ./cmd/aptre generate
-# or with byarn
+# or with bun
 bun run gen
 ```
 
@@ -136,8 +140,8 @@ Please open a [GitHub issue] with any questions / issues.
 
 ... or feel free to reach out on [Matrix Chat] or [Discord].
 
-[Discord]: https://discord.gg/KJutMESRsT
 [Matrix Chat]: https://matrix.to/#/#aperturerobotics:matrix.org
+[Discord]: https://discord.gg/KJutMESRsT
 
 ## License
 
