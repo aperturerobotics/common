@@ -254,6 +254,13 @@ func (g *Generator) buildProtocArgs() []string {
 	args = append(args, "-I", g.OutDir)
 	args = append(args, "--proto_path", g.OutDir)
 
+	// Add include path for google well-known proto types (timestamp.proto, any.proto, etc.)
+	// These are located at vendor/github.com/aperturerobotics/protobuf/src
+	protobufSrcDir := filepath.Join(g.VendorDir, "github.com", "aperturerobotics", "protobuf", "src")
+	if _, err := os.Stat(protobufSrcDir); err == nil {
+		args = append(args, "-I", protobufSrcDir)
+	}
+
 	// Plugin arguments
 	args = append(args, g.Plugins.GetProtocArgs(g.OutDir)...)
 
