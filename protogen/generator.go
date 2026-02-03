@@ -303,9 +303,18 @@ func (g *Generator) runProtoc(ctx context.Context, protoFiles []string) error {
 	}
 	defer p.Close(ctx)
 
-	// Initialize protoc
+	// Initialize protoc (this instantiates WASI)
 	if err := p.Init(ctx); err != nil {
 		return fmt.Errorf("failed to init protoc: %w", err)
+	}
+
+	// Initialize prost WASM plugin if rust prost is configured
+	// This must be done after protoc.Init since that's when WASI gets instantiated
+	if g.Plugins.RustProst != nil {
+		if err := pluginHandler.InitProstWASM(ctx, runtime); err != nil {
+			return fmt.Errorf("failed to init prost WASM: %w", err)
+		}
+		defer pluginHandler.CloseProstWASM(ctx)
 	}
 
 	// Build arguments

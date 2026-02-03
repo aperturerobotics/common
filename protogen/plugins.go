@@ -7,6 +7,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+
+	prost "github.com/aperturerobotics/go-protoc-gen-prost"
+	"github.com/tetratelabs/wazero"
 )
 
 // PluginType represents the type of protoc plugin.
@@ -16,6 +19,7 @@ const (
 	PluginTypeGo PluginType = iota
 	PluginTypeTypeScript
 	PluginTypeCpp
+	PluginTypeRust
 )
 
 // Plugin represents a protoc plugin configuration.
@@ -46,6 +50,11 @@ type Plugins struct {
 	ESStarpc *Plugin
 	// CppStarpc is the protoc-gen-starpc-cpp plugin.
 	CppStarpc *Plugin
+	// RustStarpc is the protoc-gen-starpc-rust plugin.
+	RustStarpc *Plugin
+	// RustProst is the protoc-gen-prost plugin for Rust protobuf types.
+	// This uses an embedded WASM module, no external binary required.
+	RustProst *Plugin
 }
 
 // DiscoverPlugins finds and configures available plugins.
@@ -111,6 +120,36 @@ func DiscoverPlugins(cfg *Config) (*Plugins, error) {
 				OutFlag:    "starpc-cpp_out",
 				Options:    map[string]string{},
 			}
+		}
+
+		rustStarpcPath := filepath.Join(toolsBin, "protoc-gen-starpc-rust")
+		if _, err := os.Stat(rustStarpcPath); err == nil {
+			plugins.RustStarpc = &Plugin{
+				Name:       "starpc-rust",
+				BinaryName: "protoc-gen-starpc-rust",
+				Path:       rustStarpcPath,
+				Type:       PluginTypeRust,
+				OutFlag:    "starpc-rust_out",
+				Options:    map[string]string{},
+			}
+		}
+
+		// protoc-gen-prost is available as embedded WASM, always enable it.
+		// The WASM module is used by default; native binary path is optional fallback.
+		plugins.RustProst = &Plugin{
+			Name:       "prost",
+			BinaryName: "protoc-gen-prost",
+			Path:       "", // WASM module used by default, no native path needed
+			Type:       PluginTypeRust,
+			OutFlag:    "prost_out",
+			Options:    map[string]string{},
+		}
+		// Check if native binary exists (for potential future fallback)
+		prostPath := filepath.Join(toolsBin, "protoc-gen-prost")
+		if _, err := os.Stat(prostPath); err == nil {
+			plugins.RustProst.Path = prostPath
+		} else if path, err := exec.LookPath("protoc-gen-prost"); err == nil {
+			plugins.RustProst.Path = path
 		}
 	}
 
@@ -193,6 +232,16 @@ func (p *Plugins) GetProtocArgs(outDir string) []string {
 		args = append(args, fmt.Sprintf("--%s=%s", p.CppStarpc.OutFlag, outDir))
 	}
 
+	// Rust prost plugin (generates *.pb.rs message types)
+	if p.RustProst != nil {
+		args = append(args, fmt.Sprintf("--%s=%s", p.RustProst.OutFlag, outDir))
+	}
+
+	// Rust starpc plugin (generates *_srpc.pb.rs service stubs)
+	if p.RustStarpc != nil {
+		args = append(args, fmt.Sprintf("--%s=%s", p.RustStarpc.OutFlag, outDir))
+	}
+
 	return args
 }
 
@@ -208,11 +257,14 @@ func (p *Plugins) HasTSPlugins() bool {
 
 // NativePluginHandler implements go-protoc-wasi's PluginHandler interface.
 // It spawns native plugin processes and handles IPC.
+// For protoc-gen-prost, it uses the embedded WASM module instead of a native binary.
 type NativePluginHandler struct {
 	// Plugins is the configured plugins.
 	Plugins *Plugins
 	// Verbose enables verbose output.
 	Verbose bool
+	// prostWASM is the prost WASM plugin instance (lazily initialized).
+	prostWASM *prost.ProtocGenProst
 }
 
 // NewNativePluginHandler creates a new NativePluginHandler.
@@ -223,10 +275,41 @@ func NewNativePluginHandler(plugins *Plugins, verbose bool) *NativePluginHandler
 	}
 }
 
+// InitProstWASM initializes the prost WASM plugin with the given wazero runtime.
+// The runtime must already have WASI instantiated (e.g., by protoc).
+// This should be called after protoc.Init() and before running protoc.
+func (h *NativePluginHandler) InitProstWASM(ctx context.Context, runtime wazero.Runtime) error {
+	if h.prostWASM != nil {
+		return nil // Already initialized
+	}
+	p, err := prost.NewProtocGenProstWithWASI(ctx, runtime)
+	if err != nil {
+		return fmt.Errorf("failed to initialize prost WASM: %w", err)
+	}
+	h.prostWASM = p
+	return nil
+}
+
+// CloseProstWASM closes the prost WASM plugin if initialized.
+func (h *NativePluginHandler) CloseProstWASM(ctx context.Context) error {
+	if h.prostWASM != nil {
+		err := h.prostWASM.Close(ctx)
+		h.prostWASM = nil
+		return err
+	}
+	return nil
+}
+
 // Communicate implements the PluginHandler interface.
 // It spawns a plugin process, sends the CodeGeneratorRequest via stdin,
 // and returns the CodeGeneratorResponse from stdout.
+// For protoc-gen-prost, it uses the embedded WASM module if initialized.
 func (h *NativePluginHandler) Communicate(ctx context.Context, program string, searchPath bool, input []byte) ([]byte, error) {
+	// Use WASM prost plugin if available
+	if program == "protoc-gen-prost" && h.prostWASM != nil {
+		return h.prostWASM.Execute(ctx, input)
+	}
+
 	// Find the plugin path
 	pluginPath := h.findPluginPath(program, searchPath)
 	if pluginPath == "" {
@@ -274,6 +357,14 @@ func (h *NativePluginHandler) findPluginPath(program string, searchPath bool) st
 		case "protoc-gen-starpc-cpp":
 			if h.Plugins.CppStarpc != nil {
 				return h.Plugins.CppStarpc.Path
+			}
+		case "protoc-gen-starpc-rust":
+			if h.Plugins.RustStarpc != nil {
+				return h.Plugins.RustStarpc.Path
+			}
+		case "protoc-gen-prost":
+			if h.Plugins.RustProst != nil {
+				return h.Plugins.RustProst.Path
 			}
 		}
 	}

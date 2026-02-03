@@ -14,6 +14,8 @@ import (
 	_ "github.com/aperturerobotics/starpc/cmd/protoc-gen-go-starpc"
 	// _ imports protoc-gen-starpc-cpp
 	_ "github.com/aperturerobotics/starpc/cmd/protoc-gen-starpc-cpp"
+	// _ imports protoc-gen-starpc-rust
+	_ "github.com/aperturerobotics/starpc/cmd/protoc-gen-starpc-rust"
 
 	// _ imports golangci-lint
 	_ "github.com/golangci/golangci-lint/v2/pkg/golinters"
