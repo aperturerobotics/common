@@ -58,12 +58,23 @@ func (p *PostProcessor) ProcessGeneratedFiles(protoFile string) error {
 	if err != nil {
 		return err
 	}
+	cppFiles, err := filepath.Glob(filepath.Join(searchDir, baseName+"*.pb.cpp"))
+	if err != nil {
+		return err
+	}
 	hFiles, err := filepath.Glob(filepath.Join(searchDir, baseName+"*.pb.h"))
 	if err != nil {
 		return err
 	}
+	hppFiles, err := filepath.Glob(filepath.Join(searchDir, baseName+"*.pb.hpp"))
+	if err != nil {
+		return err
+	}
 
-	for _, f := range append(ccFiles, hFiles...) {
+	allCppFiles := append(ccFiles, cppFiles...)
+	allCppFiles = append(allCppFiles, hFiles...)
+	allCppFiles = append(allCppFiles, hppFiles...)
+	for _, f := range allCppFiles {
 		if err := p.ProcessCppFile(f); err != nil {
 			return err
 		}
@@ -108,8 +119,9 @@ func (p *PostProcessor) ProcessCppFile(filePath string) error {
 	modified := false
 	lines := strings.Split(string(data), "\n")
 
-	// Check and add build tag
-	if len(lines) == 0 || lines[0] != CppBuildTag {
+	// Check and add build tag if no Go build tag is present
+	hasBuildTag := len(lines) > 0 && strings.HasPrefix(lines[0], "//go:build ")
+	if !hasBuildTag {
 		lines = append([]string{CppBuildTag, ""}, lines...)
 		modified = true
 	}
@@ -343,7 +355,8 @@ func (p *PostProcessor) ProcessAllCppFiles(dir string) error {
 		if info.IsDir() {
 			return nil
 		}
-		if strings.HasSuffix(path, ".pb.cc") || strings.HasSuffix(path, ".pb.h") {
+		if strings.HasSuffix(path, ".pb.cc") || strings.HasSuffix(path, ".pb.cpp") ||
+			strings.HasSuffix(path, ".pb.h") || strings.HasSuffix(path, ".pb.hpp") {
 			return p.ProcessCppFile(path)
 		}
 		return nil

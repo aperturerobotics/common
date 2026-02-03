@@ -37,3 +37,24 @@ export const ExampleMsg: MessageType<ExampleMsg> = createMessageType({
   ] as readonly PartialFieldInfo[],
   packedByDefault: true,
 })
+
+/**
+ * EchoMsg is the message body for Echo.
+ *
+ * @generated from message example.EchoMsg
+ */
+export interface EchoMsg {
+  /**
+   * @generated from field: string body = 1;
+   */
+  body?: string
+}
+
+// EchoMsg contains the message type declaration for EchoMsg.
+export const EchoMsg: MessageType<EchoMsg> = createMessageType({
+  typeName: 'example.EchoMsg',
+  fields: [
+    { no: 1, name: 'body', kind: 'scalar', T: ScalarType.STRING },
+  ] as readonly PartialFieldInfo[],
+  packedByDefault: true,
+})

@@ -15,10 +15,14 @@ endif()
 # Include common.cmake to set up vendored protobuf/abseil include paths
 include(${CMAKE_CURRENT_SOURCE_DIR}/common.cmake)
 
+# Add the starpc library
+add_subdirectory(vendor/github.com/aperturerobotics/starpc/srpc)
+
 # Build a static library from the generated protobuf sources
 add_library(example_proto STATIC
     example/example.pb.cc
     example/other/other.pb.cc
+    example/example_srpc.pb.cpp
 )
 
-target_link_libraries(example_proto ${Protobuf_LIBRARIES})
+target_link_libraries(example_proto ${Protobuf_LIBRARIES} starpc)
