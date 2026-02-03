@@ -10,16 +10,16 @@ replace github.com/ipfs/go-log/v2 => github.com/paralin/ipfs-go-logrus v0.0.0-20
 require (
 	github.com/aperturerobotics/abseil-cpp v0.0.0-20260131110040-4bb56e2f9017 // aperture-2
 	github.com/aperturerobotics/cli v1.1.0
-	github.com/aperturerobotics/go-protoc-gen-prost v0.0.0-20260203091255-e2e1ecdf30e1 // master
-	github.com/aperturerobotics/go-protoc-wasi v0.0.0-20260131050911-b5f94b044584
+	github.com/aperturerobotics/go-protoc-gen-prost v0.0.0-20260203094828-3faf47d2c868 // master
+	github.com/aperturerobotics/go-protoc-wasi v0.0.0-20260131050911-b5f94b044584 // master
+	github.com/aperturerobotics/json-iterator-lite v1.0.1-0.20251104042408-0c9eb8a3f726 // indirect
 	github.com/aperturerobotics/protobuf v0.0.0-20260203024654-8201686529c4 // wasi
 	github.com/aperturerobotics/protobuf-go-lite v0.12.1 // latest
 	github.com/aperturerobotics/starpc v0.45.1-0.20260203090429-3e915608d4e8 // master
+	github.com/aperturerobotics/util v1.32.3 // indirect
 )
 
 require (
-	github.com/aperturerobotics/json-iterator-lite v1.0.1-0.20251104042408-0c9eb8a3f726 // indirect
-	github.com/aperturerobotics/util v1.32.3 // indirect
 	github.com/coder/websocket v1.8.14 // indirect
 	github.com/ipfs/go-cid v0.4.1 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.8 // indirect
@@ -38,14 +38,11 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/sirupsen/logrus v1.9.4 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
-	golang.org/x/crypto v0.45.0 // indirect
-	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394 // indirect
-	lukechampine.com/blake3 v1.3.0 // indirect
-)
-
-require (
 	github.com/tetratelabs/wazero v1.11.0
 	github.com/xrash/smetrics v0.0.0-20250705151800-55b8f293f342 // indirect
+	golang.org/x/crypto v0.45.0 // indirect
+	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394 // indirect
 	golang.org/x/mod v0.32.0
 	golang.org/x/sys v0.40.0 // indirect
+	lukechampine.com/blake3 v1.3.0 // indirect
 )

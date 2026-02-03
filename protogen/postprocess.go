@@ -104,6 +104,11 @@ func (p *PostProcessor) ProcessGeneratedFiles(protoFile string) error {
 		}
 	}
 
+	// Process Rust files (move from package-based path to proto-based path)
+	if err := p.ProcessRustFiles(protoFile); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -377,4 +382,90 @@ func (p *PostProcessor) ProcessAllTsFiles(dir string) error {
 		}
 		return nil
 	})
+}
+
+// ProcessRustFiles moves and processes generated Rust .pb.rs files.
+// Prost generates files at vendor/{package_path}/{basename}.pb.rs based on the
+// protobuf package hierarchy, but we need them at vendor/{module_path}/{proto_dir}/
+// to match other generated files.
+func (p *PostProcessor) ProcessRustFiles(protoFile string) error {
+	protoDir := filepath.Dir(protoFile)
+	baseName := strings.TrimSuffix(filepath.Base(protoFile), ".proto")
+
+	// Get the proto package from the proto file
+	protoPackage, err := extractProtoPackage(filepath.Join(p.ProjectDir, protoFile))
+	if err != nil {
+		return err
+	}
+	if protoPackage == "" {
+		return nil // No package, skip
+	}
+
+	// Prost generates files at vendor/{package_path}/{basename}.pb.rs
+	// where package_path is the package name converted to directory structure
+	packagePath := strings.ReplaceAll(protoPackage, ".", "/")
+	srcFile := filepath.Join(p.VendorDir, packagePath, baseName+".pb.rs")
+
+	// Target location is vendor/{module_path}/{proto_dir}/{basename}.pb.rs
+	dstDir := filepath.Join(p.VendorDir, p.ModulePath, protoDir)
+	dstFile := filepath.Join(dstDir, baseName+".pb.rs")
+
+	// Check if source file exists
+	if !fileExists(srcFile) {
+		return nil // No rust file generated, skip
+	}
+
+	// Create destination directory
+	if err := os.MkdirAll(dstDir, 0o755); err != nil {
+		return err
+	}
+
+	// Read source file
+	data, err := os.ReadFile(srcFile)
+	if err != nil {
+		return err
+	}
+
+	// Write to destination
+	if err := os.WriteFile(dstFile, data, 0o644); err != nil {
+		return err
+	}
+
+	// Remove source file
+	if err := os.Remove(srcFile); err != nil {
+		return err
+	}
+
+	// Try to remove empty parent directories
+	p.cleanEmptyDirs(filepath.Dir(srcFile))
+
+	return nil
+}
+
+// cleanEmptyDirs removes empty directories up to the vendor dir.
+func (p *PostProcessor) cleanEmptyDirs(dir string) {
+	for dir != p.VendorDir && strings.HasPrefix(dir, p.VendorDir) {
+		entries, err := os.ReadDir(dir)
+		if err != nil || len(entries) > 0 {
+			break
+		}
+		os.Remove(dir)
+		dir = filepath.Dir(dir)
+	}
+}
+
+// extractProtoPackage extracts the package name from a proto file.
+func extractProtoPackage(protoPath string) (string, error) {
+	data, err := os.ReadFile(protoPath)
+	if err != nil {
+		return "", err
+	}
+
+	// Match: package example.other;
+	pattern := regexp.MustCompile(`(?m)^package\s+([a-zA-Z0-9_.]+)\s*;`)
+	matches := pattern.FindSubmatch(data)
+	if len(matches) > 1 {
+		return string(matches[1]), nil
+	}
+	return "", nil
 }

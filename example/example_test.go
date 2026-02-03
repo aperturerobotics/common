@@ -1,6 +1,9 @@
 package example_test
 
 import (
+	"os"
+	"os/exec"
+	"path/filepath"
 	"testing"
 
 	"github.com/aperturerobotics/common/example"
@@ -31,5 +34,44 @@ func TestExampleMsg(t *testing.T) {
 		if msg.OtherMsg.FooField != 1 {
 			t.Errorf("Expected OtherMsg.FooField to be 1, got %d", msg.OtherMsg.FooField)
 		}
+	})
+}
+
+// TestRustGeneratedCode validates that the generated Rust protobuf code compiles and passes tests.
+func TestRustGeneratedCode(t *testing.T) {
+	// Check if cargo is available
+	if _, err := exec.LookPath("cargo"); err != nil {
+		t.Skip("cargo not found, skipping Rust validation")
+	}
+
+	// Get the directory containing the Cargo.toml
+	exampleDir, err := filepath.Abs(filepath.Dir("."))
+	if err != nil {
+		t.Fatalf("failed to get example dir: %v", err)
+	}
+
+	// Check if Cargo.toml exists
+	cargoToml := filepath.Join(exampleDir, "Cargo.toml")
+	if _, err := os.Stat(cargoToml); os.IsNotExist(err) {
+		t.Skip("Cargo.toml not found, skipping Rust validation")
+	}
+
+	t.Run("cargo check", func(t *testing.T) {
+		cmd := exec.Command("cargo", "check")
+		cmd.Dir = exampleDir
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("cargo check failed: %v\n%s", err, output)
+		}
+	})
+
+	t.Run("cargo test", func(t *testing.T) {
+		cmd := exec.Command("cargo", "test")
+		cmd.Dir = exampleDir
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("cargo test failed: %v\n%s", err, output)
+		}
+		t.Logf("cargo test output:\n%s", output)
 	})
 }

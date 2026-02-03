@@ -1,0 +1,10 @@
+[package]
+name = "example-proto"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+prost = "0.13"
+
+[lib]
+path = "lib.rs"
