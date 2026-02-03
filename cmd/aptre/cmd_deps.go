@@ -17,6 +17,7 @@ var defaultTools = []struct {
 	{"protoc-gen-go-lite", "github.com/aperturerobotics/protobuf-go-lite/cmd/protoc-gen-go-lite"},
 	{"protoc-gen-go-starpc", "github.com/aperturerobotics/starpc/cmd/protoc-gen-go-starpc"},
 	{"protoc-gen-starpc-cpp", "github.com/aperturerobotics/starpc/cmd/protoc-gen-starpc-cpp"},
+	{"protoc-gen-starpc-rust", "github.com/aperturerobotics/starpc/cmd/protoc-gen-starpc-rust"},
 	{"gofumpt", "mvdan.cc/gofumpt"},
 	{"goimports", "golang.org/x/tools/cmd/goimports"},
 	{"golangci-lint", "github.com/golangci/golangci-lint/v2/cmd/golangci-lint"},
@@ -94,7 +95,7 @@ func ensureAllDeps(projectDir, toolsDir string, verbose, force bool) error {
 	}
 
 	// Build required tools
-	requiredTools := []string{"protoc-gen-go-lite", "protoc-gen-go-starpc", "protoc-gen-starpc-cpp", "gofumpt"}
+	requiredTools := []string{"protoc-gen-go-lite", "protoc-gen-go-starpc", "protoc-gen-starpc-cpp", "protoc-gen-starpc-rust", "gofumpt"}
 	for _, toolName := range requiredTools {
 		if err := ensureTool(toolsPath, toolName, force, verbose); err != nil {
 			return fmt.Errorf("failed to ensure %s: %w", toolName, err)
