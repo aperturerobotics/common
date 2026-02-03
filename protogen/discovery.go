@@ -132,29 +132,55 @@ func FindGeneratedFilesForProto(protoFile, projectDir, modulePath string) ([]str
 	protoDir := filepath.Dir(protoFile)
 	baseName := strings.TrimSuffix(filepath.Base(protoFile), ".proto")
 
-	searchDir := filepath.Join(projectDir, "vendor", modulePath, protoDir)
-	pattern := filepath.Join(searchDir, baseName+"*.pb.*")
-
-	matches, err := filepath.Glob(pattern)
-	if err != nil {
-		return nil, err
-	}
-
-	// Also check for files in the proto directory itself (not vendor)
+	// Search in local proto directory first (preferred location)
 	localPattern := filepath.Join(projectDir, protoDir, baseName+"*.pb.*")
 	localMatches, err := filepath.Glob(localPattern)
 	if err != nil {
 		return nil, err
 	}
-	matches = append(matches, localMatches...)
 
-	// Convert to relative paths
-	var relPaths []string
-	for _, m := range matches {
+	// Also check vendor symlink path
+	searchDir := filepath.Join(projectDir, "vendor", modulePath, protoDir)
+	vendorMatches, err := filepath.Glob(filepath.Join(searchDir, baseName+"*.pb.*"))
+	if err != nil {
+		return nil, err
+	}
+
+	// Deduplicate by resolving to real paths
+	// Prefer non-vendor paths over vendor paths (they may be symlinked to the same file)
+	seen := make(map[string]string) // realPath -> relativePath
+
+	// Process local matches first (preferred)
+	for _, m := range localMatches {
 		rel, err := filepath.Rel(projectDir, m)
 		if err != nil {
 			rel = m
 		}
+		realPath, err := filepath.EvalSymlinks(m)
+		if err != nil {
+			realPath = m
+		}
+		seen[realPath] = rel
+	}
+
+	// Process vendor matches, only add if not already seen
+	for _, m := range vendorMatches {
+		realPath, err := filepath.EvalSymlinks(m)
+		if err != nil {
+			realPath = m
+		}
+		if _, exists := seen[realPath]; !exists {
+			rel, err := filepath.Rel(projectDir, m)
+			if err != nil {
+				rel = m
+			}
+			seen[realPath] = rel
+		}
+	}
+
+	// Collect results
+	var relPaths []string
+	for _, rel := range seen {
 		relPaths = append(relPaths, rel)
 	}
 
