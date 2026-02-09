@@ -5,9 +5,16 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/aperturerobotics/cli"
 )
+
+// commonModulePath is the module path for common.
+// Tools with import paths under this module are built from the project directory
+// (which vendors common) rather than from the tools directory, because the tools
+// module cannot self-reference common.
+const commonModulePath = "github.com/aperturerobotics/common/"
 
 // Tool definitions
 var defaultTools = []struct {
@@ -98,7 +105,7 @@ func ensureAllDeps(projectDir, toolsDir string, verbose, force bool) error {
 	// Build required tools
 	requiredTools := []string{"protoc-gen-go-lite", "protoc-gen-go-starpc", "protoc-gen-starpc-cpp", "protoc-gen-starpc-rust", "protoc-gen-aptre-doc", "gofumpt"}
 	for _, toolName := range requiredTools {
-		if err := ensureTool(toolsPath, toolName, force, verbose); err != nil {
+		if err := ensureTool(absProjectDir, toolsPath, toolName, force, verbose); err != nil {
 			return fmt.Errorf("failed to ensure %s: %w", toolName, err)
 		}
 	}
@@ -137,7 +144,7 @@ func ensureToolsDir(projectDir, toolsPath string, verbose bool) error {
 	return cmd.Run()
 }
 
-func ensureTool(toolsPath, toolName string, force, verbose bool) error {
+func ensureTool(projectDir, toolsPath, toolName string, force, verbose bool) error {
 	binPath := filepath.Join(toolsPath, "bin", toolName)
 
 	// Check if already exists
@@ -163,10 +170,18 @@ func ensureTool(toolsPath, toolName string, force, verbose bool) error {
 		fmt.Printf("Building %s...\n", toolName)
 	}
 
+	// Tools under commonModulePath are built from the project directory (which
+	// vendors common) rather than from the tools directory, because the tools
+	// module strips self-references to common via embed.bash.
+	buildDir := toolsPath
+	if strings.HasPrefix(importPath, commonModulePath) {
+		buildDir = projectDir
+	}
+
 	// Build the tool
 	// #nosec G204 -- toolName and importPath come from hardcoded defaultTools list
-	cmd := exec.Command("go", "build", "-mod=readonly", "-v", "-o", filepath.Join("bin", toolName), importPath)
-	cmd.Dir = toolsPath
+	cmd := exec.Command("go", "build", "-v", "-o", binPath, importPath)
+	cmd.Dir = buildDir
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
@@ -211,7 +226,7 @@ func EnsureToolBuilt(projectDir, toolsDir, toolName string, verbose bool) (strin
 		return "", fmt.Errorf("failed to ensure tools directory: %w", err)
 	}
 
-	if err := ensureTool(toolsPath, toolName, false, verbose); err != nil {
+	if err := ensureTool(absProjectDir, toolsPath, toolName, false, verbose); err != nil {
 		return "", err
 	}
 

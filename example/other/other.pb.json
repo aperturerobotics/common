@@ -1,0 +1,21 @@
+{
+  "name": "github.com/aperturerobotics/common/example/other/other.proto",
+  "package": "example.other",
+  "syntax": "proto3",
+  "messages": [
+    {
+      "name": "OtherMsg",
+      "fullName": "example.other.OtherMsg",
+      "description": "OtherMsg is a different message from ExampleMsg.",
+      "fields": [
+        {
+          "name": "foo_field",
+          "jsonName": "fooField",
+          "number": 1,
+          "type": "uint32",
+          "description": "FooField is an example field."
+        }
+      ]
+    }
+  ]
+}

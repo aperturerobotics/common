@@ -5,6 +5,7 @@
 package example_other
 
 import (
+	_ "embed"
 	fmt "fmt"
 	io "io"
 	slices "slices"
@@ -233,3 +234,12 @@ func (m *OtherMsg) UnmarshalVT(dAtA []byte) error {
 	}
 	return nil
 }
+
+//go:embed other.pb.json
+var other_pb_json []byte
+
+//go:embed other.pb.md
+var other_pb_md []byte
+
+//go:embed other.proto
+var other_proto []byte

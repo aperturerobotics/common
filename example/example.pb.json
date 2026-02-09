@@ -1,0 +1,56 @@
+{
+  "name": "github.com/aperturerobotics/common/example/example.proto",
+  "package": "example",
+  "syntax": "proto3",
+  "messages": [
+    {
+      "name": "ExampleMsg",
+      "fullName": "example.ExampleMsg",
+      "description": "ExampleMsg is an example message.",
+      "fields": [
+        {
+          "name": "example_field",
+          "jsonName": "exampleField",
+          "number": 1,
+          "type": "string",
+          "description": "ExampleField is an example field."
+        },
+        {
+          "name": "other_msg",
+          "jsonName": "otherMsg",
+          "number": 2,
+          "type": "OtherMsg",
+          "description": "OtherMsg is an example of an imported message field."
+        }
+      ]
+    },
+    {
+      "name": "EchoMsg",
+      "fullName": "example.EchoMsg",
+      "description": "EchoMsg is the message body for Echo.",
+      "fields": [
+        {
+          "name": "body",
+          "jsonName": "body",
+          "number": 1,
+          "type": "string"
+        }
+      ]
+    }
+  ],
+  "services": [
+    {
+      "name": "Echoer",
+      "fullName": "example.Echoer",
+      "description": "Echoer service returns the given message.",
+      "methods": [
+        {
+          "name": "Echo",
+          "description": "Echo returns the given message.",
+          "inputType": "example.EchoMsg",
+          "outputType": "example.EchoMsg"
+        }
+      ]
+    }
+  ]
+}

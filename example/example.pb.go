@@ -5,6 +5,7 @@
 package example
 
 import (
+	_ "embed"
 	fmt "fmt"
 	io "io"
 	slices "slices"
@@ -558,3 +559,12 @@ func (m *EchoMsg) UnmarshalVT(dAtA []byte) error {
 	}
 	return nil
 }
+
+//go:embed example.pb.json
+var example_pb_json []byte
+
+//go:embed example.pb.md
+var example_pb_md []byte
+
+//go:embed example.proto
+var example_proto []byte
