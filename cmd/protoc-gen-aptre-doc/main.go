@@ -92,8 +92,8 @@ type MethodDoc struct {
 	Description     string `json:"description,omitempty"`
 	InputType       string `json:"inputType"`
 	OutputType      string `json:"outputType"`
-	ClientStreaming  bool   `json:"clientStreaming,omitempty"`
-	ServerStreaming  bool   `json:"serverStreaming,omitempty"`
+	ClientStreaming bool   `json:"clientStreaming,omitempty"`
+	ServerStreaming bool   `json:"serverStreaming,omitempty"`
 }
 
 // fileLeadingComment extracts the file-level leading comment from SourceCodeInfo.
@@ -245,8 +245,8 @@ func buildServiceDoc(svc *protogen.Service) ServiceDoc {
 			Description:     cleanComment(method.Comments.Leading),
 			InputType:       string(method.Input.Desc.FullName()),
 			OutputType:      string(method.Output.Desc.FullName()),
-			ClientStreaming:  method.Desc.IsStreamingClient(),
-			ServerStreaming:  method.Desc.IsStreamingServer(),
+			ClientStreaming: method.Desc.IsStreamingClient(),
+			ServerStreaming: method.Desc.IsStreamingServer(),
 		})
 	}
 	return doc

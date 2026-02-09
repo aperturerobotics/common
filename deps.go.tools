@@ -4,6 +4,7 @@
 package hack
 
 import (
+	// _ imports protoc-gen-aptre-doc
 
 	// _ imports protowrap
 	_ "github.com/aperturerobotics/goprotowrap/cmd/protowrap"

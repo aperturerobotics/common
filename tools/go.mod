@@ -10,6 +10,7 @@ replace (
 
 require (
 	github.com/aperturerobotics/abseil-cpp v0.0.0-20260131110040-4bb56e2f9017 // indirect; aperture-2
+	github.com/aperturerobotics/common v0.30.2-0.20260209042418-b3592a6733ba // gen-doc
 	github.com/aperturerobotics/goprotowrap v0.4.1 // latest
 	github.com/aperturerobotics/protobuf v0.0.0-20260203024654-8201686529c4 // indirect; wasi
 	// github.com/aperturerobotics/goscript v0.0.61 // master
@@ -26,8 +27,6 @@ require (
 	google.golang.org/grpc v1.77.0 // indirect; latest
 	mvdan.cc/gofumpt v0.9.2 // latest
 )
-
-require github.com/aperturerobotics/common v0.29.0
 
 require (
 	4d63.com/gocheckcompilerdirectives v1.3.0 // indirect
