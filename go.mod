@@ -46,3 +46,5 @@ require (
 	golang.org/x/sys v0.40.0 // indirect
 	lukechampine.com/blake3 v1.3.0 // indirect
 )
+
+require google.golang.org/protobuf v1.36.11

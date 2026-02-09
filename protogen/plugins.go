@@ -55,6 +55,8 @@ type Plugins struct {
 	// RustProst is the protoc-gen-prost plugin for Rust protobuf types.
 	// This uses an embedded WASM module, no external binary required.
 	RustProst *Plugin
+	// Doc is the protoc-gen-aptre-doc plugin for generating .pb.json and .pb.md documentation.
+	Doc *Plugin
 }
 
 // DiscoverPlugins finds and configures available plugins.
@@ -151,6 +153,18 @@ func DiscoverPlugins(cfg *Config) (*Plugins, error) {
 		} else if path, err := exec.LookPath("protoc-gen-prost"); err == nil {
 			plugins.RustProst.Path = path
 		}
+
+		docPath := filepath.Join(toolsBin, "protoc-gen-aptre-doc")
+		if _, err := os.Stat(docPath); err == nil {
+			plugins.Doc = &Plugin{
+				Name:       "aptre-doc",
+				BinaryName: "protoc-gen-aptre-doc",
+				Path:       docPath,
+				Type:       PluginTypeGo,
+				OutFlag:    "aptre-doc_out",
+				Options:    map[string]string{},
+			}
+		}
 	}
 
 	if hasTS {
@@ -240,6 +254,11 @@ func (p *Plugins) GetProtocArgs(outDir string) []string {
 	// Rust starpc plugin (generates *_srpc.pb.rs service stubs)
 	if p.RustStarpc != nil {
 		args = append(args, fmt.Sprintf("--%s=%s", p.RustStarpc.OutFlag, outDir))
+	}
+
+	// Doc plugin (generates .pb.json and .pb.md documentation)
+	if p.Doc != nil {
+		args = append(args, fmt.Sprintf("--%s=%s", p.Doc.OutFlag, outDir))
 	}
 
 	return args
@@ -365,6 +384,10 @@ func (h *NativePluginHandler) findPluginPath(program string, searchPath bool) st
 		case "protoc-gen-prost":
 			if h.Plugins.RustProst != nil {
 				return h.Plugins.RustProst.Path
+			}
+		case "protoc-gen-aptre-doc":
+			if h.Plugins.Doc != nil {
+				return h.Plugins.Doc.Path
 			}
 		}
 	}

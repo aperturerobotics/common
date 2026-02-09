@@ -92,6 +92,14 @@ func (p *PostProcessor) ProcessGeneratedFiles(protoFile string) error {
 		}
 	}
 
+	// Add embed directives to the main .pb.go file for .pb.json, .pb.md, and .proto.
+	mainPbGo := filepath.Join(searchDir, baseName+".pb.go")
+	if fileExists(mainPbGo) {
+		if err := p.AddEmbedDirectives(mainPbGo, baseName, protoFile); err != nil {
+			return err
+		}
+	}
+
 	// Process TypeScript files
 	tsFiles, err := filepath.Glob(filepath.Join(searchDir, baseName+"*.pb.ts"))
 	if err != nil {
@@ -201,6 +209,90 @@ func (p *PostProcessor) ProcessGoFile(filePath string) error {
 	}
 
 	return nil
+}
+
+// AddEmbedDirectives adds //go:embed directives and the embed import to a .pb.go file.
+// It embeds the .pb.json, .pb.md, and .proto source files as exported byte slice variables.
+func (p *PostProcessor) AddEmbedDirectives(goFile, baseName, protoFile string) error {
+	// Determine which files to embed.
+	dir := filepath.Dir(goFile)
+	type embedFile struct {
+		pattern  string // filename to embed
+		varName  string // Go variable name
+		filePath string // full path to check existence
+	}
+
+	protoBaseName := filepath.Base(protoFile)
+	candidates := []embedFile{
+		{baseName + ".pb.json", baseName + "_pb_json", filepath.Join(dir, baseName+".pb.json")},
+		{baseName + ".pb.md", baseName + "_pb_md", filepath.Join(dir, baseName+".pb.md")},
+		{protoBaseName, baseName + "_proto", filepath.Join(dir, protoBaseName)},
+	}
+
+	var embeds []embedFile
+	for _, c := range candidates {
+		if fileExists(c.filePath) {
+			embeds = append(embeds, c)
+		}
+	}
+	if len(embeds) == 0 {
+		return nil
+	}
+
+	data, err := os.ReadFile(goFile)
+	if err != nil {
+		return err
+	}
+
+	content := string(data)
+
+	// Check if embeds are already present.
+	if strings.Contains(content, "//go:embed "+embeds[0].pattern) {
+		return nil
+	}
+
+	// Add _ "embed" import.
+	// Find the import block and add the embed import.
+	content = addEmbedImport(content)
+
+	// Append embed directives at the end of the file.
+	var buf strings.Builder
+	buf.WriteString(content)
+	if !strings.HasSuffix(content, "\n") {
+		buf.WriteString("\n")
+	}
+	buf.WriteString("\n")
+	for _, e := range embeds {
+		varName := sanitizeVarName(e.varName)
+		buf.WriteString("//go:embed " + e.pattern + "\n")
+		buf.WriteString("var " + varName + " []byte\n\n")
+	}
+
+	return os.WriteFile(goFile, []byte(buf.String()), 0o644)
+}
+
+// addEmbedImport adds _ "embed" to the import block of a Go file.
+func addEmbedImport(content string) string {
+	if strings.Contains(content, `_ "embed"`) {
+		return content
+	}
+
+	// Find the first import block: import ( ... )
+	idx := strings.Index(content, "import (")
+	if idx < 0 {
+		return content
+	}
+
+	// Insert after "import ("
+	insertPos := idx + len("import (")
+	return content[:insertPos] + "\n\t_ \"embed\"" + content[insertPos:]
+}
+
+// sanitizeVarName converts a base name with dots/hyphens into a valid Go identifier.
+func sanitizeVarName(name string) string {
+	name = strings.ReplaceAll(name, "-", "_")
+	name = strings.ReplaceAll(name, ".", "_")
+	return name
 }
 
 // ProcessTsFile processes a TypeScript file.
