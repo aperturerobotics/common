@@ -181,7 +181,7 @@ func ensureNodeModules(projectDir string, verbose bool) error {
 		fmt.Println("Installing node_modules...")
 	}
 
-	cmd := exec.Command("yarn", "install")
+	cmd := exec.Command("bun", "install")
 	cmd.Dir = projectDir
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

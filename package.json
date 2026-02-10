@@ -77,20 +77,20 @@
     "typescript": "^5.7.2"
   },
   "dependencies": {
-    "@aptre/protobuf-es-lite": "^0.5.2",
-    "@typescript-eslint/eslint-plugin": "^8.39.1",
-    "@typescript-eslint/parser": "^8.39.1",
-    "eslint": "^9.39.2",
+    "@aptre/protobuf-es-lite": "^0.5.3",
+    "@typescript-eslint/eslint-plugin": "^8.55.0",
+    "@typescript-eslint/parser": "^8.55.0",
+    "eslint": "^10.0.0",
     "eslint-config-prettier": "^10.0.0",
     "eslint-plugin-react-hooks": "^7.0.0",
-    "eslint-plugin-unused-imports": "^4.0.0",
-    "starpc": "^0.42.0",
+    "eslint-plugin-unused-imports": "^4.4.1",
+    "starpc": "^0.46.1",
     "vitest": "^4.0.0"
   },
   "peerDependencies": {
-    "@aptre/protobuf-es-lite": "^0.5.2"
+    "@aptre/protobuf-es-lite": "^0.5.3"
   },
   "resolutions": {
-    "@aptre/protobuf-es-lite": "0.5.2"
+    "@aptre/protobuf-es-lite": "0.5.3"
   }
 }
