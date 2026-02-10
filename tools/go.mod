@@ -14,7 +14,7 @@ require (
 	github.com/aperturerobotics/protobuf v0.0.0-20260203024654-8201686529c4 // indirect; wasi
 	// github.com/aperturerobotics/goscript v0.0.61 // master
 	github.com/aperturerobotics/protobuf-go-lite v0.12.1 // latest
-	github.com/aperturerobotics/starpc v0.45.1-0.20260203090429-3e915608d4e8 // latest
+	github.com/aperturerobotics/starpc v0.46.1 // latest
 )
 
 require (
@@ -22,12 +22,12 @@ require (
 	github.com/golangci/golangci-lint/v2 v2.8.0
 	github.com/goreleaser/goreleaser/v2 v2.13.3 // latest
 	github.com/psampaz/go-mod-outdated v0.9.0 // latest
-	golang.org/x/tools v0.41.0 // latest
+	golang.org/x/tools v0.42.0 // latest
 	google.golang.org/grpc v1.77.0 // indirect; latest
 	mvdan.cc/gofumpt v0.9.2 // latest
 )
 
-require github.com/aperturerobotics/common v0.29.0
+require github.com/aperturerobotics/common v0.30.1-0.20260203095300-e0754eb22a37
 
 require (
 	4d63.com/gocheckcompilerdirectives v1.3.0 // indirect
@@ -509,16 +509,16 @@ require (
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	gocloud.dev v0.44.0 // indirect
-	golang.org/x/crypto v0.47.0 // indirect
+	golang.org/x/crypto v0.48.0 // indirect
 	golang.org/x/exp/typeparams v0.0.0-20251023183803-a4bb9ffd2546 // indirect
-	golang.org/x/mod v0.32.0 // indirect
-	golang.org/x/net v0.49.0 // indirect
+	golang.org/x/mod v0.33.0 // indirect
+	golang.org/x/net v0.50.0 // indirect
 	golang.org/x/oauth2 v0.34.0 // indirect
 	golang.org/x/sync v0.19.0 // indirect
-	golang.org/x/sys v0.40.0 // indirect
-	golang.org/x/telemetry v0.0.0-20260109210033-bd525da824e2 // indirect
-	golang.org/x/term v0.39.0 // indirect
-	golang.org/x/text v0.33.0 // indirect
+	golang.org/x/sys v0.41.0 // indirect
+	golang.org/x/telemetry v0.0.0-20260209163413-e7419c687ee4 // indirect
+	golang.org/x/term v0.40.0 // indirect
+	golang.org/x/text v0.34.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	google.golang.org/api v0.257.0 // indirect
