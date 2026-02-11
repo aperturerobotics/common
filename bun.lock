@@ -12,7 +12,7 @@
         "eslint-config-prettier": "^10.0.0",
         "eslint-plugin-react-hooks": "^7.0.0",
         "eslint-plugin-unused-imports": "^4.4.1",
-        "starpc": "^0.46.1",
+        "starpc": "^0.46.2",
         "vitest": "^4.0.0",
       },
       "devDependencies": {
@@ -664,7 +664,7 @@
 
     "stackback": ["stackback@0.0.2", "", {}, "sha512-1XMJE5fQo1jGH6Y/7ebnwPOBEkIEnT4QF32d5R1+VXdXveM0IBMJt8zfaxX1P3QhVwrYe+576+jkANtSS2mBbw=="],
 
-    "starpc": ["starpc@0.46.1", "", { "dependencies": { "@aptre/it-ws": "^1.1.2", "@aptre/protobuf-es-lite": "^0.5.3", "@chainsafe/libp2p-yamux": "^7.0.1", "@libp2p/interface": "^2.6.1", "event-iterator": "^2.0.0", "isomorphic-ws": "^5.0.0", "it-first": "^3.0.6", "it-pipe": "^3.0.1", "it-pushable": "^3.2.3", "it-stream-types": "^2.0.2", "uint8arraylist": "^2.4.7", "ws": "^8.18.1" }, "bin": { "protoc-gen-es-starpc": "cmd/protoc-gen-es-starpc/protoc-gen-es-starpc" } }, "sha512-niif1ZN9jYrvIkkFAogbGyMY7oa6K4Id3OBP5n+TJHWZNk4ak4JkrBe5/dqOsCbe3nQLnZ+WFixhXEUYh/7QbQ=="],
+    "starpc": ["starpc@0.46.2", "", { "dependencies": { "@aptre/it-ws": "^1.1.2", "@aptre/protobuf-es-lite": "^0.5.3", "@chainsafe/libp2p-yamux": "^7.0.1", "@libp2p/interface": "^2.6.1", "event-iterator": "^2.0.0", "isomorphic-ws": "^5.0.0", "it-first": "^3.0.6", "it-pipe": "^3.0.1", "it-pushable": "^3.2.3", "it-stream-types": "^2.0.2", "uint8arraylist": "^2.4.7", "ws": "^8.18.1" }, "bin": { "protoc-gen-es-starpc": "cmd/protoc-gen-es-starpc/protoc-gen-es-starpc" } }, "sha512-WX1ZzyOestnCIkJgaLNRyLdRLAhshajEcc21OVFEOLu58LQ9Z/G0uwSmVJztHYiqp/ni5Kh8aXZ7zSxmDLUNXA=="],
 
     "std-env": ["std-env@3.10.0", "", {}, "sha512-5GS12FdOZNliM5mAOxFRg7Ir0pWz8MdpYm6AY6VPkGpbA7ZzmbzNcBJQ0GPvvyWgcY7QAhCgf9Uy89I03faLkg=="],
 

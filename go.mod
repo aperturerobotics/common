@@ -15,7 +15,7 @@ require (
 	github.com/aperturerobotics/json-iterator-lite v1.0.1-0.20251104042408-0c9eb8a3f726 // indirect
 	github.com/aperturerobotics/protobuf v0.0.0-20260203024654-8201686529c4 // wasi
 	github.com/aperturerobotics/protobuf-go-lite v0.12.1 // latest
-	github.com/aperturerobotics/starpc v0.45.1-0.20260203090429-3e915608d4e8 // master
+	github.com/aperturerobotics/starpc v0.46.2 // master
 	github.com/aperturerobotics/util v1.32.3 // indirect
 )
 

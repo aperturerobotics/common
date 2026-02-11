@@ -16,6 +16,8 @@ github.com/aperturerobotics/protobuf-go-lite v0.12.1 h1:o9of87F/LFS2p5xfq32CrU99
 github.com/aperturerobotics/protobuf-go-lite v0.12.1/go.mod h1:lGH3s5ArCTXKI4wJdlNpaybUtwSjfAG0vdWjxOfMcF8=
 github.com/aperturerobotics/starpc v0.45.1-0.20260203090429-3e915608d4e8 h1:JP6fhFOVLuV6iujYsaAUAWY31PIbSXQg4FsZnDuzrs8=
 github.com/aperturerobotics/starpc v0.45.1-0.20260203090429-3e915608d4e8/go.mod h1:S9o4h2cxNmNCHM43z8W7+T5pT6Zujl4qnY6o5eD6X+0=
+github.com/aperturerobotics/starpc v0.46.2 h1:HwNzU48H2MLlbQPIZpXz9Rgx1leqCWhIN/k8177b4MQ=
+github.com/aperturerobotics/starpc v0.46.2/go.mod h1:x1CyVEdQz1N90KtpEF6hv9Bn0gWSqoEx090mpnyPZIk=
 github.com/aperturerobotics/util v1.32.3 h1:wBc6L2guYMgLEzFwORH3CLMoMpfEqbV6pDqYervo3S0=
 github.com/aperturerobotics/util v1.32.3/go.mod h1:qfRZZUDn0sEfc43JRA6rKP8bwFxliqGqJZX+p1jeOnQ=
 github.com/coder/websocket v1.8.14 h1:9L0p0iKiNOibykf283eHkKUHHrpG7f65OE3BhhO7v9g=
