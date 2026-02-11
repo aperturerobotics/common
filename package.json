@@ -28,7 +28,7 @@
   },
   "files": [
     "!**/*.tsbuildinfo",
-    ".eslintrc.cjs",
+    "eslint.config.js",
     ".gitignore",
     "dist",
     "go.mod",
@@ -61,7 +61,7 @@
     "test:go": "npm run go:aptre -- test",
     "lint": "npm run lint:go && npm run lint:js",
     "lint:go": "npm run go:aptre -- lint",
-    "lint:js": "ESLINT_USE_FLAT_CONFIG=false eslint -c .eslintrc.cjs ./",
+    "lint:js": "eslint ./",
     "prepare": "go mod vendor && bash embed.bash",
     "release:version": "npm version patch -m \"release: v%s\" --no-git-tag-version",
     "release:version:minor": "npm version minor -m \"release: v%s\" --no-git-tag-version",
