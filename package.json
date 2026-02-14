@@ -71,6 +71,7 @@
     "release:minor": "npm run release:version:minor && npm run release:commit"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "depcheck": "^1.4.6",
     "prettier": "^3.4.2",
     "rimraf": "^6.0.1",
