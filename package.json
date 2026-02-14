@@ -77,7 +77,7 @@
     "typescript": "^5.7.2"
   },
   "dependencies": {
-    "@aptre/protobuf-es-lite": "^0.5.3",
+    "@aptre/protobuf-es-lite": "^1.0.1",
     "@typescript-eslint/eslint-plugin": "^8.55.0",
     "@typescript-eslint/parser": "^8.55.0",
     "eslint": "^10.0.0",
@@ -88,9 +88,9 @@
     "vitest": "^4.0.0"
   },
   "peerDependencies": {
-    "@aptre/protobuf-es-lite": "^0.5.3"
+    "@aptre/protobuf-es-lite": "^1.0.1"
   },
   "resolutions": {
-    "@aptre/protobuf-es-lite": "0.5.3"
+    "@aptre/protobuf-es-lite": "1.0.1"
   }
 }

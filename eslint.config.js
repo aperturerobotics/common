@@ -3,6 +3,7 @@ import tseslint from '@typescript-eslint/eslint-plugin'
 import prettier from 'eslint-config-prettier'
 import reactHooks from 'eslint-plugin-react-hooks'
 import unusedImports from 'eslint-plugin-unused-imports'
+import globals from 'globals'
 
 export default [
   {
@@ -13,14 +14,21 @@ export default [
       'bundle/**',
       'runtime/**',
       'vendor/**',
-      'wasm_exec.js',
+      '**/wasm_exec.js',
       'tailwind.config.js',
+      '**/*.pb.ts',
     ],
   },
   eslint.configs.recommended,
   ...tseslint.configs['flat/recommended'],
   reactHooks.configs.flat.recommended,
   {
+    languageOptions: {
+      globals: {
+        ...globals.node,
+        ...globals.browser,
+      },
+    },
     plugins: {
       'unused-imports': unusedImports,
     },
