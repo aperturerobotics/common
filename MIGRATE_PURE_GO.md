@@ -133,7 +133,7 @@ Full example `package.json` scripts section:
     "test:js": "vitest run",
     "lint": "npm run lint:go && npm run lint:js",
     "lint:go": "npm run go:aptre -- lint",
-    "lint:js": "ESLINT_USE_FLAT_CONFIG=false eslint -c .eslintrc.cjs ./",
+    "lint:js": "eslint ./",
     "prepare": "go mod vendor && rimraf ./.tools",
     "go:aptre": "go run -mod=mod github.com/aperturerobotics/common/cmd/aptre",
     "release": "npm run release:version && npm run release:commit",
