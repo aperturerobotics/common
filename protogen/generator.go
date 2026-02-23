@@ -178,11 +178,8 @@ func (g *Generator) Generate(ctx context.Context) error {
 			// Skip if not in files to generate
 			shouldProcess := false
 			for _, f := range files {
-				for _, fg := range filesToGenerate {
-					if f == fg {
-						shouldProcess = true
-						break
-					}
+				if slices.Contains(filesToGenerate, f) {
+					shouldProcess = true
 				}
 				if shouldProcess {
 					break
@@ -403,8 +400,8 @@ func (g *Generator) getToolVersions() string {
 				rest = rest[vStart+1:]
 				if vStart := strings.Index(rest, `"`); vStart >= 0 {
 					rest = rest[vStart+1:]
-					if vEnd := strings.Index(rest, `"`); vEnd >= 0 {
-						versions = append(versions, "protobuf-es-lite="+rest[:vEnd])
+					if before, _, ok := strings.Cut(rest, `"`); ok {
+						versions = append(versions, "protobuf-es-lite="+before)
 					}
 				}
 			}
@@ -440,7 +437,7 @@ func (g *Generator) formatGeneratedFiles(protoFiles []string) error {
 			// This works around a race condition where gofumpt may see a file size
 			// mismatch if the file is still being flushed to disk after protoc writes.
 			var lastErr error
-			for attempt := 0; attempt < 3; attempt++ {
+			for attempt := range 3 {
 				if attempt > 0 {
 					time.Sleep(100 * time.Millisecond)
 				}
