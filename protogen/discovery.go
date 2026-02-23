@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"golang.org/x/mod/modfile"
@@ -178,11 +179,12 @@ func FindGeneratedFilesForProto(protoFile, projectDir, modulePath string) ([]str
 		}
 	}
 
-	// Collect results
-	var relPaths []string
+	// Collect results and sort for deterministic output.
+	relPaths := make([]string, 0, len(seen))
 	for _, rel := range seen {
 		relPaths = append(relPaths, rel)
 	}
+	slices.Sort(relPaths)
 
 	return relPaths, nil
 }

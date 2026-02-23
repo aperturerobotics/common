@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -125,11 +126,19 @@ func (g *Generator) Generate(ctx context.Context) error {
 		filesByDir[dir] = append(filesByDir[dir], f)
 	}
 
+	// Sort directories for deterministic processing order.
+	dirs := make([]string, 0, len(filesByDir))
+	for dir := range filesByDir {
+		dirs = append(dirs, dir)
+	}
+	slices.Sort(dirs)
+
 	// Track current packages and determine which need regeneration
 	currentPackages := make(map[string]struct{})
 	var filesToGenerate []string
 
-	for dir, files := range filesByDir {
+	for _, dir := range dirs {
+		files := filesByDir[dir]
 		packageKey := GetPackageKey(g.ModulePath, files[0])
 		currentPackages[packageKey] = struct{}{}
 
@@ -164,7 +173,8 @@ func (g *Generator) Generate(ctx context.Context) error {
 
 		// Post-process and update cache for each directory
 		postProcessor := NewPostProcessor(g.ProjectDir, g.ModulePath, g.Verbose)
-		for dir, files := range filesByDir {
+		for _, dir := range dirs {
+			files := filesByDir[dir]
 			// Skip if not in files to generate
 			shouldProcess := false
 			for _, f := range files {

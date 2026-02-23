@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 )
 
 // CacheVersion is the current cache format version.
@@ -155,7 +155,7 @@ func hashProtoFiles(protoFiles []string, projectDir string) (string, error) {
 	// Sort files for deterministic hashing
 	sorted := make([]string, len(protoFiles))
 	copy(sorted, protoFiles)
-	sort.Strings(sorted)
+	slices.Sort(sorted)
 
 	for _, f := range sorted {
 		path := filepath.Join(projectDir, f)

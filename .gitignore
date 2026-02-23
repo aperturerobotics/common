@@ -26,3 +26,4 @@ debug.test*
 !.vscode/launch.json
 /vendor/
 .opencode/tool-output
+/aptre

@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 
 	prost "github.com/aperturerobotics/go-protoc-gen-prost"
 	"github.com/tetratelabs/wazero"
@@ -191,6 +192,20 @@ func DiscoverPlugins(cfg *Config) (*Plugins, error) {
 	return plugins, nil
 }
 
+// sortedPluginOpts returns sorted --{name}_opt=k=v args for deterministic output.
+func sortedPluginOpts(p *Plugin) []string {
+	keys := make([]string, 0, len(p.Options))
+	for k := range p.Options {
+		keys = append(keys, k)
+	}
+	slices.Sort(keys)
+	args := make([]string, 0, len(keys))
+	for _, k := range keys {
+		args = append(args, fmt.Sprintf("--%s_opt=%s=%s", p.Name, k, p.Options[k]))
+	}
+	return args
+}
+
 // GetProtocArgs returns the protoc arguments for all configured plugins.
 // Note: We don't pass --plugin=<path> because the WASI protoc can't access
 // host binaries. Instead, the PluginHandler intercepts plugin calls by name.
@@ -203,9 +218,7 @@ func (p *Plugins) GetProtocArgs(outDir string) []string {
 	// Go plugins
 	if p.GoLite != nil {
 		args = append(args, fmt.Sprintf("--%s=%s", p.GoLite.OutFlag, outDir))
-		for k, v := range p.GoLite.Options {
-			args = append(args, fmt.Sprintf("--%s_opt=%s=%s", p.GoLite.Name, k, v))
-		}
+		args = append(args, sortedPluginOpts(p.GoLite)...)
 	}
 
 	if p.GoStarpc != nil {
@@ -215,16 +228,12 @@ func (p *Plugins) GetProtocArgs(outDir string) []string {
 	// TypeScript plugins
 	if p.ESLite != nil {
 		args = append(args, fmt.Sprintf("--%s=%s", p.ESLite.OutFlag, outDir))
-		for k, v := range p.ESLite.Options {
-			args = append(args, fmt.Sprintf("--%s_opt=%s=%s", p.ESLite.Name, k, v))
-		}
+		args = append(args, sortedPluginOpts(p.ESLite)...)
 	}
 
 	if p.ESStarpc != nil {
 		args = append(args, fmt.Sprintf("--%s=%s", p.ESStarpc.OutFlag, outDir))
-		for k, v := range p.ESStarpc.Options {
-			args = append(args, fmt.Sprintf("--%s_opt=%s=%s", p.ESStarpc.Name, k, v))
-		}
+		args = append(args, sortedPluginOpts(p.ESStarpc)...)
 	}
 
 	// C++ starpc plugin
