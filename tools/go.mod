@@ -14,7 +14,7 @@ require (
 	github.com/aperturerobotics/protobuf v0.0.0-20260203024654-8201686529c4 // indirect; wasi
 	// github.com/aperturerobotics/goscript v0.0.61 // master
 	github.com/aperturerobotics/protobuf-go-lite v0.12.2 // latest
-	github.com/aperturerobotics/starpc v0.46.2 // latest
+	github.com/aperturerobotics/starpc v0.47.1 // latest
 )
 
 require (
@@ -27,7 +27,7 @@ require (
 	mvdan.cc/gofumpt v0.9.2 // latest
 )
 
-require github.com/aperturerobotics/common v0.30.1-0.20260203095300-e0754eb22a37
+require github.com/aperturerobotics/common v0.30.7
 
 require (
 	4d63.com/gocheckcompilerdirectives v1.3.0 // indirect
