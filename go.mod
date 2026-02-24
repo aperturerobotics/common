@@ -2,8 +2,6 @@ module github.com/aperturerobotics/common
 
 go 1.25
 
-replace github.com/ipfs/go-log/v2 => github.com/paralin/ipfs-go-logrus v0.0.0-20240410105224-e24cb05f9e98 // master
-
 require (
 	github.com/aperturerobotics/abseil-cpp v0.0.0-20260131110040-4bb56e2f9017 // aperture-2
 	github.com/aperturerobotics/cli v1.1.0
