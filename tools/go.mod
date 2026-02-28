@@ -14,13 +14,13 @@ require (
 	github.com/aperturerobotics/protobuf v0.0.0-20260203024654-8201686529c4 // indirect; wasi
 	// github.com/aperturerobotics/goscript v0.0.61 // master
 	github.com/aperturerobotics/protobuf-go-lite v0.12.2 // latest
-	github.com/aperturerobotics/starpc v0.47.1 // latest
+	github.com/aperturerobotics/starpc v0.48.0 // latest
 )
 
 require (
 	github.com/agnivade/wasmbrowsertest v0.11.0 // cancelCtx
 	github.com/golangci/golangci-lint/v2 v2.10.1
-	github.com/goreleaser/goreleaser/v2 v2.14.0 // latest
+	github.com/goreleaser/goreleaser/v2 v2.14.1 // latest
 	github.com/psampaz/go-mod-outdated v0.9.0 // latest
 	golang.org/x/tools v0.42.0 // latest
 	google.golang.org/grpc v1.78.0 // indirect; latest
