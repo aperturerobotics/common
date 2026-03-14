@@ -1,6 +1,6 @@
 module github.com/aperturerobotics/common
 
-go 1.25
+go 1.25.0
 
 require (
 	github.com/aperturerobotics/abseil-cpp v0.0.0-20260131110040-4bb56e2f9017 // aperture-2
@@ -11,7 +11,7 @@ require (
 	github.com/aperturerobotics/json-iterator-lite v1.0.1-0.20251104042408-0c9eb8a3f726 // indirect
 	github.com/aperturerobotics/protobuf v0.0.0-20260203024654-8201686529c4 // wasi
 	github.com/aperturerobotics/protobuf-go-lite v0.12.2 // latest
-	github.com/aperturerobotics/starpc v0.48.0 // master
+	github.com/aperturerobotics/starpc v0.49.0 // master
 	github.com/aperturerobotics/util v1.32.4 // indirect
 )
 
@@ -22,6 +22,6 @@ require (
 	github.com/sirupsen/logrus v1.9.5-0.20260226151524-34027eac4204 // indirect
 	github.com/tetratelabs/wazero v1.11.0
 	github.com/xrash/smetrics v0.0.0-20250705151800-55b8f293f342 // indirect
-	golang.org/x/mod v0.33.0
+	golang.org/x/mod v0.34.0
 	golang.org/x/sys v0.40.0 // indirect
 )
