@@ -4,9 +4,8 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "jsx": "react",
-    "baseUrl": "./",
     "paths": {
-      "@go/*": ["vendor/*"]
+      "@go/*": ["./vendor/*"]
     },
     "allowSyntheticDefaultImports": true,
     "declaration": true,
