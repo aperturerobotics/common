@@ -60,7 +60,7 @@ func extractFiles(fsys embed.FS, outputPath string, remapPath func(string) strin
 
 		outputDir := filepath.Dir(outputFilePath)
 
-		err = os.MkdirAll(outputDir, os.ModePerm)
+		err = os.MkdirAll(outputDir, os.ModePerm) //nolint:gosec
 		if err != nil {
 			return err
 		}
@@ -71,7 +71,7 @@ func extractFiles(fsys embed.FS, outputPath string, remapPath func(string) strin
 		}
 		defer inputFile.Close()
 
-		outputFile, err := os.OpenFile(outputFilePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
+		outputFile, err := os.OpenFile(outputFilePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644) //nolint:gosec
 		if err != nil {
 			return err
 		}

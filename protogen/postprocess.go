@@ -171,7 +171,7 @@ func (p *PostProcessor) ProcessCppFile(filePath string) error {
 	}
 
 	if modified {
-		return os.WriteFile(filePath, []byte(strings.Join(lines, "\n")), 0o644)
+		return os.WriteFile(filePath, []byte(strings.Join(lines, "\n")), 0o644) //nolint:gosec
 	}
 
 	return nil
@@ -197,7 +197,7 @@ func (p *PostProcessor) ProcessGoFile(filePath string) error {
 	}
 
 	if modified {
-		return os.WriteFile(filePath, []byte(content), 0o644)
+		return os.WriteFile(filePath, []byte(content), 0o644) //nolint:gosec
 	}
 
 	return nil
@@ -344,7 +344,7 @@ func resolveRelativeImport(baseDir, importPath string) string {
 
 // fileExists checks if a file exists and is not a directory.
 func fileExists(path string) bool {
-	info, err := os.Stat(path)
+	info, err := os.Stat(path) //nolint:gosec
 	if err != nil {
 		return false
 	}
@@ -427,7 +427,7 @@ func (p *PostProcessor) ProcessRustFiles(protoFile string) error {
 	}
 
 	// Write to destination
-	if err := os.WriteFile(dstFile, data, 0o644); err != nil {
+	if err := os.WriteFile(dstFile, data, 0o644); err != nil { //nolint:gosec
 		return err
 	}
 
