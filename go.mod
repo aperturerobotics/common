@@ -7,12 +7,12 @@ require (
 	github.com/aperturerobotics/cli v1.1.0
 	github.com/aperturerobotics/go-protoc-gen-prost v0.0.0-20260329113538-218ccd8f20e0 // master
 	github.com/aperturerobotics/go-protoc-wasi v0.0.0-20260329113540-600516012db3 // master
-	github.com/aperturerobotics/go-websocket v1.8.15-0.20260228132212-c5f88237fdf8 // indirect
+	github.com/aperturerobotics/go-websocket v1.8.15-0.20260329113544-74dbfb8f11c6 // indirect
 	github.com/aperturerobotics/json-iterator-lite v1.0.1-0.20251104042408-0c9eb8a3f726 // indirect
 	github.com/aperturerobotics/protobuf v0.0.0-20260203024654-8201686529c4 // wasi
 	github.com/aperturerobotics/protobuf-go-lite v0.12.2 // latest
-	github.com/aperturerobotics/starpc v0.49.1 // master
-	github.com/aperturerobotics/util v1.32.5 // indirect
+	github.com/aperturerobotics/starpc v0.49.2 // master
+	github.com/aperturerobotics/util v1.33.0 // indirect
 )
 
 require (
@@ -23,5 +23,5 @@ require (
 	github.com/tetratelabs/wazero v1.11.0
 	github.com/xrash/smetrics v0.0.0-20250705151800-55b8f293f342 // indirect
 	golang.org/x/mod v0.34.0
-	golang.org/x/sys v0.41.0 // indirect
+	golang.org/x/sys v0.42.0 // indirect
 )
