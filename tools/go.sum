@@ -187,8 +187,8 @@ github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be h1:9AeTilPcZAjCFI
 github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be/go.mod h1:ySMOLuWl6zY27l47sB3qLNK6tF2fkHG55UZxx8oIVo4=
 github.com/aperturerobotics/abseil-cpp v0.0.0-20260131110040-4bb56e2f9017 h1:3U7v3ba/ZxaGkbvM//GWvZV7WM2gy3vRgagPFAm0NCk=
 github.com/aperturerobotics/abseil-cpp v0.0.0-20260131110040-4bb56e2f9017/go.mod h1:lNSJTKECIUFAnfeSqy01kXYTYe1BHubW7198jNX3nEw=
-github.com/aperturerobotics/common v0.32.1 h1:pvmmDBttGnQM5HBoe8T1xHeHmFg2L7ecPZjx1oHLIX0=
-github.com/aperturerobotics/common v0.32.1/go.mod h1:6I+CZvcNEXf7Abd0tFVbMgOJ/pFE8C4qlYG9KZvBAnc=
+github.com/aperturerobotics/common v0.32.2 h1:YAZfvBphNxGTF7x+O/e7UIFw8cCf5Pog6ptw7Y+PjTU=
+github.com/aperturerobotics/common v0.32.2/go.mod h1:6glNxt6cEYab10WAVT4tOGhwgvDG2fnUMSyKuKZg02Y=
 github.com/aperturerobotics/goprotowrap v0.4.1 h1:az40TD9d65WPXi8hE7r6QKlAmkW0rFp6bmH+ro2Kahw=
 github.com/aperturerobotics/goprotowrap v0.4.1/go.mod h1:5tRlYsb4VF0ySzx2/My3u9PtzTWNu5o2bqYHj0TRw+U=
 github.com/aperturerobotics/protobuf v0.0.0-20260203024654-8201686529c4 h1:4Dy3BAHh2kgVdHAqtlwcFsgY0kAwUe2m3rfFcaGwGQg=
@@ -700,8 +700,8 @@ github.com/goreleaser/fileglob v1.4.0 h1:Y7zcUnzQjT1gbntacGAkIIfLv+OwojxTXBFxjSF
 github.com/goreleaser/fileglob v1.4.0/go.mod h1:1pbHx7hhmJIxNZvm6fi6WVrnP0tndq6p3ayWdLn1Yf8=
 github.com/goreleaser/go-shellwords v1.0.13 h1:ivvhC/RvUyud74c0urb1ZGYWPYGibY5QiFzcwHCege4=
 github.com/goreleaser/go-shellwords v1.0.13/go.mod h1:UtDFSSvW7wQL/4jmyzZbuP6HfI6R+oSm0v63cs61oDw=
-github.com/goreleaser/goreleaser/v2 v2.15.1 h1:qgg9Y4JfURDRnt43eA76QRkzlWCYIph/yz4jyQdczMs=
-github.com/goreleaser/goreleaser/v2 v2.15.1/go.mod h1:yow7MCKl0k4TBIoqGTj3MGReYJq6oFqJSjeVgGiKsMw=
+github.com/goreleaser/goreleaser/v2 v2.15.2 h1:z1WmHen7msayUw6Cf4AxbLnZL2Z4cE0RN+1cKO1x3fM=
+github.com/goreleaser/goreleaser/v2 v2.15.2/go.mod h1:yow7MCKl0k4TBIoqGTj3MGReYJq6oFqJSjeVgGiKsMw=
 github.com/goreleaser/nfpm/v2 v2.45.2 h1:sWBXUErMSKHMvT8f1mgtY3yn2jbNBAE2TNBXNXpSDGc=
 github.com/goreleaser/nfpm/v2 v2.45.2/go.mod h1:NxYAJCKAuq8NpL57WvL39xIK39/1jViS9hD6MDwKTgw=
 github.com/goreleaser/quill v0.0.0-20251224035235-ab943733386f h1:2HQF/pifDK7XnmVhQi3OecdUcHLOaXIKVKscW8qKzCk=
