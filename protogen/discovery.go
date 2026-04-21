@@ -129,7 +129,7 @@ func GetGeneratedFiles(protoFile, projectDir, modulePath string, hasGo, hasTS bo
 }
 
 // FindGeneratedFilesForProto finds actual generated files for a proto file using glob.
-func FindGeneratedFilesForProto(protoFile, projectDir, modulePath string) ([]string, error) {
+func FindGeneratedFilesForProto(protoFile, projectDir, vendorDir, modulePath string) ([]string, error) {
 	protoDir := filepath.Dir(protoFile)
 	baseName := strings.TrimSuffix(filepath.Base(protoFile), ".proto")
 
@@ -141,7 +141,7 @@ func FindGeneratedFilesForProto(protoFile, projectDir, modulePath string) ([]str
 	}
 
 	// Also check vendor symlink path
-	searchDir := filepath.Join(projectDir, "vendor", modulePath, protoDir)
+	searchDir := filepath.Join(vendorDir, modulePath, protoDir)
 	vendorMatches, err := filepath.Glob(filepath.Join(searchDir, baseName+"*.pb.*"))
 	if err != nil {
 		return nil, err

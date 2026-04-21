@@ -38,11 +38,11 @@ type PostProcessor struct {
 }
 
 // NewPostProcessor creates a new PostProcessor.
-func NewPostProcessor(projectDir, modulePath string, verbose bool) *PostProcessor {
+func NewPostProcessor(projectDir, vendorDir, modulePath string, verbose bool) *PostProcessor {
 	return &PostProcessor{
 		ProjectDir: projectDir,
 		ModulePath: modulePath,
-		VendorDir:  filepath.Join(projectDir, "vendor"),
+		VendorDir:  vendorDir,
 		Verbose:    verbose,
 	}
 }

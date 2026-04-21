@@ -27,6 +27,8 @@ type Generator struct {
 	Cache *Cache
 	// ProjectDir is the resolved project directory.
 	ProjectDir string
+	// ModuleDir is the resolved Go module root directory.
+	ModuleDir string
 	// ModulePath is the Go module path.
 	ModulePath string
 	// VendorDir is the vendor directory.
@@ -46,6 +48,11 @@ func NewGenerator(cfg *Config) (*Generator, error) {
 	projectDir, err := cfg.GetProjectDir()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get project directory: %w", err)
+	}
+
+	moduleDir, err := cfg.GetModuleDir()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get module directory: %w", err)
 	}
 
 	modulePath, err := cfg.GetGoModule()
@@ -68,7 +75,7 @@ func NewGenerator(cfg *Config) (*Generator, error) {
 		return nil, fmt.Errorf("failed to discover plugins: %w", err)
 	}
 
-	vendorDir := filepath.Join(projectDir, "vendor")
+	vendorDir := filepath.Join(moduleDir, "vendor")
 	outDir := vendorDir
 
 	return &Generator{
@@ -76,6 +83,7 @@ func NewGenerator(cfg *Config) (*Generator, error) {
 		Plugins:    plugins,
 		Cache:      cache,
 		ProjectDir: projectDir,
+		ModuleDir:  moduleDir,
 		ModulePath: modulePath,
 		VendorDir:  vendorDir,
 		OutDir:     outDir,
@@ -172,7 +180,7 @@ func (g *Generator) Generate(ctx context.Context) error {
 		}
 
 		// Post-process and update cache for each directory
-		postProcessor := NewPostProcessor(g.ProjectDir, g.ModulePath, g.Verbose)
+		postProcessor := NewPostProcessor(g.ProjectDir, g.VendorDir, g.ModulePath, g.Verbose)
 		for _, dir := range dirs {
 			files := filesByDir[dir]
 			// Skip if not in files to generate
@@ -200,7 +208,7 @@ func (g *Generator) Generate(ctx context.Context) error {
 			packageKey := GetPackageKey(g.ModulePath, files[0])
 			var generatedFiles []string
 			for _, f := range files {
-				gf, err := FindGeneratedFilesForProto(f, g.ProjectDir, g.ModulePath)
+				gf, err := FindGeneratedFilesForProto(f, g.ProjectDir, g.VendorDir, g.ModulePath)
 				if err != nil {
 					return fmt.Errorf("failed to find generated files for %s: %w", f, err)
 				}
@@ -416,7 +424,7 @@ func (g *Generator) formatGeneratedFiles(protoFiles []string) error {
 	var goFiles, tsFiles []string
 
 	for _, f := range protoFiles {
-		gf, err := FindGeneratedFilesForProto(f, g.ProjectDir, g.ModulePath)
+		gf, err := FindGeneratedFilesForProto(f, g.ProjectDir, g.VendorDir, g.ModulePath)
 		if err != nil {
 			continue
 		}

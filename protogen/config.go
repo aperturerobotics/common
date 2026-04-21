@@ -1,7 +1,9 @@
 package protogen
 
 import (
+	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 )
 
@@ -57,6 +59,15 @@ func (c *Config) GetProjectDir() (string, error) {
 	return os.Getwd()
 }
 
+// GetModuleDir returns the nearest ancestor directory containing go.mod.
+func (c *Config) GetModuleDir() (string, error) {
+	projectDir, err := c.GetProjectDir()
+	if err != nil {
+		return "", err
+	}
+	return FindModuleDir(projectDir)
+}
+
 // GetCacheFilePath returns the absolute path to the cache file.
 func (c *Config) GetCacheFilePath() (string, error) {
 	projectDir, err := c.GetProjectDir()
@@ -77,15 +88,14 @@ func (c *Config) GetToolsDir() (string, error) {
 
 // HasGoMod checks if go.mod exists in the project directory.
 func (c *Config) HasGoMod() (bool, error) {
-	projectDir, err := c.GetProjectDir()
-	if err != nil {
-		return false, err
+	_, err := c.GetModuleDir()
+	if err == nil {
+		return true, nil
 	}
-	_, err = os.Stat(filepath.Join(projectDir, "go.mod"))
 	if os.IsNotExist(err) {
 		return false, nil
 	}
-	return err == nil, err
+	return false, err
 }
 
 // HasPackageJSON checks if package.json exists in the project directory.
@@ -101,11 +111,49 @@ func (c *Config) HasPackageJSON() (bool, error) {
 	return err == nil, err
 }
 
-// GetGoModule returns the Go module path from go.mod.
+// GetGoModule returns the effective Go import path for the project directory.
 func (c *Config) GetGoModule() (string, error) {
 	projectDir, err := c.GetProjectDir()
 	if err != nil {
 		return "", err
 	}
-	return GetGoModule(projectDir)
+
+	moduleDir, err := c.GetModuleDir()
+	if err != nil {
+		return "", err
+	}
+
+	modulePath, err := GetGoModule(moduleDir)
+	if err != nil {
+		return "", err
+	}
+
+	projectRel, err := filepath.Rel(moduleDir, projectDir)
+	if err != nil {
+		return "", err
+	}
+	if projectRel == "." {
+		return modulePath, nil
+	}
+	return path.Join(modulePath, filepath.ToSlash(projectRel)), nil
+}
+
+// FindModuleDir finds the nearest ancestor directory containing go.mod.
+func FindModuleDir(projectDir string) (string, error) {
+	dir := projectDir
+	for {
+		_, err := os.Stat(filepath.Join(dir, "go.mod"))
+		if err == nil {
+			return dir, nil
+		}
+		if err != nil && !os.IsNotExist(err) {
+			return "", err
+		}
+
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return "", fmt.Errorf("go.mod not found in %s or ancestors: %w", projectDir, os.ErrNotExist)
+		}
+		dir = parent
+	}
 }
