@@ -185,6 +185,70 @@ The generator uses sensible defaults but can be customized:
 - **ToolsDir**: Plugin binary location (default: `.tools`)
 - **Cache**: Manifest file (default: `.protoc-manifest.json`)
 
+### `package.json` Configuration
+
+When a repo has a `package.json`, `aptre generate` also reads an optional
+top-level `aptre` config object from it.
+
+Example:
+
+```json
+{
+  "name": "spacewave",
+  "private": true,
+  "aptre": {
+    "tsImportBoundaries": ["auth", "bldr", "db", "forge", "identity", "net"]
+  }
+}
+```
+
+### `aptre.tsImportBoundaries`
+
+`tsImportBoundaries` configures how generated TypeScript protobuf imports are
+rewritten inside a monorepo.
+
+By default, same-module generated imports stay relative. That is usually what
+you want in a single-package repo.
+
+For monorepos that generate protobuf TypeScript into multiple top-level members,
+relative imports can break when a build system mirrors sources into another tree
+or when each member needs a stable repo-root import path. In that case, define
+module-relative boundary prefixes in `aptre.tsImportBoundaries`.
+
+When a generated `*.pb.ts` file imports another generated protobuf file:
+
+- If the import stays within the same configured boundary, it remains relative.
+- If the import crosses from one configured boundary to another, `aptre`
+  rewrites it to an `@go/...` import.
+- Imports that resolve outside the current module are still rewritten to
+  `@go/...` from `vendor/` as before.
+
+Given:
+
+```json
+{
+  "aptre": {
+    "tsImportBoundaries": ["bldr", "db"]
+  }
+}
+```
+
+an import like:
+
+```ts
+import { VolumeInfo } from '../../db/volume/volume.pb.js'
+```
+
+in `bldr/plugin/plugin.pb.ts` becomes:
+
+```ts
+import { VolumeInfo } from '@go/github.com/yourorg/yourrepo/db/volume/volume.pb.js'
+```
+
+Boundary entries are matched against paths relative to the Go module root, so
+they should name repo directories such as `bldr`, `db`, or `net`, not full
+module paths.
+
 ## Related Projects
 
 - [starpc](https://github.com/aperturerobotics/starpc) — Streaming RPC for Go, TypeScript, and Rust

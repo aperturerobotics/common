@@ -31,6 +31,9 @@ type PostProcessor struct {
 	ProjectDir string
 	// ModulePath is the Go module path.
 	ModulePath string
+	// TsImportBoundaries are module-relative prefixes that trigger @go/ rewrites
+	// when generated TS protobuf imports cross between them.
+	TsImportBoundaries []string
 	// VendorDir is the vendor directory path.
 	VendorDir string
 	// Verbose enables verbose output.
@@ -38,12 +41,13 @@ type PostProcessor struct {
 }
 
 // NewPostProcessor creates a new PostProcessor.
-func NewPostProcessor(projectDir, vendorDir, modulePath string, verbose bool) *PostProcessor {
+func NewPostProcessor(projectDir, vendorDir, modulePath string, tsImportBoundaries []string, verbose bool) *PostProcessor {
 	return &PostProcessor{
-		ProjectDir: projectDir,
-		ModulePath: modulePath,
-		VendorDir:  vendorDir,
-		Verbose:    verbose,
+		ProjectDir:         projectDir,
+		ModulePath:         modulePath,
+		TsImportBoundaries: tsImportBoundaries,
+		VendorDir:          vendorDir,
+		Verbose:            verbose,
 	}
 }
 
@@ -239,6 +243,7 @@ func (p *PostProcessor) ProcessTsFile(filePath string) error {
 
 	for scanner.Scan() {
 		line := scanner.Text()
+		lineModified := false
 		matches := importPattern.FindStringSubmatch(line)
 
 		if len(matches) > 1 {
@@ -263,6 +268,7 @@ func (p *PostProcessor) ProcessTsFile(filePath string) error {
 					newLine := strings.Replace(line, importPath, goImportPath, 1)
 					if newLine != line {
 						line = newLine
+						lineModified = true
 						modified = true
 					}
 				}
@@ -277,10 +283,25 @@ func (p *PostProcessor) ProcessTsFile(filePath string) error {
 					newLine := strings.Replace(line, importPath, goImportPath, 1)
 					if newLine != line {
 						line = newLine
+						lineModified = true
 						modified = true
 					}
 				}
-				// Otherwise, leave internal relative imports as-is
+
+				if !lineModified {
+					sourceBoundary, hasSourceBoundary := p.lookupTsImportBoundary(strings.TrimPrefix(strings.TrimPrefix(protoDir, p.ModulePath), "/"))
+					targetBoundary, hasTargetBoundary := p.lookupTsImportBoundary(strings.TrimPrefix(strings.TrimPrefix(strings.TrimSuffix(resolvedPath, ".js"), p.ModulePath), "/"))
+					if hasSourceBoundary && hasTargetBoundary && sourceBoundary != targetBoundary {
+						goImportPath := "@go/" + resolvedPath
+						newLine := strings.Replace(line, importPath, goImportPath, 1)
+						if newLine != line {
+							line = newLine
+							lineModified = true
+							modified = true
+						}
+					}
+				}
+				// Otherwise, leave internal relative imports as-is.
 			}
 		}
 
@@ -302,6 +323,31 @@ func (p *PostProcessor) ProcessTsFile(filePath string) error {
 	}
 
 	return nil
+}
+
+// lookupTsImportBoundary returns the longest matching configured boundary.
+func (p *PostProcessor) lookupTsImportBoundary(moduleRelPath string) (string, bool) {
+	moduleRelPath = strings.Trim(strings.ReplaceAll(moduleRelPath, "\\", "/"), "/")
+
+	var best string
+	for _, boundary := range p.TsImportBoundaries {
+		boundary = strings.Trim(strings.ReplaceAll(boundary, "\\", "/"), "/")
+		if boundary == "" {
+			continue
+		}
+		if moduleRelPath != boundary && !strings.HasPrefix(moduleRelPath, boundary+"/") {
+			continue
+		}
+		if len(boundary) <= len(best) {
+			continue
+		}
+		best = boundary
+	}
+
+	if best == "" {
+		return "", false
+	}
+	return best, true
 }
 
 // extractProtoSourcePath extracts the proto source path from a generated file's header.

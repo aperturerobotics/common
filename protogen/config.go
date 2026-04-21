@@ -1,6 +1,7 @@
 package protogen
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path"
@@ -39,6 +40,18 @@ type Config struct {
 	ToolsDir string
 	// ExtraArgs contains any additional protoc arguments.
 	ExtraArgs []string
+	// TsImportBoundaries are module-relative path prefixes where generated
+	// TypeScript protobuf imports should switch to @go/... when crossing
+	// between boundaries.
+	TsImportBoundaries []string
+}
+
+type packageJSONConfig struct {
+	Aptre *packageJSONAptreConfig `json:"aptre"`
+}
+
+type packageJSONAptreConfig struct {
+	TsImportBoundaries []string `json:"tsImportBoundaries"`
 }
 
 // NewConfig returns a new Config with default values.
@@ -136,6 +149,37 @@ func (c *Config) GetGoModule() (string, error) {
 		return modulePath, nil
 	}
 	return path.Join(modulePath, filepath.ToSlash(projectRel)), nil
+}
+
+// GetTsImportBoundaries returns configured TypeScript import boundaries.
+// Explicit config takes precedence; otherwise reads package.json aptre config.
+func (c *Config) GetTsImportBoundaries() ([]string, error) {
+	if len(c.TsImportBoundaries) != 0 {
+		return c.TsImportBoundaries, nil
+	}
+
+	projectDir, err := c.GetProjectDir()
+	if err != nil {
+		return nil, err
+	}
+
+	packageJSONPath := filepath.Join(projectDir, "package.json")
+	data, err := os.ReadFile(packageJSONPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	var packageJSON packageJSONConfig
+	if err := json.Unmarshal(data, &packageJSON); err != nil {
+		return nil, err
+	}
+	if packageJSON.Aptre == nil {
+		return nil, nil
+	}
+	return packageJSON.Aptre.TsImportBoundaries, nil
 }
 
 // FindModuleDir finds the nearest ancestor directory containing go.mod.

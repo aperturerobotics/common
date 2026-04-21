@@ -33,6 +33,8 @@ type Generator struct {
 	ModulePath string
 	// VendorDir is the vendor directory.
 	VendorDir string
+	// TsImportBoundaries are module-relative boundaries that trigger @go/ rewrites.
+	TsImportBoundaries []string
 	// OutDir is the output directory (same as VendorDir).
 	OutDir string
 	// Verbose enables verbose output.
@@ -75,21 +77,27 @@ func NewGenerator(cfg *Config) (*Generator, error) {
 		return nil, fmt.Errorf("failed to discover plugins: %w", err)
 	}
 
+	tsImportBoundaries, err := cfg.GetTsImportBoundaries()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get ts import boundaries: %w", err)
+	}
+
 	vendorDir := filepath.Join(moduleDir, "vendor")
 	outDir := vendorDir
 
 	return &Generator{
-		Config:     cfg,
-		Plugins:    plugins,
-		Cache:      cache,
-		ProjectDir: projectDir,
-		ModuleDir:  moduleDir,
-		ModulePath: modulePath,
-		VendorDir:  vendorDir,
-		OutDir:     outDir,
-		Verbose:    cfg.Verbose,
-		Stdout:     os.Stdout,
-		Stderr:     os.Stderr,
+		Config:             cfg,
+		Plugins:            plugins,
+		Cache:              cache,
+		ProjectDir:         projectDir,
+		ModuleDir:          moduleDir,
+		ModulePath:         modulePath,
+		VendorDir:          vendorDir,
+		TsImportBoundaries: tsImportBoundaries,
+		OutDir:             outDir,
+		Verbose:            cfg.Verbose,
+		Stdout:             os.Stdout,
+		Stderr:             os.Stderr,
 	}, nil
 }
 
@@ -180,7 +188,13 @@ func (g *Generator) Generate(ctx context.Context) error {
 		}
 
 		// Post-process and update cache for each directory
-		postProcessor := NewPostProcessor(g.ProjectDir, g.VendorDir, g.ModulePath, g.Verbose)
+		postProcessor := NewPostProcessor(
+			g.ProjectDir,
+			g.VendorDir,
+			g.ModulePath,
+			g.TsImportBoundaries,
+			g.Verbose,
+		)
 		for _, dir := range dirs {
 			files := filesByDir[dir]
 			// Skip if not in files to generate

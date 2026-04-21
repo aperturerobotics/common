@@ -47,3 +47,32 @@ func TestConfigGetGoModuleFromSubdir(t *testing.T) {
 		t.Fatal("expected has go mod to be true")
 	}
 }
+
+func TestConfigGetTsImportBoundariesFromPackageJSON(t *testing.T) {
+	t.Helper()
+
+	tmpDir := t.TempDir()
+	packageJSON := []byte(`{
+  "name": "spacewave",
+  "aptre": {
+    "tsImportBoundaries": ["bldr", "db", "net"]
+  }
+}`)
+	if err := os.WriteFile(filepath.Join(tmpDir, "package.json"), packageJSON, 0o644); err != nil {
+		t.Fatalf("write package.json: %v", err)
+	}
+
+	cfg := NewConfig()
+	cfg.ProjectDir = tmpDir
+
+	boundaries, err := cfg.GetTsImportBoundaries()
+	if err != nil {
+		t.Fatalf("get ts import boundaries: %v", err)
+	}
+	if len(boundaries) != 3 {
+		t.Fatalf("expected 3 boundaries, got %d", len(boundaries))
+	}
+	if boundaries[0] != "bldr" || boundaries[1] != "db" || boundaries[2] != "net" {
+		t.Fatalf("unexpected boundaries: %v", boundaries)
+	}
+}
