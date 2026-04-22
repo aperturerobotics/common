@@ -11,8 +11,8 @@ require (
 	github.com/aperturerobotics/json-iterator-lite v1.0.1-0.20251104042408-0c9eb8a3f726 // indirect
 	github.com/aperturerobotics/protobuf v0.0.0-20260203024654-8201686529c4 // wasi
 	github.com/aperturerobotics/protobuf-go-lite v0.13.0 // latest
-	github.com/aperturerobotics/starpc v0.49.4 // master
-	github.com/aperturerobotics/util v1.33.0 // indirect
+	github.com/aperturerobotics/starpc v0.49.6 // master
+	github.com/aperturerobotics/util v1.34.3 // indirect
 )
 
 require (
@@ -23,5 +23,5 @@ require (
 	github.com/tetratelabs/wazero v1.11.0
 	github.com/xrash/smetrics v0.0.0-20250705151800-55b8f293f342 // indirect
 	golang.org/x/mod v0.35.0
-	golang.org/x/sys v0.42.0 // indirect
+	golang.org/x/sys v0.43.0 // indirect
 )
