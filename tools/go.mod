@@ -4,12 +4,12 @@ go 1.26.2
 
 require (
 	github.com/aperturerobotics/abseil-cpp v0.0.0-20260131110040-4bb56e2f9017 // indirect; aperture-2
-	github.com/aperturerobotics/common v0.32.6 // latest
+	github.com/aperturerobotics/common v0.32.7 // latest
 	github.com/aperturerobotics/goprotowrap v0.4.1 // latest
 	github.com/aperturerobotics/protobuf v0.0.0-20260203024654-8201686529c4 // indirect; wasi
 	// github.com/aperturerobotics/goscript v0.0.61 // master
 	github.com/aperturerobotics/protobuf-go-lite v0.13.0 // latest
-	github.com/aperturerobotics/starpc v0.49.5 // latest
+	github.com/aperturerobotics/starpc v0.49.6 // latest
 )
 
 require (
