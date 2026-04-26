@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/aperturerobotics/cli"
 )
@@ -214,5 +215,74 @@ func EnsureToolBuilt(projectDir, toolsDir, toolName string, verbose bool) (strin
 		return "", err
 	}
 
+	if toolName == "golangci-lint" {
+		if err := maybeBuildCustomGolangCILint(absProjectDir, toolsPath, verbose); err != nil {
+			return "", err
+		}
+	}
+
 	return filepath.Join(toolsPath, "bin", toolName), nil
+}
+
+func maybeBuildCustomGolangCILint(projectDir, toolsPath string, verbose bool) error {
+	customConfPath := filepath.Join(projectDir, ".custom-gcl.yml")
+	customConfDat, err := os.ReadFile(customConfPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	version := parseCustomGolangCILintVersion(string(customConfDat))
+	if version == "" {
+		return fmt.Errorf("missing version in %s", customConfPath)
+	}
+	baseLintPath := filepath.Join(toolsPath, "bin", "golangci-lint")
+	customStampPath := filepath.Join(toolsPath, "bin", ".golangci-lint-custom-stamp")
+	customStamp := strings.Join([]string{version, customConfPath}, "\n")
+	if stampDat, err := os.ReadFile(customStampPath); err == nil && string(stampDat) == customStamp {
+		return nil
+	}
+	builderPath := filepath.Join(toolsPath, "bin", "golangci-lint-builder")
+	if err := os.Rename(baseLintPath, builderPath); err != nil {
+		return err
+	}
+	defer func() {
+		if _, err := os.Stat(baseLintPath); err != nil {
+			_ = os.Rename(builderPath, baseLintPath)
+		}
+	}()
+	args := []string{
+		"custom",
+		"--name", "golangci-lint",
+		"--destination", filepath.Join(toolsPath, "bin"),
+		"--version", version,
+	}
+	cmd := exec.Command(builderPath, args...)
+	cmd.Dir = projectDir
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if verbose {
+		fmt.Printf("Building custom golangci-lint from %s...\n", customConfPath)
+	}
+	if err := cmd.Run(); err != nil {
+		_ = os.Rename(builderPath, baseLintPath)
+		return err
+	}
+	if err := os.Remove(builderPath); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return os.WriteFile(customStampPath, []byte(customStamp), 0o644)
+}
+
+func parseCustomGolangCILintVersion(conf string) string {
+	for _, line := range strings.Split(conf, "\n") {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, "version:") {
+			continue
+		}
+		version := strings.TrimSpace(strings.TrimPrefix(line, "version:"))
+		return strings.Trim(version, `"'`)
+	}
+	return ""
 }
