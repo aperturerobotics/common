@@ -272,7 +272,7 @@ func maybeBuildCustomGolangCILint(projectDir, toolsPath string, verbose bool) er
 	if err := os.Remove(builderPath); err != nil && !os.IsNotExist(err) {
 		return err
 	}
-	return os.WriteFile(customStampPath, []byte(customStamp), 0o644)
+	return os.WriteFile(customStampPath, []byte(customStamp), 0o644) //nolint:gosec
 }
 
 func parseCustomGolangCILintVersion(conf string) string {
