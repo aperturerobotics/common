@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 
 	"github.com/aperturerobotics/cli"
@@ -122,19 +123,51 @@ func ensureToolsDir(projectDir, toolsPath string, verbose bool) error {
 		fmt.Println("Setting up tools directory...")
 	}
 
-	// Compute relative path from projectDir to toolsPath
 	relToolsPath, err := filepath.Rel(projectDir, toolsPath)
 	if err != nil {
-		// Fall back to base name if rel fails
 		relToolsPath = filepath.Base(toolsPath)
 	}
 
-	// Run: go run github.com/aperturerobotics/common <tools-dir>
-	cmd := exec.Command("go", "run", "-v", "github.com/aperturerobotics/common", relToolsPath)
+	commonPackage := resolveCommonPackage(projectDir)
+	cmd := exec.Command("go", "run", "-v", commonPackage, relToolsPath)
 	cmd.Dir = projectDir
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
+}
+
+func resolveCommonPackage(projectDir string) string {
+	const commonModule = "github.com/aperturerobotics/common"
+	const moduleTemplate = "{{with .Replace}}{{if .Version}}{{.Path}}@{{.Version}}{{else}}{{.Path}}{{end}}{{else}}{{if .Version}}{{.Path}}@{{.Version}}{{else}}{{.Path}}{{end}}{{end}}"
+
+	cmd := exec.Command("go", "list", "-m", "-f", moduleTemplate, commonModule)
+	cmd.Dir = projectDir
+	output, err := cmd.Output()
+	if err == nil {
+		module := strings.TrimSpace(string(output))
+		if module != "" && module != "<nil>" {
+			return module
+		}
+	}
+
+	if info, ok := debug.ReadBuildInfo(); ok {
+		if info.Main.Version != "" && info.Main.Version != "(devel)" {
+			return commonModule + "@" + info.Main.Version
+		}
+		for _, dep := range info.Deps {
+			if dep.Path == commonModule {
+				version := dep.Version
+				if dep.Replace != nil && dep.Replace.Version != "" {
+					version = dep.Replace.Version
+				}
+				if version != "" && version != "(devel)" {
+					return commonModule + "@" + version
+				}
+			}
+		}
+	}
+
+	return commonModule
 }
 
 func ensureTool(toolsPath, toolName string, force, verbose bool) error {
@@ -276,7 +309,7 @@ func maybeBuildCustomGolangCILint(projectDir, toolsPath string, verbose bool) er
 }
 
 func parseCustomGolangCILintVersion(conf string) string {
-	for _, line := range strings.Split(conf, "\n") {
+	for line := range strings.SplitSeq(conf, "\n") {
 		line = strings.TrimSpace(line)
 		if !strings.HasPrefix(line, "version:") {
 			continue
