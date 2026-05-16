@@ -4,7 +4,7 @@ go 1.26.2
 
 require (
 	github.com/aperturerobotics/abseil-cpp v0.0.0-20260131110040-4bb56e2f9017 // indirect; aperture-2
-	github.com/aperturerobotics/common v0.32.7 // latest
+	github.com/aperturerobotics/common v0.33.0 // latest
 	github.com/aperturerobotics/goprotowrap v0.4.1 // latest
 	github.com/aperturerobotics/protobuf v0.0.0-20260203024654-8201686529c4 // indirect; wasi
 	// github.com/aperturerobotics/goscript v0.0.61 // master
@@ -434,7 +434,7 @@ require (
 	github.com/sigstore/sigstore v1.10.5 // indirect
 	github.com/sigstore/sigstore-go v1.1.4 // indirect
 	github.com/sigstore/timestamp-authority/v2 v2.0.6 // indirect
-	github.com/sirupsen/logrus v1.9.5-0.20260309202648-9f0600962f75 // indirect
+	github.com/sirupsen/logrus v1.9.5-0.20260508084601-d4a50659cfd6 // indirect
 	github.com/sivchari/containedctx v1.0.3 // indirect
 	github.com/skeema/knownhosts v1.3.1 // indirect
 	github.com/slack-go/slack v0.22.0 // indirect
@@ -505,7 +505,7 @@ require (
 	golang.org/x/net v0.53.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
-	golang.org/x/sys v0.43.0 // indirect
+	golang.org/x/sys v0.44.0 // indirect
 	golang.org/x/telemetry v0.0.0-20260409153401-be6f6cb8b1fa // indirect
 	golang.org/x/term v0.42.0 // indirect
 	golang.org/x/text v0.36.0 // indirect

@@ -12,16 +12,16 @@ require (
 	github.com/aperturerobotics/protobuf v0.0.0-20260203024654-8201686529c4 // wasi
 	github.com/aperturerobotics/protobuf-go-lite v0.13.0 // latest
 	github.com/aperturerobotics/starpc v0.49.7 // master
-	github.com/aperturerobotics/util v1.34.3 // indirect
+	github.com/aperturerobotics/util v1.34.5 // indirect
 )
 
 require (
 	github.com/libp2p/go-buffer-pool v0.1.0 // indirect
 	github.com/libp2p/go-yamux/v4 v4.0.2 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/sirupsen/logrus v1.9.5-0.20260309202648-9f0600962f75 // indirect
+	github.com/sirupsen/logrus v1.9.5-0.20260508084601-d4a50659cfd6 // indirect
 	github.com/tetratelabs/wazero v1.11.0
 	github.com/xrash/smetrics v0.0.0-20250705151800-55b8f293f342 // indirect
 	golang.org/x/mod v0.35.0
-	golang.org/x/sys v0.43.0 // indirect
+	golang.org/x/sys v0.44.0 // indirect
 )
