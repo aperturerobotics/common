@@ -25,8 +25,7 @@ jobs:
       fail-fast: false
       matrix:
         language: [ 'go', 'javascript' ]
-        go: ['1.25']
-        node: [25.x]
+        go: ['1.26']
         # CodeQL supports [ 'cpp', 'csharp', 'go', 'java', 'javascript', 'python', 'ruby' ]
         # Learn more about CodeQL language support at https://aka.ms/codeql-docs/language-support
 
@@ -39,30 +38,13 @@ jobs:
       with:
         go-version: ${{ matrix.go }}
 
-    - name: Setup Node.JS ${{ matrix.node }}
-      uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-      with:
-        node-version: ${{ matrix.node }}
-        cache: 'yarn'
-
     - name: Initialize CodeQL
-<<<<<<< HEAD
       uses: github/codeql-action/init@95e58e9a2cdfd71adc6e0353d5c52f41a045d225 # v4.35.2
-=======
-      uses: github/codeql-action/init@95e58e9a2cdfd71adc6e0353d5c52f41a045d225 # v4.35.2
->>>>>>> 2f5eb7e (fix(deps): update all dependencies)
       with:
         languages: ${{ matrix.language }}
 
     - name: Autobuild
-<<<<<<< HEAD
       uses: github/codeql-action/autobuild@95e58e9a2cdfd71adc6e0353d5c52f41a045d225 # v4.35.2
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@95e58e9a2cdfd71adc6e0353d5c52f41a045d225 # v4.35.2
-=======
-      uses: github/codeql-action/autobuild@95e58e9a2cdfd71adc6e0353d5c52f41a045d225 # v4.35.2
-
-    - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@95e58e9a2cdfd71adc6e0353d5c52f41a045d225 # v4.35.2
->>>>>>> 2f5eb7e (fix(deps): update all dependencies)
