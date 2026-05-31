@@ -106,20 +106,23 @@ func GetGeneratedFiles(protoFile, projectDir, modulePath string, hasGo, hasTS bo
 	var files []string
 
 	// C++ files are always generated
-	files = append(files,
+	files = append(
+		files,
 		filepath.Join("vendor", modulePath, protoDir, baseName+".pb.cc"),
 		filepath.Join("vendor", modulePath, protoDir, baseName+".pb.h"),
 	)
 
 	if hasGo {
-		files = append(files,
+		files = append(
+			files,
 			filepath.Join("vendor", modulePath, protoDir, baseName+".pb.go"),
 			filepath.Join("vendor", modulePath, protoDir, baseName+"_srpc.pb.go"),
 		)
 	}
 
 	if hasTS {
-		files = append(files,
+		files = append(
+			files,
 			filepath.Join("vendor", modulePath, protoDir, baseName+".pb.ts"),
 			filepath.Join("vendor", modulePath, protoDir, baseName+"_srpc.pb.ts"),
 		)

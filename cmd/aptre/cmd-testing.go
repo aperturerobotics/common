@@ -102,7 +102,8 @@ func runBrowserTest(projectDir, toolsDir string, verbose bool, extraArgs []strin
 	cmd.Dir = projectDir
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Env = append(os.Environ(),
+	cmd.Env = append(
+		os.Environ(),
 		"GOOS=js",
 		"GOARCH=wasm",
 		"GOTOOLCHAIN=local",
