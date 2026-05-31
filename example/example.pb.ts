@@ -3,8 +3,10 @@
 /* eslint-disable */
 
 import { OtherMsg } from './other/other.pb.js'
-import type { MessageType, PartialFieldInfo } from '@aptre/protobuf-es-lite'
-import { createMessageType, ScalarType } from '@aptre/protobuf-es-lite'
+import type { MessageType } from '@aptre/protobuf-es-lite/message'
+import { createMessageType } from '@aptre/protobuf-es-lite/message'
+import { ScalarType } from '@aptre/protobuf-es-lite/scalar'
+import type { PartialFieldInfo } from '@aptre/protobuf-es-lite/field'
 
 export const protobufPackage = 'example'
 
@@ -28,15 +30,15 @@ export interface ExampleMsg {
   otherMsg?: OtherMsg
 }
 
-// ExampleMsg contains the message type declaration for ExampleMsg.
-export const ExampleMsg: MessageType<ExampleMsg> = createMessageType({
-  typeName: 'example.ExampleMsg',
-  fields: [
-    { no: 1, name: 'example_field', kind: 'scalar', T: ScalarType.STRING },
-    { no: 2, name: 'other_msg', kind: 'message', T: () => OtherMsg },
-  ] as readonly PartialFieldInfo[],
-  packedByDefault: true,
-})
+export const ExampleMsg: MessageType<ExampleMsg> =
+  /* @__PURE__ */ createMessageType({
+    typeName: 'example.ExampleMsg',
+    fields: [
+      { no: 1, name: 'example_field', kind: 'scalar', T: ScalarType.STRING },
+      { no: 2, name: 'other_msg', kind: 'message', T: () => OtherMsg },
+    ] satisfies readonly PartialFieldInfo[],
+    packedByDefault: true,
+  })
 
 /**
  * EchoMsg is the message body for Echo.
@@ -50,11 +52,10 @@ export interface EchoMsg {
   body?: string
 }
 
-// EchoMsg contains the message type declaration for EchoMsg.
-export const EchoMsg: MessageType<EchoMsg> = createMessageType({
+export const EchoMsg: MessageType<EchoMsg> = /* @__PURE__ */ createMessageType({
   typeName: 'example.EchoMsg',
   fields: [
     { no: 1, name: 'body', kind: 'scalar', T: ScalarType.STRING },
-  ] as readonly PartialFieldInfo[],
+  ] satisfies readonly PartialFieldInfo[],
   packedByDefault: true,
 })
