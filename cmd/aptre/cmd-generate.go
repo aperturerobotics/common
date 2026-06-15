@@ -48,6 +48,11 @@ var generateCmd = &cli.Command{
 			Usage: "Tools directory path",
 			Value: ".tools",
 		},
+		&cli.StringSliceFlag{
+			Name:    "language",
+			Aliases: []string{"l"},
+			Usage:   "Output language to generate: go, ts, cpp, rust (can be specified multiple times)",
+		},
 		&cli.StringFlag{
 			Name:    "project-dir",
 			Aliases: []string{"C"},
@@ -72,6 +77,9 @@ func runGenerate(c *cli.Context) error {
 	cfg.GoLiteFeatures = c.String("features")
 	cfg.ToolsDir = c.String("tools-dir")
 	cfg.ProjectDir = c.String("project-dir")
+	if c.IsSet("language") {
+		cfg.Languages = c.StringSlice("language")
+	}
 
 	// Extra args are passed through
 	cfg.ExtraArgs = c.Args().Slice()

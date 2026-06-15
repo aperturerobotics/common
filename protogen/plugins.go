@@ -41,6 +41,8 @@ type Plugin struct {
 
 // Plugins holds the configured plugins for a project.
 type Plugins struct {
+	// Languages contains the enabled output languages.
+	Languages Languages
 	// GoLite is the protoc-gen-go-lite plugin.
 	GoLite *Plugin
 	// GoStarpc is the protoc-gen-go-starpc plugin.
@@ -81,9 +83,14 @@ func DiscoverPlugins(cfg *Config) (*Plugins, error) {
 		return nil, err
 	}
 
-	plugins := &Plugins{}
+	langs, err := cfg.GetLanguages()
+	if err != nil {
+		return nil, err
+	}
 
-	if hasGo {
+	plugins := &Plugins{Languages: langs}
+
+	if hasGo && langs.Has(LanguageGo) {
 		// Go plugins from tools bin
 		goLitePath := filepath.Join(toolsBin, "protoc-gen-go-lite")
 		if _, err := os.Stat(goLitePath); err == nil {
@@ -110,7 +117,9 @@ func DiscoverPlugins(cfg *Config) (*Plugins, error) {
 				Options:    map[string]string{},
 			}
 		}
+	}
 
+	if hasGo && langs.Has(LanguageCpp) {
 		cppStarpcPath := filepath.Join(toolsBin, "protoc-gen-starpc-cpp")
 		if _, err := os.Stat(cppStarpcPath); err == nil {
 			plugins.CppStarpc = &Plugin{
@@ -122,7 +131,9 @@ func DiscoverPlugins(cfg *Config) (*Plugins, error) {
 				Options:    map[string]string{},
 			}
 		}
+	}
 
+	if hasGo && langs.Has(LanguageRust) {
 		rustStarpcPath := filepath.Join(toolsBin, "protoc-gen-starpc-rust")
 		if _, err := os.Stat(rustStarpcPath); err == nil {
 			plugins.RustStarpc = &Plugin{
@@ -154,7 +165,7 @@ func DiscoverPlugins(cfg *Config) (*Plugins, error) {
 		}
 	}
 
-	if hasTS {
+	if hasTS && langs.Has(LanguageTypeScript) {
 		// TypeScript plugins from node_modules
 		nodeModules := filepath.Join(projectDir, "node_modules", ".bin")
 
@@ -213,7 +224,9 @@ func (p *Plugins) GetProtocArgs(outDir string) []string {
 	var args []string
 
 	// C++ output (built-in to protoc)
-	args = append(args, fmt.Sprintf("--cpp_out=%s", outDir))
+	if p.Languages.Has(LanguageCpp) {
+		args = append(args, fmt.Sprintf("--cpp_out=%s", outDir))
+	}
 
 	// Go plugins
 	if p.GoLite != nil {

@@ -117,6 +117,9 @@ git add -A
 # Generate all languages
 go run github.com/aperturerobotics/common/cmd/aptre@latest generate
 
+# Generate only Go output
+go run github.com/aperturerobotics/common/cmd/aptre@latest generate --language go
+
 # Or with verbose output
 go run github.com/aperturerobotics/common/cmd/aptre@latest generate --verbose
 ```
@@ -197,9 +200,23 @@ Example:
   "name": "spacewave",
   "private": true,
   "aptre": {
+    "languages": ["go", "ts", "cpp", "rust"],
     "tsImportBoundaries": ["auth", "bldr", "db", "forge", "identity", "net"]
   }
 }
+```
+
+### `aptre.languages`
+
+`languages` selects which output languages to generate. Supported values are
+`go`, `ts`, `cpp`, and `rust`. Omit it to keep the default behavior: generate
+Go, C++, and Rust when the project has a `go.mod`, plus TypeScript when the
+project has a `package.json`.
+
+The CLI flag takes precedence over `package.json`:
+
+```bash
+aptre generate --language go
 ```
 
 ### `aptre.tsImportBoundaries`

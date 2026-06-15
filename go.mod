@@ -18,7 +18,7 @@ require (
 require (
 	github.com/libp2p/go-buffer-pool v0.1.0 // indirect
 	github.com/libp2p/go-yamux/v4 v4.0.2 // indirect
-	github.com/pkg/errors v0.9.1 // indirect
+	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.5-0.20260508084601-d4a50659cfd6 // indirect
 	github.com/tetratelabs/wazero v1.12.0
 	github.com/xrash/smetrics v0.0.0-20250705151800-55b8f293f342 // indirect

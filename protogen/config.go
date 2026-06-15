@@ -40,6 +40,9 @@ type Config struct {
 	ToolsDir string
 	// ExtraArgs contains any additional protoc arguments.
 	ExtraArgs []string
+	// Languages is the opt-in protobuf output language filter.
+	// Empty enables all languages.
+	Languages []string
 	// TsImportBoundaries are module-relative path prefixes where generated
 	// TypeScript protobuf imports should switch to @go/... when crossing
 	// between boundaries.
@@ -51,6 +54,7 @@ type packageJSONConfig struct {
 }
 
 type packageJSONAptreConfig struct {
+	Languages          []string `json:"languages"`
 	TsImportBoundaries []string `json:"tsImportBoundaries"`
 }
 
@@ -180,6 +184,37 @@ func (c *Config) GetTsImportBoundaries() ([]string, error) {
 		return nil, nil
 	}
 	return packageJSON.Aptre.TsImportBoundaries, nil
+}
+
+// GetLanguages returns configured output languages.
+// Explicit config takes precedence; otherwise reads package.json aptre config.
+func (c *Config) GetLanguages() (Languages, error) {
+	if len(c.Languages) != 0 {
+		return NewLanguages(c.Languages)
+	}
+
+	projectDir, err := c.GetProjectDir()
+	if err != nil {
+		return nil, err
+	}
+
+	packageJSONPath := filepath.Join(projectDir, "package.json")
+	data, err := os.ReadFile(packageJSONPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return NewLanguages(nil)
+		}
+		return nil, err
+	}
+
+	var packageJSON packageJSONConfig
+	if err := json.Unmarshal(data, &packageJSON); err != nil {
+		return nil, err
+	}
+	if packageJSON.Aptre == nil {
+		return NewLanguages(nil)
+	}
+	return NewLanguages(packageJSON.Aptre.Languages)
 }
 
 // FindModuleDir finds the nearest ancestor directory containing go.mod.
