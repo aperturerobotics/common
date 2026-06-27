@@ -105,6 +105,68 @@ func TestDiscoverPluginsGoLanguageOnly(t *testing.T) {
 	}
 }
 
+func TestDiscoverPluginsGoLanguageNoRPC(t *testing.T) {
+	t.Helper()
+
+	projectDir := newPluginTestProject(t, true)
+	cfg := NewConfig()
+	cfg.ProjectDir = projectDir
+	cfg.Languages = []string{"go"}
+	cfg.RPCLibraries = []string{"none"}
+
+	plugins, err := DiscoverPlugins(cfg)
+	if err != nil {
+		t.Fatalf("discover plugins: %v", err)
+	}
+	if plugins.GoLite == nil {
+		t.Fatal("expected go-lite plugin")
+	}
+	if plugins.GoStarpc != nil {
+		t.Fatal("expected no go-starpc plugin")
+	}
+
+	args := plugins.GetProtocArgs("/out")
+	if !slices.Contains(args, "--go-lite_out=/out") {
+		t.Fatalf("expected go-lite protoc arg in %v", args)
+	}
+	for _, arg := range args {
+		if strings.Contains(arg, "starpc") {
+			t.Fatalf("expected no StarPC args, got %v", args)
+		}
+	}
+}
+
+func TestDiscoverPluginsRustLanguageNoRPC(t *testing.T) {
+	t.Helper()
+
+	projectDir := newPluginTestProject(t, true)
+	cfg := NewConfig()
+	cfg.ProjectDir = projectDir
+	cfg.Languages = []string{"rust"}
+	cfg.RPCLibraries = []string{"false"}
+
+	plugins, err := DiscoverPlugins(cfg)
+	if err != nil {
+		t.Fatalf("discover plugins: %v", err)
+	}
+	if plugins.RustProst == nil {
+		t.Fatal("expected prost plugin")
+	}
+	if plugins.RustStarpc != nil {
+		t.Fatal("expected no rust starpc plugin")
+	}
+
+	args := plugins.GetProtocArgs("/out")
+	if !slices.Contains(args, "--prost_out=/out") {
+		t.Fatalf("expected prost protoc arg in %v", args)
+	}
+	for _, arg := range args {
+		if strings.Contains(arg, "starpc") {
+			t.Fatalf("expected no StarPC args, got %v", args)
+		}
+	}
+}
+
 func TestDiscoverPluginsLanguagePresenceGate(t *testing.T) {
 	t.Helper()
 

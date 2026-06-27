@@ -142,6 +142,90 @@ func TestConfigGetLanguagesExplicitTakesPrecedence(t *testing.T) {
 	}
 }
 
+func TestConfigGetRPCLibrariesFromPackageJSON(t *testing.T) {
+	t.Helper()
+
+	tmpDir := t.TempDir()
+	packageJSON := []byte(`{
+  "name": "spacewave",
+  "aptre": {
+    "rpc": ["none"]
+  }
+}`)
+	if err := os.WriteFile(filepath.Join(tmpDir, "package.json"), packageJSON, 0o644); err != nil {
+		t.Fatalf("write package.json: %v", err)
+	}
+
+	cfg := NewConfig()
+	cfg.ProjectDir = tmpDir
+
+	rpcs, err := cfg.GetRPCLibraries()
+	if err != nil {
+		t.Fatalf("get RPC libraries: %v", err)
+	}
+	if rpcs.Has(RPCLibraryStarpc) {
+		t.Fatal("expected starpc RPC generation to be disabled")
+	}
+}
+
+func TestConfigGetRPCLibrariesExplicitTakesPrecedence(t *testing.T) {
+	t.Helper()
+
+	tmpDir := t.TempDir()
+	packageJSON := []byte(`{
+  "name": "spacewave",
+  "aptre": {
+    "rpc": ["none"]
+  }
+}`)
+	if err := os.WriteFile(filepath.Join(tmpDir, "package.json"), packageJSON, 0o644); err != nil {
+		t.Fatalf("write package.json: %v", err)
+	}
+
+	cfg := NewConfig()
+	cfg.ProjectDir = tmpDir
+	cfg.RPCLibraries = []string{"starpc"}
+
+	rpcs, err := cfg.GetRPCLibraries()
+	if err != nil {
+		t.Fatalf("get RPC libraries: %v", err)
+	}
+	if !rpcs.Has(RPCLibraryStarpc) {
+		t.Fatal("expected explicit starpc RPC generation to be enabled")
+	}
+}
+
+func TestConfigGetRPCLibrariesDefaultStarpc(t *testing.T) {
+	t.Helper()
+
+	cfg := NewConfig()
+	cfg.ProjectDir = t.TempDir()
+
+	rpcs, err := cfg.GetRPCLibraries()
+	if err != nil {
+		t.Fatalf("get RPC libraries: %v", err)
+	}
+	if !rpcs.Has(RPCLibraryStarpc) {
+		t.Fatal("expected starpc RPC generation to be enabled by default")
+	}
+}
+
+func TestConfigGetRPCLibrariesFalseAlias(t *testing.T) {
+	t.Helper()
+
+	cfg := NewConfig()
+	cfg.ProjectDir = t.TempDir()
+	cfg.RPCLibraries = []string{"false"}
+
+	rpcs, err := cfg.GetRPCLibraries()
+	if err != nil {
+		t.Fatalf("get RPC libraries: %v", err)
+	}
+	if rpcs.Has(RPCLibraryStarpc) {
+		t.Fatal("expected false to disable RPC generation")
+	}
+}
+
 func TestConfigGetLanguagesDefaultAll(t *testing.T) {
 	t.Helper()
 

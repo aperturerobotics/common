@@ -43,6 +43,8 @@ type Plugin struct {
 type Plugins struct {
 	// Languages contains the enabled output languages.
 	Languages Languages
+	// RPCLibraries contains the enabled RPC stub generators.
+	RPCLibraries RPCLibraries
 	// GoLite is the protoc-gen-go-lite plugin.
 	GoLite *Plugin
 	// GoStarpc is the protoc-gen-go-starpc plugin.
@@ -87,8 +89,12 @@ func DiscoverPlugins(cfg *Config) (*Plugins, error) {
 	if err != nil {
 		return nil, err
 	}
+	rpcs, err := cfg.GetRPCLibraries()
+	if err != nil {
+		return nil, err
+	}
 
-	plugins := &Plugins{Languages: langs}
+	plugins := &Plugins{Languages: langs, RPCLibraries: rpcs}
 
 	if hasGo && langs.Has(LanguageGo) {
 		// Go plugins from tools bin
@@ -106,20 +112,22 @@ func DiscoverPlugins(cfg *Config) (*Plugins, error) {
 			}
 		}
 
-		goStarpcPath := filepath.Join(toolsBin, "protoc-gen-go-starpc")
-		if _, err := os.Stat(goStarpcPath); err == nil {
-			plugins.GoStarpc = &Plugin{
-				Name:       "go-starpc",
-				BinaryName: "protoc-gen-go-starpc",
-				Path:       goStarpcPath,
-				Type:       PluginTypeGo,
-				OutFlag:    "go-starpc_out",
-				Options:    map[string]string{},
+		if rpcs.Has(RPCLibraryStarpc) {
+			goStarpcPath := filepath.Join(toolsBin, "protoc-gen-go-starpc")
+			if _, err := os.Stat(goStarpcPath); err == nil {
+				plugins.GoStarpc = &Plugin{
+					Name:       "go-starpc",
+					BinaryName: "protoc-gen-go-starpc",
+					Path:       goStarpcPath,
+					Type:       PluginTypeGo,
+					OutFlag:    "go-starpc_out",
+					Options:    map[string]string{},
+				}
 			}
 		}
 	}
 
-	if hasGo && langs.Has(LanguageCpp) {
+	if hasGo && langs.Has(LanguageCpp) && rpcs.Has(RPCLibraryStarpc) {
 		cppStarpcPath := filepath.Join(toolsBin, "protoc-gen-starpc-cpp")
 		if _, err := os.Stat(cppStarpcPath); err == nil {
 			plugins.CppStarpc = &Plugin{
@@ -134,15 +142,17 @@ func DiscoverPlugins(cfg *Config) (*Plugins, error) {
 	}
 
 	if hasGo && langs.Has(LanguageRust) {
-		rustStarpcPath := filepath.Join(toolsBin, "protoc-gen-starpc-rust")
-		if _, err := os.Stat(rustStarpcPath); err == nil {
-			plugins.RustStarpc = &Plugin{
-				Name:       "starpc-rust",
-				BinaryName: "protoc-gen-starpc-rust",
-				Path:       rustStarpcPath,
-				Type:       PluginTypeRust,
-				OutFlag:    "starpc-rust_out",
-				Options:    map[string]string{},
+		if rpcs.Has(RPCLibraryStarpc) {
+			rustStarpcPath := filepath.Join(toolsBin, "protoc-gen-starpc-rust")
+			if _, err := os.Stat(rustStarpcPath); err == nil {
+				plugins.RustStarpc = &Plugin{
+					Name:       "starpc-rust",
+					BinaryName: "protoc-gen-starpc-rust",
+					Path:       rustStarpcPath,
+					Type:       PluginTypeRust,
+					OutFlag:    "starpc-rust_out",
+					Options:    map[string]string{},
+				}
 			}
 		}
 
@@ -184,18 +194,20 @@ func DiscoverPlugins(cfg *Config) (*Plugins, error) {
 			}
 		}
 
-		esStarpcPath := filepath.Join(nodeModules, "protoc-gen-es-starpc")
-		if _, err := os.Stat(esStarpcPath); err == nil {
-			plugins.ESStarpc = &Plugin{
-				Name:       "es-starpc",
-				BinaryName: "protoc-gen-es-starpc",
-				Path:       esStarpcPath,
-				Type:       PluginTypeTypeScript,
-				OutFlag:    "es-starpc_out",
-				Options: map[string]string{
-					"target":     "ts",
-					"ts_nocheck": "false",
-				},
+		if rpcs.Has(RPCLibraryStarpc) {
+			esStarpcPath := filepath.Join(nodeModules, "protoc-gen-es-starpc")
+			if _, err := os.Stat(esStarpcPath); err == nil {
+				plugins.ESStarpc = &Plugin{
+					Name:       "es-starpc",
+					BinaryName: "protoc-gen-es-starpc",
+					Path:       esStarpcPath,
+					Type:       PluginTypeTypeScript,
+					OutFlag:    "es-starpc_out",
+					Options: map[string]string{
+						"target":     "ts",
+						"ts_nocheck": "false",
+					},
+				}
 			}
 		}
 	}

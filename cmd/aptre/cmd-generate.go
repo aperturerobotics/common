@@ -53,6 +53,10 @@ var generateCmd = &cli.Command{
 			Aliases: []string{"l"},
 			Usage:   "Output language to generate: go, ts, cpp, rust (can be specified multiple times)",
 		},
+		&cli.StringSliceFlag{
+			Name:  "rpc",
+			Usage: "RPC stub libraries to generate: starpc, none, false (can be specified multiple times)",
+		},
 		&cli.StringFlag{
 			Name:    "project-dir",
 			Aliases: []string{"C"},
@@ -79,6 +83,9 @@ func runGenerate(c *cli.Context) error {
 	cfg.ProjectDir = c.String("project-dir")
 	if c.IsSet("language") {
 		cfg.Languages = c.StringSlice("language")
+	}
+	if c.IsSet("rpc") {
+		cfg.RPCLibraries = c.StringSlice("rpc")
 	}
 
 	// Extra args are passed through

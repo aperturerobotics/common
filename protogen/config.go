@@ -43,6 +43,9 @@ type Config struct {
 	// Languages is the opt-in protobuf output language filter.
 	// Empty enables all languages.
 	Languages []string
+	// RPCLibraries is the opt-in RPC stub generator filter.
+	// Empty enables the default RPC library set.
+	RPCLibraries []string
 	// TsImportBoundaries are module-relative path prefixes where generated
 	// TypeScript protobuf imports should switch to @go/... when crossing
 	// between boundaries.
@@ -55,6 +58,7 @@ type packageJSONConfig struct {
 
 type packageJSONAptreConfig struct {
 	Languages          []string `json:"languages"`
+	RPCLibraries       []string `json:"rpc"`
 	TsImportBoundaries []string `json:"tsImportBoundaries"`
 }
 
@@ -215,6 +219,37 @@ func (c *Config) GetLanguages() (Languages, error) {
 		return NewLanguages(nil)
 	}
 	return NewLanguages(packageJSON.Aptre.Languages)
+}
+
+// GetRPCLibraries returns configured RPC generators.
+// Explicit config takes precedence; otherwise reads package.json aptre config.
+func (c *Config) GetRPCLibraries() (RPCLibraries, error) {
+	if len(c.RPCLibraries) != 0 {
+		return NewRPCLibraries(c.RPCLibraries)
+	}
+
+	projectDir, err := c.GetProjectDir()
+	if err != nil {
+		return nil, err
+	}
+
+	packageJSONPath := filepath.Join(projectDir, "package.json")
+	data, err := os.ReadFile(packageJSONPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return NewRPCLibraries(nil)
+		}
+		return nil, err
+	}
+
+	var packageJSON packageJSONConfig
+	if err := json.Unmarshal(data, &packageJSON); err != nil {
+		return nil, err
+	}
+	if packageJSON.Aptre == nil {
+		return NewRPCLibraries(nil)
+	}
+	return NewRPCLibraries(packageJSON.Aptre.RPCLibraries)
 }
 
 // FindModuleDir finds the nearest ancestor directory containing go.mod.
