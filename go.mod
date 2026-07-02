@@ -8,9 +8,9 @@ require (
 	github.com/aperturerobotics/go-protoc-gen-prost v0.0.0-20260329113538-218ccd8f20e0 // master
 	github.com/aperturerobotics/go-protoc-wasi v0.0.0-20260329113540-600516012db3 // master
 	github.com/aperturerobotics/go-websocket v1.8.15-0.20260329113544-74dbfb8f11c6 // indirect
-	github.com/aperturerobotics/json-iterator-lite v1.0.1-0.20251104042408-0c9eb8a3f726 // indirect
+	github.com/aperturerobotics/json-iterator-lite v1.1.0 // indirect
 	github.com/aperturerobotics/protobuf v0.0.0-20260203024654-8201686529c4 // wasi
-	github.com/aperturerobotics/protobuf-go-lite v0.14.0 // latest
+	github.com/aperturerobotics/protobuf-go-lite v0.15.0 // latest
 	github.com/aperturerobotics/starpc v0.49.18 // master
 	github.com/aperturerobotics/util v1.34.5 // indirect
 )
