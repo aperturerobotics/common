@@ -492,17 +492,17 @@ func (g *Generator) formatGeneratedFiles(protoFiles []string) error {
 		}
 	}
 
-	// Format TypeScript files with prettier
+	// Format TypeScript files with oxfmt
 	if len(tsFiles) > 0 {
-		prettierConfig := filepath.Join(g.ProjectDir, g.Config.ToolsDir, ".prettierrc.yaml")
-		if _, err := os.Stat(prettierConfig); err == nil {
-			args := []string{"--config", prettierConfig, "-w"}
+		oxfmtConfig := filepath.Join(g.ProjectDir, g.Config.ToolsDir, ".oxfmtrc.json")
+		if _, err := os.Stat(oxfmtConfig); err == nil {
+			args := []string{"-c", oxfmtConfig}
 			args = append(args, tsFiles...)
-			cmd := exec.Command("prettier", args...)
+			cmd := exec.Command("oxfmt", args...)
 			cmd.Dir = g.ProjectDir
 			cmd.Stdout = g.Stdout
 			cmd.Stderr = g.Stderr
-			_ = cmd.Run() // Ignore prettier errors
+			_ = cmd.Run() // Ignore oxfmt errors
 		}
 	}
 

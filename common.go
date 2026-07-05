@@ -18,7 +18,7 @@ import (
 
 // CommonFiles contains the set of embedded common files.
 //
-//go:embed tsconfig.json eslint.config.js .gitignore
+//go:embed tsconfig.json .oxlintrc.json .gitignore
 var CommonFiles embed.FS
 
 // ExtractCommonFiles copies the contents of CommonFiles to the given output path.
@@ -31,7 +31,7 @@ func ExtractCommonFiles(outputPath string) error {
 // We copy some files to use for the tools so that they are not interpeted as a separate go module.
 //
 //go:generate bash embed.bash
-//go:embed deps.go.tools go.mod.tools go.sum.tools .prettierrc.yaml
+//go:embed deps.go.tools go.mod.tools go.sum.tools .oxfmtrc.json
 var ToolsFiles embed.FS
 
 // ExtractToolsFiles copies the contents of ToolsFiles to the given output path.
