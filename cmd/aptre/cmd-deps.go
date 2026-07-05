@@ -129,7 +129,12 @@ func ensureToolsDir(projectDir, toolsPath string, verbose bool) error {
 	}
 
 	commonPackage := resolveCommonPackage(projectDir)
-	cmd := exec.Command("go", "run", "-v", commonPackage, relToolsPath)
+	// Extracting the tools directory builds common's main package, which imports
+	// C++ embed packages (abseil-cpp, protobuf) that the caller's module may lack
+	// go.sum entries for. Pass -mod=mod so setup resolves them under a readonly
+	// ambient default (CI, direct binary) instead of relying on the go:aptre
+	// wrapper to set GOFLAGS.
+	cmd := exec.Command("go", "run", "-mod=mod", "-v", commonPackage, relToolsPath)
 	cmd.Dir = projectDir
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
