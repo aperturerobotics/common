@@ -267,7 +267,7 @@ func (g *Generator) Generate(ctx context.Context) error {
 func (g *Generator) setupProjectSymlinks() error {
 	for _, modulePath := range []string{
 		g.ModulePath,
-		strings.ReplaceAll(g.ModulePath, ".", string(filepath.Separator)),
+		pythonModulePath(g.ModulePath),
 	} {
 		symlinkPath := filepath.Join(g.VendorDir, modulePath)
 		if err := os.MkdirAll(filepath.Dir(symlinkPath), 0o755); err != nil {
@@ -287,10 +287,16 @@ func (g *Generator) setupProjectSymlinks() error {
 func (g *Generator) cleanupProjectSymlinks() {
 	for _, modulePath := range []string{
 		g.ModulePath,
-		strings.ReplaceAll(g.ModulePath, ".", string(filepath.Separator)),
+		pythonModulePath(g.ModulePath),
 	} {
 		_ = os.Remove(filepath.Join(g.VendorDir, modulePath))
 	}
+}
+
+// pythonModulePath matches protoc's Python filename normalization.
+func pythonModulePath(modulePath string) string {
+	modulePath = strings.ReplaceAll(modulePath, ".", string(filepath.Separator))
+	return strings.ReplaceAll(modulePath, "-", "_")
 }
 
 // buildProtocArgs builds the protoc command arguments.

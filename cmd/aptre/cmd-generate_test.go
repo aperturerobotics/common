@@ -146,7 +146,7 @@ func TestGenerateCSharpAndPython(t *testing.T) {
 	t.Helper()
 
 	projectDir := t.TempDir()
-	goMod := []byte("module example.com/scratch\n\ngo 1.25.0\n")
+	goMod := []byte("module example.com/play-scratch\n\ngo 1.25.0\n")
 	if err := os.WriteFile(filepath.Join(projectDir, "go.mod"), goMod, 0o644); err != nil {
 		t.Fatalf("write go.mod: %v", err)
 	}
