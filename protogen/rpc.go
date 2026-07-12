@@ -25,7 +25,7 @@ func NewRPCLibraries(names []string) (RPCLibraries, error) {
 
 	libs := make(RPCLibraries)
 	for _, raw := range names {
-		for _, field := range strings.Split(raw, ",") {
+		for field := range strings.SplitSeq(raw, ",") {
 			name := strings.TrimSpace(field)
 			if name == "" {
 				continue

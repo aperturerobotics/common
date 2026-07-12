@@ -131,63 +131,102 @@ func GetGeneratedFiles(protoFile, projectDir, modulePath string, hasGo, hasTS bo
 	return files
 }
 
-// FindGeneratedFilesForProto finds actual generated files for a proto file using glob.
-func FindGeneratedFilesForProto(protoFile, projectDir, vendorDir, modulePath string) ([]string, error) {
+// FindGeneratedFilesForProto finds actual enabled outputs for a proto file.
+func FindGeneratedFilesForProto(protoFile, projectDir, vendorDir, modulePath string, langs Languages) ([]string, error) {
 	protoDir := filepath.Dir(protoFile)
 	baseName := strings.TrimSuffix(filepath.Base(protoFile), ".proto")
 
-	// Search in local proto directory first (preferred location)
-	localPattern := filepath.Join(projectDir, protoDir, baseName+"*.pb.*")
-	localMatches, err := filepath.Glob(localPattern)
-	if err != nil {
-		return nil, err
-	}
-
-	// Also check vendor symlink path
-	searchDir := filepath.Join(vendorDir, modulePath, protoDir)
-	vendorMatches, err := filepath.Glob(filepath.Join(searchDir, baseName+"*.pb.*"))
-	if err != nil {
-		return nil, err
-	}
-
-	// Deduplicate by resolving to real paths
-	// Prefer non-vendor paths over vendor paths (they may be symlinked to the same file)
-	seen := make(map[string]string) // realPath -> relativePath
-
-	// Process local matches first (preferred)
-	for _, m := range localMatches {
-		rel, err := filepath.Rel(projectDir, m)
-		if err != nil {
-			rel = m
-		}
-		realPath, err := filepath.EvalSymlinks(m)
-		if err != nil {
-			realPath = m
-		}
-		seen[realPath] = rel
-	}
-
-	// Process vendor matches, only add if not already seen
-	for _, m := range vendorMatches {
-		realPath, err := filepath.EvalSymlinks(m)
-		if err != nil {
-			realPath = m
-		}
-		if _, exists := seen[realPath]; !exists {
-			rel, err := filepath.Rel(projectDir, m)
-			if err != nil {
-				rel = m
+	var csharpBase strings.Builder
+	capNext := true
+	for i := range len(baseName) {
+		c := baseName[i]
+		switch {
+		case c >= 'a' && c <= 'z':
+			if capNext {
+				c -= 'a' - 'A'
 			}
-			seen[realPath] = rel
+			csharpBase.WriteByte(c)
+			capNext = false
+		case c >= 'A' && c <= 'Z':
+			csharpBase.WriteByte(c)
+			capNext = false
+		case c >= '0' && c <= '9':
+			csharpBase.WriteByte(c)
+			capNext = true
+		default:
+			capNext = true
+		}
+	}
+	csharpFile := csharpBase.String()
+	if csharpFile != "" && csharpFile[0] >= '0' && csharpFile[0] <= '9' &&
+		strings.HasPrefix(baseName, "_") {
+		csharpFile = "_" + csharpFile
+	}
+
+	var relativePatterns []string
+	if langs.Has(LanguageCpp) {
+		relativePatterns = append(relativePatterns, baseName+".pb.cc", baseName+".pb.h")
+	}
+	if langs.Has(LanguageGo) {
+		relativePatterns = append(relativePatterns, baseName+"*.pb.go")
+	}
+	if langs.Has(LanguageTypeScript) {
+		relativePatterns = append(relativePatterns, baseName+"*.pb.ts")
+	}
+	if langs.Has(LanguageRust) {
+		relativePatterns = append(relativePatterns, baseName+"*.pb.rs")
+	}
+	if langs.Has(LanguagePython) {
+		relativePatterns = append(relativePatterns, baseName+"_pb2.py", baseName+"_pb2.pyi")
+	}
+
+	searches := []struct {
+		dir      string
+		patterns []string
+	}{
+		{dir: filepath.Join(projectDir, protoDir), patterns: relativePatterns},
+		{dir: filepath.Join(vendorDir, modulePath, protoDir), patterns: relativePatterns},
+	}
+	if langs.Has(LanguageCSharp) {
+		searches = append(searches, struct {
+			dir      string
+			patterns []string
+		}{
+			dir:      projectDir,
+			patterns: []string{csharpFile + ".cs"},
+		})
+	}
+
+	// Deduplicate by resolving to real paths. Prefer project-local paths over
+	// their vendor-symlink aliases.
+	seen := make(map[string]string)
+	for _, search := range searches {
+		for _, pattern := range search.patterns {
+			matches, err := filepath.Glob(filepath.Join(search.dir, pattern))
+			if err != nil {
+				return nil, err
+			}
+			for _, match := range matches {
+				realPath, err := filepath.EvalSymlinks(match)
+				if err != nil {
+					realPath = match
+				}
+				if _, exists := seen[realPath]; exists {
+					continue
+				}
+				rel, err := filepath.Rel(projectDir, match)
+				if err != nil {
+					rel = match
+				}
+				seen[realPath] = rel
+			}
 		}
 	}
 
-	// Collect results and sort for deterministic output.
 	relPaths := make([]string, 0, len(seen))
 	for _, rel := range seen {
 		relPaths = append(relPaths, rel)
 	}
 	slices.Sort(relPaths)
-
 	return relPaths, nil
 }

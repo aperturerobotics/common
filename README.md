@@ -207,9 +207,9 @@ Example:
 ### `aptre.languages`
 
 `languages` selects which output languages to generate. Supported values are
-`go`, `ts`, `cpp`, and `rust`. Omit it to keep the default behavior: generate
-Go, C++, and Rust when the project has a `go.mod`, plus TypeScript when the
-project has a `package.json`.
+`go`, `ts`, `cpp`, `rust`, `csharp`, and `python`. C# and Python are opt-in.
+Omit `languages` to preserve the existing default: generate Go, C++, and Rust
+when the project has a `go.mod`, plus TypeScript when it has a `package.json`.
 
 The CLI flag takes precedence over `package.json`:
 

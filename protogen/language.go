@@ -14,6 +14,10 @@ const (
 	LanguageCpp Language = "cpp"
 	// LanguageRust enables Rust protobuf outputs.
 	LanguageRust Language = "rust"
+	// LanguageCSharp enables C# protobuf outputs.
+	LanguageCSharp Language = "csharp"
+	// LanguagePython enables Python protobuf outputs.
+	LanguagePython Language = "python"
 )
 
 // Languages contains the enabled protobuf output languages.
@@ -35,7 +39,7 @@ func NewLanguages(names []string) (Languages, error) {
 	for _, name := range names {
 		lang := Language(name)
 		switch lang {
-		case LanguageGo, LanguageTypeScript, LanguageCpp, LanguageRust:
+		case LanguageGo, LanguageTypeScript, LanguageCpp, LanguageRust, LanguageCSharp, LanguagePython:
 			langs[lang] = struct{}{}
 		default:
 			return nil, errors.Errorf("unknown output language %q", name)

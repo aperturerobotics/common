@@ -103,11 +103,10 @@ func NewGenerator(cfg *Config) (*Generator, error) {
 
 // Generate runs the proto generation.
 func (g *Generator) Generate(ctx context.Context) error {
-	// Set up vendor symlink
-	if err := g.setupVendorSymlink(); err != nil {
-		return fmt.Errorf("failed to setup vendor symlink: %w", err)
+	defer g.cleanupProjectSymlinks()
+	if err := g.setupProjectSymlinks(); err != nil {
+		return fmt.Errorf("failed to setup project symlinks: %w", err)
 	}
-	defer g.cleanupVendorSymlink()
 
 	// Discover proto files
 	protoFiles, err := DiscoverProtoFiles(g.ProjectDir, g.Config.Targets, g.Config.Exclude)
@@ -132,7 +131,6 @@ func (g *Generator) Generate(ctx context.Context) error {
 
 	// Build protoc arguments
 	protocArgs := g.buildProtocArgs()
-	g.Cache.SetProtocFlags(protocArgs)
 	flagsHash := hashStrings(protocArgs)
 
 	// Group proto files by directory for cache tracking
@@ -222,13 +220,23 @@ func (g *Generator) Generate(ctx context.Context) error {
 			packageKey := GetPackageKey(g.ModulePath, files[0])
 			var generatedFiles []string
 			for _, f := range files {
-				gf, err := FindGeneratedFilesForProto(f, g.ProjectDir, g.VendorDir, g.ModulePath)
+				gf, err := FindGeneratedFilesForProto(f, g.ProjectDir, g.VendorDir, g.ModulePath, g.Plugins.Languages)
 				if err != nil {
 					return fmt.Errorf("failed to find generated files for %s: %w", f, err)
 				}
 				generatedFiles = append(generatedFiles, gf...)
 			}
 
+			if previous := g.Cache.Packages[packageKey]; previous != nil {
+				for _, old := range previous.GeneratedFiles {
+					if slices.Contains(generatedFiles, old) {
+						continue
+					}
+					if err := os.Remove(filepath.Join(g.ProjectDir, old)); err != nil && !os.IsNotExist(err) {
+						return fmt.Errorf("failed to remove stale generated file %s: %w", old, err)
+					}
+				}
+			}
 			if err := g.Cache.UpdatePackage(packageKey, files, generatedFiles, g.ProjectDir); err != nil {
 				return fmt.Errorf("failed to update cache for %s: %w", dir, err)
 			}
@@ -238,6 +246,7 @@ func (g *Generator) Generate(ctx context.Context) error {
 	// Clean orphaned packages from cache
 	g.Cache.CleanOrphanedPackages(currentPackages)
 
+	g.Cache.SetProtocFlags(protocArgs)
 	// Save cache
 	cacheFile, _ := g.Config.GetCacheFilePath()
 	if err := g.Cache.Save(cacheFile); err != nil {
@@ -254,26 +263,34 @@ func (g *Generator) Generate(ctx context.Context) error {
 	return nil
 }
 
-// setupVendorSymlink creates a symlink from vendor/MODULE to the project dir.
-func (g *Generator) setupVendorSymlink() error {
-	// Ensure vendor directory exists
-	vendorModuleDir := filepath.Join(g.VendorDir, filepath.Dir(g.ModulePath))
-	if err := os.MkdirAll(vendorModuleDir, 0o755); err != nil {
-		return err
+// setupProjectSymlinks maps protoc's native and Python module paths to the project.
+func (g *Generator) setupProjectSymlinks() error {
+	for _, modulePath := range []string{
+		g.ModulePath,
+		strings.ReplaceAll(g.ModulePath, ".", string(filepath.Separator)),
+	} {
+		symlinkPath := filepath.Join(g.VendorDir, modulePath)
+		if err := os.MkdirAll(filepath.Dir(symlinkPath), 0o755); err != nil {
+			return err
+		}
+		if err := os.Remove(symlinkPath); err != nil && !os.IsNotExist(err) {
+			return err
+		}
+		if err := os.Symlink(g.ProjectDir, symlinkPath); err != nil {
+			return err
+		}
 	}
-
-	// Remove existing symlink
-	symlinkPath := filepath.Join(g.VendorDir, g.ModulePath)
-	_ = os.Remove(symlinkPath)
-
-	// Create symlink
-	return os.Symlink(g.ProjectDir, symlinkPath)
+	return nil
 }
 
-// cleanupVendorSymlink removes the vendor symlink.
-func (g *Generator) cleanupVendorSymlink() {
-	symlinkPath := filepath.Join(g.VendorDir, g.ModulePath)
-	_ = os.Remove(symlinkPath)
+// cleanupProjectSymlinks removes the temporary protoc output mappings.
+func (g *Generator) cleanupProjectSymlinks() {
+	for _, modulePath := range []string{
+		g.ModulePath,
+		strings.ReplaceAll(g.ModulePath, ".", string(filepath.Separator)),
+	} {
+		_ = os.Remove(filepath.Join(g.VendorDir, modulePath))
+	}
 }
 
 // buildProtocArgs builds the protoc command arguments.
@@ -291,8 +308,8 @@ func (g *Generator) buildProtocArgs() []string {
 		args = append(args, "-I", protobufSrcDir)
 	}
 
-	// Plugin arguments
-	args = append(args, g.Plugins.GetProtocArgs(g.OutDir)...)
+	// Output and plugin arguments
+	args = append(args, g.Plugins.GetProtocArgs(g.OutDir, g.ProjectDir)...)
 
 	// Extra arguments from config
 	args = append(args, g.Config.ExtraArgs...)
@@ -438,7 +455,7 @@ func (g *Generator) formatGeneratedFiles(protoFiles []string) error {
 	var goFiles, tsFiles []string
 
 	for _, f := range protoFiles {
-		gf, err := FindGeneratedFilesForProto(f, g.ProjectDir, g.VendorDir, g.ModulePath)
+		gf, err := FindGeneratedFilesForProto(f, g.ProjectDir, g.VendorDir, g.ModulePath, g.Plugins.Languages)
 		if err != nil {
 			continue
 		}

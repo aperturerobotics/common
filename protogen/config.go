@@ -41,7 +41,7 @@ type Config struct {
 	// ExtraArgs contains any additional protoc arguments.
 	ExtraArgs []string
 	// Languages is the opt-in protobuf output language filter.
-	// Empty enables all languages.
+	// Empty preserves the Go, TypeScript, C++, and Rust defaults.
 	Languages []string
 	// RPCLibraries is the opt-in RPC stub generator filter.
 	// Empty enables the default RPC library set.

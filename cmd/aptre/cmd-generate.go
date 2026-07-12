@@ -51,7 +51,7 @@ var generateCmd = &cli.Command{
 		&cli.StringSliceFlag{
 			Name:    "language",
 			Aliases: []string{"l"},
-			Usage:   "Output language to generate: go, ts, cpp, rust (can be specified multiple times)",
+			Usage:   "Output language to generate: go, ts, cpp, rust, csharp, python (can be specified multiple times)",
 		},
 		&cli.StringSliceFlag{
 			Name:  "rpc",

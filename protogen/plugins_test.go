@@ -41,7 +41,7 @@ func TestDiscoverPluginsDefaultAllLanguages(t *testing.T) {
 		t.Fatal("expected starpc-rust plugin")
 	}
 
-	args := plugins.GetProtocArgs("/out")
+	args := plugins.GetProtocArgs("/out", "/csharp")
 	for _, want := range []string{
 		"--cpp_out=/out",
 		"--go-lite_out=/out",
@@ -54,6 +54,11 @@ func TestDiscoverPluginsDefaultAllLanguages(t *testing.T) {
 	} {
 		if !slices.Contains(args, want) {
 			t.Fatalf("expected protoc arg %q in %v", want, args)
+		}
+	}
+	for _, unwanted := range []string{"--csharp_out=/out", "--python_out=/out"} {
+		if slices.Contains(args, unwanted) {
+			t.Fatalf("default language set unexpectedly contains %q in %v", unwanted, args)
 		}
 	}
 }
@@ -86,7 +91,7 @@ func TestDiscoverPluginsGoLanguageOnly(t *testing.T) {
 		t.Fatal("expected no Rust plugins")
 	}
 
-	args := plugins.GetProtocArgs("/out")
+	args := plugins.GetProtocArgs("/out", "/csharp")
 	for _, arg := range args {
 		if strings.Contains(arg, "cpp") {
 			t.Fatalf("expected no C++ args, got %v", args)
@@ -125,7 +130,7 @@ func TestDiscoverPluginsGoLanguageNoRPC(t *testing.T) {
 		t.Fatal("expected no go-starpc plugin")
 	}
 
-	args := plugins.GetProtocArgs("/out")
+	args := plugins.GetProtocArgs("/out", "/csharp")
 	if !slices.Contains(args, "--go-lite_out=/out") {
 		t.Fatalf("expected go-lite protoc arg in %v", args)
 	}
@@ -156,7 +161,7 @@ func TestDiscoverPluginsRustLanguageNoRPC(t *testing.T) {
 		t.Fatal("expected no rust starpc plugin")
 	}
 
-	args := plugins.GetProtocArgs("/out")
+	args := plugins.GetProtocArgs("/out", "/csharp")
 	if !slices.Contains(args, "--prost_out=/out") {
 		t.Fatalf("expected prost protoc arg in %v", args)
 	}
@@ -191,8 +196,26 @@ func TestDiscoverPluginsLanguagePresenceGate(t *testing.T) {
 	if plugins.RustProst != nil || plugins.RustStarpc != nil {
 		t.Fatal("expected no Rust plugins")
 	}
-	if args := plugins.GetProtocArgs("/out"); len(args) != 0 {
+	if args := plugins.GetProtocArgs("/out", "/csharp"); len(args) != 0 {
 		t.Fatalf("expected no protoc args, got %v", args)
+	}
+}
+
+func TestDiscoverPluginsCSharpAndPython(t *testing.T) {
+	t.Helper()
+
+	projectDir := newPluginTestProject(t, false)
+	cfg := NewConfig()
+	cfg.ProjectDir = projectDir
+	cfg.Languages = []string{"csharp", "python"}
+
+	plugins, err := DiscoverPlugins(cfg)
+	if err != nil {
+		t.Fatalf("discover plugins: %v", err)
+	}
+	want := []string{"--csharp_out=/csharp", "--python_out=/out"}
+	if args := plugins.GetProtocArgs("/out", "/csharp"); !slices.Equal(args, want) {
+		t.Fatalf("expected protoc args %v, got %v", want, args)
 	}
 }
 
@@ -202,7 +225,7 @@ func TestDiscoverPluginsUnknownLanguage(t *testing.T) {
 	projectDir := newPluginTestProject(t, true)
 	cfg := NewConfig()
 	cfg.ProjectDir = projectDir
-	cfg.Languages = []string{"go", "python"}
+	cfg.Languages = []string{"go", "kotlin"}
 
 	if _, err := DiscoverPlugins(cfg); err == nil {
 		t.Fatal("expected unknown language error")

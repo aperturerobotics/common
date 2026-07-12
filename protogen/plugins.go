@@ -229,15 +229,23 @@ func sortedPluginOpts(p *Plugin) []string {
 	return args
 }
 
-// GetProtocArgs returns the protoc arguments for all configured plugins.
-// Note: We don't pass --plugin=<path> because the WASI protoc can't access
-// host binaries. Instead, the PluginHandler intercepts plugin calls by name.
-func (p *Plugins) GetProtocArgs(outDir string) []string {
+// GetProtocArgs returns deterministic protoc arguments for configured outputs.
+func (p *Plugins) GetProtocArgs(outDir, csharpOutDir string) []string {
 	var args []string
 
 	// C++ output (built-in to protoc)
 	if p.Languages.Has(LanguageCpp) {
 		args = append(args, fmt.Sprintf("--cpp_out=%s", outDir))
+	}
+
+	// C# output (built-in to protoc)
+	if p.Languages.Has(LanguageCSharp) {
+		args = append(args, fmt.Sprintf("--csharp_out=%s", csharpOutDir))
+	}
+
+	// Python output (built-in to protoc)
+	if p.Languages.Has(LanguagePython) {
+		args = append(args, fmt.Sprintf("--python_out=%s", outDir))
 	}
 
 	// Go plugins

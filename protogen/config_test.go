@@ -241,6 +241,11 @@ func TestConfigGetLanguagesDefaultAll(t *testing.T) {
 			t.Fatalf("expected language %q to be enabled by default", lang)
 		}
 	}
+	for _, lang := range []Language{LanguageCSharp, LanguagePython} {
+		if langs.Has(lang) {
+			t.Fatalf("expected opt-in language %q to be disabled by default", lang)
+		}
+	}
 }
 
 func TestConfigGetLanguagesUnknown(t *testing.T) {
@@ -248,7 +253,7 @@ func TestConfigGetLanguagesUnknown(t *testing.T) {
 
 	cfg := NewConfig()
 	cfg.ProjectDir = t.TempDir()
-	cfg.Languages = []string{"go", "python"}
+	cfg.Languages = []string{"go", "kotlin"}
 
 	if _, err := cfg.GetLanguages(); err == nil {
 		t.Fatal("expected unknown language error")
