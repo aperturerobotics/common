@@ -131,7 +131,7 @@ func (g *Generator) Generate(ctx context.Context) error {
 
 	// Build protoc arguments
 	protocArgs := g.buildProtocArgs()
-	flagsHash := hashStrings(protocArgs)
+	flagsHash := HashProtocFlags(protocArgs, g.ModuleDir)
 
 	// Group proto files by directory for cache tracking
 	filesByDir := make(map[string][]string)
@@ -246,7 +246,7 @@ func (g *Generator) Generate(ctx context.Context) error {
 	// Clean orphaned packages from cache
 	g.Cache.CleanOrphanedPackages(currentPackages)
 
-	g.Cache.SetProtocFlags(protocArgs)
+	g.Cache.SetProtocFlags(protocArgs, g.ModuleDir)
 	// Save cache
 	cacheFile, _ := g.Config.GetCacheFilePath()
 	if err := g.Cache.Save(cacheFile); err != nil {

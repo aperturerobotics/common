@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 )
 
 // CacheVersion is the current cache format version.
@@ -80,9 +81,9 @@ func (c *Cache) Save(path string) error {
 	return os.WriteFile(path, data, 0o644)
 }
 
-// SetProtocFlags sets the protoc flags hash.
-func (c *Cache) SetProtocFlags(flags []string) {
-	c.ProtocFlagsHash = hashStrings(flags)
+// SetProtocFlags sets the protoc flags hash, keyed on rootDir-relative paths.
+func (c *Cache) SetProtocFlags(flags []string, rootDir string) {
+	c.ProtocFlagsHash = HashProtocFlags(flags, rootDir)
 }
 
 // SetToolVersions sets the tool versions string.
@@ -170,13 +171,44 @@ func hashProtoFiles(protoFiles []string, projectDir string) (string, error) {
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
-// hashStrings computes a hash of a string slice.
-func hashStrings(strs []string) string {
+// HashProtocFlags computes a checkout-portable hash of the protoc flags.
+// Absolute path prefixes under rootDir are rewritten to rootDir-relative form
+// so two checkouts of identical content at different absolute paths hash the
+// same, while flag semantics (enabled plugins, plugin options, output layout)
+// still change the hash. rootDir must be the absolute Go module root.
+func HashProtocFlags(flags []string, rootDir string) string {
 	h := sha256.New()
-	for _, s := range strs {
-		h.Write([]byte(s))
+	for _, f := range flags {
+		h.Write([]byte(relativizeProtocFlag(f, rootDir)))
+		// NUL separates flags so distinct slices cannot collide.
+		h.Write([]byte{0})
 	}
 	return hex.EncodeToString(h.Sum(nil))
+}
+
+// relativizeProtocFlag rewrites the rootDir absolute prefix inside a single
+// protoc flag to rootDir-relative form. The flag may be a bare path or a
+// "--name=<value>" pair; only the value's path portion is rewritten, and
+// non-path or out-of-tree values pass through unchanged.
+func relativizeProtocFlag(flag, rootDir string) string {
+	if key, value, ok := strings.Cut(flag, "="); ok {
+		return key + "=" + relativizePath(value, rootDir)
+	}
+	return relativizePath(flag, rootDir)
+}
+
+// relativizePath returns p relative to rootDir when p is an absolute path
+// inside rootDir; otherwise it returns p unchanged. The result uses forward
+// slashes so the hash is identical across operating systems.
+func relativizePath(p, rootDir string) string {
+	if rootDir == "" || !filepath.IsAbs(p) {
+		return p
+	}
+	rel, err := filepath.Rel(rootDir, p)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return p
+	}
+	return filepath.ToSlash(rel)
 }
 
 // stringsEqual checks if two string slices are equal.
