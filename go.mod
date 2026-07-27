@@ -5,14 +5,14 @@ go 1.25.0
 require (
 	github.com/aperturerobotics/abseil-cpp v0.0.0-20260131110040-4bb56e2f9017 // aperture-2
 	github.com/aperturerobotics/cli v1.1.0
-	github.com/aperturerobotics/go-protoc-gen-prost v0.0.0-20260329113538-218ccd8f20e0 // master
+	github.com/aperturerobotics/go-protoc-gen-prost v0.0.0-20260705010911-9f53feac967b // master
 	github.com/aperturerobotics/go-protoc-wasi v0.0.0-20260712054757-d8078c296c17 // master
 	github.com/aperturerobotics/go-websocket v1.8.15-0.20260329113544-74dbfb8f11c6 // indirect
 	github.com/aperturerobotics/json-iterator-lite v1.1.0 // indirect
 	github.com/aperturerobotics/protobuf v0.0.0-20260203024654-8201686529c4 // wasi
-	github.com/aperturerobotics/protobuf-go-lite v0.15.0 // latest
-	github.com/aperturerobotics/starpc v0.49.18 // master
-	github.com/aperturerobotics/util v1.34.5 // indirect
+	github.com/aperturerobotics/protobuf-go-lite v0.16.0 // latest
+	github.com/aperturerobotics/starpc v0.49.21 // master
+	github.com/aperturerobotics/util v1.34.9 // indirect
 )
 
 require (
@@ -22,6 +22,6 @@ require (
 	github.com/sirupsen/logrus v1.9.5-0.20260508084601-d4a50659cfd6 // indirect
 	github.com/tetratelabs/wazero v1.12.0
 	github.com/xrash/smetrics v0.0.0-20250705151800-55b8f293f342 // indirect
-	golang.org/x/mod v0.37.0
-	golang.org/x/sys v0.44.0 // indirect
+	golang.org/x/mod v0.38.0
+	golang.org/x/sys v0.47.0 // indirect
 )
