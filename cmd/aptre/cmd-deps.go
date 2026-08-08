@@ -33,7 +33,6 @@ type toolBuildMode uint8
 
 const (
 	toolBuildIsolated toolBuildMode = iota
-	toolBuildMain
 	toolBuildVersioned
 )
 
@@ -68,7 +67,7 @@ func selectedToolPlan(projectDir, name string) toolBuildPlan {
 		return toolBuildPlan{mode: toolBuildIsolated, spec: spec}
 	}
 	if parts[2] == "true" {
-		return toolBuildPlan{mode: toolBuildMain, spec: spec}
+		return toolBuildPlan{mode: toolBuildIsolated, spec: spec}
 	}
 	if parts[1] != "" {
 		return toolBuildPlan{mode: toolBuildVersioned, spec: spec, version: parts[1]}
@@ -325,11 +324,7 @@ func ensureTool(projectDir, toolsPath, toolName string, force, verbose bool) err
 		cmd.Env = append(os.Environ(), "GOBIN="+filepath.Join(toolsPath, "bin"))
 	} else {
 		cmd = exec.Command("go", "build", "-mod=readonly", "-v", "-o", binPath, spec.ImportPath)
-		if plan.mode == toolBuildMain {
-			cmd.Dir = projectDir
-		} else {
-			cmd.Dir = toolsPath
-		}
+		cmd.Dir = toolsPath
 	}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
