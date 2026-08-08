@@ -549,3 +549,82 @@ func runTestCommand(t *testing.T, dir, name string, args ...string) {
 		t.Fatalf("%s %v: %v\n%s", name, args, err, output)
 	}
 }
+
+func TestGeneratePythonRewritesCanonicalLocalImports(t *testing.T) {
+	t.Helper()
+	projectDir := t.TempDir()
+	rootDir := repoRoot(t)
+	for rel, body := range map[string]string{
+		"app/app.proto": `syntax = "proto3";
+package app;
+import "github.com/example/project/dep/dep.proto";
+import "google/protobuf/timestamp.proto";
+message App { dep.Dependency dependency = 1; google.protobuf.Timestamp observed_at = 2; }
+`,
+		"dep/dep.proto": `syntax = "proto3";
+package dep;
+message Dependency { string value = 1; }
+`,
+	} {
+		path := filepath.Join(projectDir, rel)
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	wktDir := filepath.Join(projectDir, "vendor", "github.com", "aperturerobotics", "protobuf", "src", "google", "protobuf")
+	if err := os.MkdirAll(wktDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	wkt, err := os.ReadFile(filepath.Join(rootDir, "vendor", "github.com", "aperturerobotics", "protobuf", "src", "google", "protobuf", "timestamp.proto"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(wktDir, "timestamp.proto"), wkt, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	goMod := []byte("module github.com/example/project\n\ngo 1.25.0\n")
+	if err := os.WriteFile(filepath.Join(projectDir, "go.mod"), goMod, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runTestCommand(t, projectDir, "git", "init")
+	runTestCommand(t, projectDir, "git", "add", "app/app.proto", "dep/dep.proto")
+	cfg := protogen.NewConfig()
+	cfg.ProjectDir = projectDir
+	cfg.Targets = []string{"./app/*.proto", "./dep/*.proto"}
+	cfg.Languages = []string{"python"}
+	cfg.RPCLibraries = []string{"none"}
+	cfg.Force = true
+	gen, err := protogen.NewGenerator(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := gen.Generate(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	for _, rel := range []string{"app/app_pb2.py", "app/app_pb2.pyi", "dep/dep_pb2.py", "dep/dep_pb2.pyi"} {
+		if _, err := os.Stat(filepath.Join(projectDir, rel)); err != nil {
+			t.Fatalf("missing %s: %v", rel, err)
+		}
+	}
+	for _, rel := range []string{"app/app_pb2.py", "app/app_pb2.pyi"} {
+		data, err := os.ReadFile(filepath.Join(projectDir, rel))
+		if err != nil {
+			t.Fatal(err)
+		}
+		text := string(data)
+		if !strings.Contains(text, "from dep import dep_pb2") {
+			t.Fatalf("%s lacks rewritten local import: %s", rel, text)
+		}
+		if !strings.Contains(text, "google.protobuf") {
+			t.Fatalf("%s rewrote WKT import", rel)
+		}
+	}
+	cmd := exec.Command("uv", "run", "--directory", filepath.Join(rootDir, "tests", "python"), "python", "-c", "import sys; sys.path.insert(0, sys.argv[1]); import app.app_pb2", projectDir)
+	cmd.Env = append(os.Environ(), "UV_PROJECT_ENVIRONMENT="+filepath.Join(t.TempDir(), ".venv"))
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("generated Python import: %v\\n%s", err, out)
+	}
+}

@@ -108,6 +108,20 @@ func (p *PostProcessor) ProcessGeneratedFiles(protoFile string) error {
 		}
 	}
 
+	// Process Python message and service files.
+	pythonPatterns := []string{baseName + "_pb2.py", baseName + "_pb2.pyi", baseName + "_srpc.py", baseName + "_srpc.pyi"}
+	for _, pattern := range pythonPatterns {
+		files, err := filepath.Glob(filepath.Join(searchDir, pattern))
+		if err != nil {
+			return err
+		}
+		for _, f := range files {
+			if err := p.ProcessPythonFile(f); err != nil {
+				return err
+			}
+		}
+	}
+
 	// Process Rust files (move from package-based path to proto-based path)
 	if err := p.ProcessRustFiles(protoFile); err != nil {
 		return err
@@ -205,6 +219,39 @@ func (p *PostProcessor) ProcessGoFile(filePath string) error {
 	}
 
 	return nil
+}
+
+// ProcessPythonFile rewrites local canonical module imports to adjacent imports.
+func (p *PostProcessor) ProcessPythonFile(filePath string) error {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return err
+	}
+	prefix := strings.ReplaceAll(strings.ReplaceAll(p.ModulePath, "/", "."), "-", "_") + "."
+	lines := strings.Split(string(data), "\n")
+	modified := false
+	for i, line := range lines {
+		trimmed := strings.TrimLeft(line, " \t")
+		if !strings.HasPrefix(trimmed, "from ") {
+			continue
+		}
+		from := strings.TrimPrefix(trimmed, "from ")
+		if !strings.HasPrefix(from, prefix) {
+			continue
+		}
+		rest := strings.TrimPrefix(from, prefix)
+		space := strings.IndexByte(rest, ' ')
+		if space <= 0 {
+			continue
+		}
+		indent := line[:len(line)-len(trimmed)]
+		lines[i] = indent + "from " + rest
+		modified = true
+	}
+	if !modified {
+		return nil
+	}
+	return os.WriteFile(filePath, []byte(strings.Join(lines, "\n")), 0o644) //nolint:gosec
 }
 
 // ProcessTsFile processes a TypeScript file.

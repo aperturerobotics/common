@@ -82,3 +82,43 @@ import { BlockRef } from "../block/block.pb.js"
 		t.Fatalf("expected relative import to remain unchanged:\n%s\ngot:\n%s", content, got)
 	}
 }
+
+func TestProcessPythonFileRewritesLocalImportsAndPreservesExternal(t *testing.T) {
+	projectDir := t.TempDir()
+	file := filepath.Join(projectDir, "app_pb2.py")
+	content := "from github.com.example.my_project.dep import dep_pb2 as dep\nfrom google.protobuf import timestamp_pb2 as ts\nfrom external.pkg import other\nDESCRIPTOR = 'github.com.example.my_project.app/app.proto'\n"
+	if err := os.WriteFile(file, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	pp := NewPostProcessor(projectDir, "", "github.com/example/my-project", nil, false)
+	if err := pp.ProcessPythonFile(file); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := os.ReadFile(file)
+	text := string(got)
+	if !strings.Contains(text, "from dep import dep_pb2 as dep") || !strings.Contains(text, "from google.protobuf") || !strings.Contains(text, "from external.pkg") || !strings.Contains(text, "DESCRIPTOR =") {
+		t.Fatalf("unexpected rewrite: %s", text)
+	}
+	before := text
+	if err := pp.ProcessPythonFile(file); err != nil {
+		t.Fatal(err)
+	}
+	after, _ := os.ReadFile(file)
+	if string(after) != before {
+		t.Fatal("second pass changed output")
+	}
+}
+
+func TestProcessPythonFileRewritesPyi(t *testing.T) {
+	projectDir := t.TempDir()
+	file := filepath.Join(projectDir, "app_pb2.pyi")
+	os.WriteFile(file, []byte("from github.com.example.mod.dep import dep_pb2 as _dep_pb2\n"), 0o644)
+	pp := NewPostProcessor(projectDir, "", "github.com/example/mod", nil, false)
+	if err := pp.ProcessPythonFile(file); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := os.ReadFile(file)
+	if string(got) != "from dep import dep_pb2 as _dep_pb2\n" {
+		t.Fatalf("got %q", got)
+	}
+}
