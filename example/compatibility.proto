@@ -1,0 +1,35 @@
+syntax = "proto3";
+package compatibility;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "example.com/compatibility";
+
+message Compatibility {
+  enum Kind {
+    KIND_UNSPECIFIED = 0;
+    KIND_PRIMARY = 1;
+  }
+
+  message Nested {
+    string value = 1;
+  }
+
+  optional string present = 1;
+  map<string, Nested> entries = 2;
+  oneof payload {
+    string text = 3;
+    bytes raw = 4;
+  }
+  Kind kind = 5;
+  google.protobuf.Timestamp observed_at = 6;
+}
+
+service CompatibilityService {
+  rpc Get(Compatibility) returns (Compatibility);
+}
+
+message SchemaEvolution {
+  string stable = 1;
+  int32 future_field = 2;
+}

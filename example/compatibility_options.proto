@@ -1,0 +1,18 @@
+syntax = "proto3";
+package compatibility;
+
+import "google/protobuf/descriptor.proto";
+
+extend google.protobuf.MethodOptions {
+  string compatibility_method = 50001;
+}
+
+message OptionRequest {
+  string value = 1;
+}
+
+service OptionService {
+  rpc Describe(OptionRequest) returns (OptionRequest) {
+    option (compatibility_method) = "compatibility-v1";
+  }
+}
