@@ -45,6 +45,9 @@ func TestGenerateCompatibilityFixtureUsesPackageJSONHistoricalDefaults(t *testin
 	if err := os.WriteFile(filepath.Join(projectDir, "go.mod"), goMod, 0o644); err != nil {
 		t.Fatalf("write go.mod: %v", err)
 	}
+	if err := os.WriteFile(filepath.Join(projectDir, "go.sum"), []byte("github.com/aperturerobotics/protobuf-go-lite v0.16.0 h1:McGR0jrc15ZkH8HUpAARDOtazjwqr+uYXVHrrR59K28=\ngithub.com/aperturerobotics/protobuf-go-lite v0.16.0/go.mod h1:3Ay/E7iaw2KWLirK3+dDdNJZHK0hu8Y1/kKeYeUa+8s=\n"), 0o644); err != nil {
+		t.Fatalf("write go.sum: %v", err)
+	}
 	fixture, err := os.ReadFile(filepath.Join(rootDir, "example", "compatibility.proto"))
 	if err != nil {
 		t.Fatalf("read compatibility fixture: %v", err)
@@ -84,6 +87,7 @@ func TestGenerateCompatibilityFixtureUsesPackageJSONHistoricalDefaults(t *testin
 	cfg := protogen.NewConfig()
 	cfg.ProjectDir = projectDir
 	cfg.Force = true
+	runTestCommand(t, projectDir, "go", "mod", "download")
 	if err := ensureDeps(cfg.ProjectDir, cfg.ToolsDir, false); err != nil {
 		t.Fatalf("ensure deps: %v", err)
 	}
@@ -216,6 +220,9 @@ func TestGenerateStarpcPythonServiceOutputsAndStaleRemoval(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(projectDir, "go.mod"), goMod, 0o644); err != nil {
 		t.Fatalf("write go.mod: %v", err)
 	}
+	if err := os.WriteFile(filepath.Join(projectDir, "go.sum"), []byte("github.com/aperturerobotics/protobuf-go-lite v0.16.0 h1:McGR0jrc15ZkH8HUpAARDOtazjwqr+uYXVHrrR59K28=\ngithub.com/aperturerobotics/protobuf-go-lite v0.16.0/go.mod h1:3Ay/E7iaw2KWLirK3+dDdNJZHK0hu8Y1/kKeYeUa+8s=\n"), 0o644); err != nil {
+		t.Fatalf("write go.sum: %v", err)
+	}
 	protoFile := []byte(`syntax = "proto3";
 package scratch;
 
@@ -302,6 +309,9 @@ func TestGenerateGoOnly(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(projectDir, "go.mod"), goMod, 0o644); err != nil {
 		t.Fatalf("write go.mod: %v", err)
 	}
+	if err := os.WriteFile(filepath.Join(projectDir, "go.sum"), []byte("github.com/aperturerobotics/protobuf-go-lite v0.16.0 h1:McGR0jrc15ZkH8HUpAARDOtazjwqr+uYXVHrrR59K28=\ngithub.com/aperturerobotics/protobuf-go-lite v0.16.0/go.mod h1:3Ay/E7iaw2KWLirK3+dDdNJZHK0hu8Y1/kKeYeUa+8s=\n"), 0o644); err != nil {
+		t.Fatalf("write go.sum: %v", err)
+	}
 
 	protoFile := []byte(`syntax = "proto3";
 package scratch;
@@ -324,6 +334,7 @@ message Scratch {
 	cfg.Languages = []string{"go"}
 	cfg.RPCLibraries = []string{"none"}
 
+	runTestCommand(t, projectDir, "go", "mod", "download")
 	if err := ensureDeps(cfg.ProjectDir, cfg.ToolsDir, false); err != nil {
 		t.Fatalf("ensure deps: %v", err)
 	}
@@ -368,6 +379,9 @@ func TestGenerateGoOnlyNoRPC(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(projectDir, "go.mod"), goMod, 0o644); err != nil {
 		t.Fatalf("write go.mod: %v", err)
 	}
+	if err := os.WriteFile(filepath.Join(projectDir, "go.sum"), []byte("github.com/aperturerobotics/protobuf-go-lite v0.16.0 h1:McGR0jrc15ZkH8HUpAARDOtazjwqr+uYXVHrrR59K28=\ngithub.com/aperturerobotics/protobuf-go-lite v0.16.0/go.mod h1:3Ay/E7iaw2KWLirK3+dDdNJZHK0hu8Y1/kKeYeUa+8s=\n"), 0o644); err != nil {
+		t.Fatalf("write go.sum: %v", err)
+	}
 
 	protoFile := []byte(`syntax = "proto3";
 package scratch;
@@ -389,6 +403,7 @@ message Scratch {
 	cfg.Force = true
 	cfg.Languages = []string{"go"}
 
+	runTestCommand(t, projectDir, "go", "mod", "download")
 	if err := ensureDeps(cfg.ProjectDir, cfg.ToolsDir, false); err != nil {
 		t.Fatalf("ensure deps: %v", err)
 	}
@@ -429,6 +444,9 @@ func TestGenerateCSharpAndPython(t *testing.T) {
 	goMod := []byte("module example.com/play-scratch\n\ngo 1.25.0\n")
 	if err := os.WriteFile(filepath.Join(projectDir, "go.mod"), goMod, 0o644); err != nil {
 		t.Fatalf("write go.mod: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(projectDir, "go.sum"), []byte("github.com/aperturerobotics/protobuf-go-lite v0.16.0 h1:McGR0jrc15ZkH8HUpAARDOtazjwqr+uYXVHrrR59K28=\ngithub.com/aperturerobotics/protobuf-go-lite v0.16.0/go.mod h1:3Ay/E7iaw2KWLirK3+dDdNJZHK0hu8Y1/kKeYeUa+8s=\n"), 0o644); err != nil {
+		t.Fatalf("write go.sum: %v", err)
 	}
 	protoFile := []byte(`syntax = "proto3";
 package scratch;

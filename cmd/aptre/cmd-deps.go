@@ -12,21 +12,68 @@ import (
 	"github.com/aperturerobotics/common/protogen"
 )
 
-// Tool definitions
-var defaultTools = []struct {
+// Tool definitions.
+type toolSpec struct {
 	Name       string
 	ImportPath string
-}{
-	{"protoc-gen-go-lite", "github.com/aperturerobotics/protobuf-go-lite/cmd/protoc-gen-go-lite"},
-	{"protoc-gen-go-starpc", "github.com/aperturerobotics/starpc/cmd/protoc-gen-go-starpc"},
-	{"protoc-gen-starpc-cpp", "github.com/aperturerobotics/starpc/cmd/protoc-gen-starpc-cpp"},
-	{"protoc-gen-starpc-rust", "github.com/aperturerobotics/starpc/cmd/protoc-gen-starpc-rust"},
-	{"gofumpt", "mvdan.cc/gofumpt"},
-	{"goimports", "golang.org/x/tools/cmd/goimports"},
-	{"golangci-lint", "github.com/golangci/golangci-lint/v2/cmd/golangci-lint"},
-	{"go-mod-outdated", "github.com/psampaz/go-mod-outdated"},
-	{"goreleaser", "github.com/goreleaser/goreleaser/v2"},
-	{"wasmbrowsertest", "github.com/agnivade/wasmbrowsertest"},
+	ModulePath string
+}
+
+var defaultTools = []toolSpec{
+	{Name: "protoc-gen-go-lite", ImportPath: "github.com/aperturerobotics/protobuf-go-lite/cmd/protoc-gen-go-lite", ModulePath: "github.com/aperturerobotics/protobuf-go-lite"},
+	{Name: "protoc-gen-go-starpc", ImportPath: "github.com/aperturerobotics/starpc/cmd/protoc-gen-go-starpc", ModulePath: "github.com/aperturerobotics/starpc"},
+	{Name: "protoc-gen-starpc-cpp", ImportPath: "github.com/aperturerobotics/starpc/cmd/protoc-gen-starpc-cpp", ModulePath: "github.com/aperturerobotics/starpc"},
+	{Name: "protoc-gen-starpc-rust", ImportPath: "github.com/aperturerobotics/starpc/cmd/protoc-gen-starpc-rust", ModulePath: "github.com/aperturerobotics/starpc"},
+	{Name: "gofumpt", ImportPath: "mvdan.cc/gofumpt"}, {Name: "goimports", ImportPath: "golang.org/x/tools/cmd/goimports"},
+	{Name: "golangci-lint", ImportPath: "github.com/golangci/golangci-lint/v2/cmd/golangci-lint"}, {Name: "go-mod-outdated", ImportPath: "github.com/psampaz/go-mod-outdated"},
+	{Name: "goreleaser", ImportPath: "github.com/goreleaser/goreleaser/v2"}, {Name: "wasmbrowsertest", ImportPath: "github.com/agnivade/wasmbrowsertest"},
+}
+
+type toolBuildMode uint8
+
+const (
+	toolBuildIsolated toolBuildMode = iota
+	toolBuildMain
+	toolBuildVersioned
+)
+
+type toolBuildPlan struct {
+	mode    toolBuildMode
+	spec    toolSpec
+	version string
+}
+
+func toolSpecFor(name string) (toolSpec, bool) {
+	for _, spec := range defaultTools {
+		if spec.Name == name {
+			return spec, true
+		}
+	}
+	return toolSpec{}, false
+}
+
+func selectedToolPlan(projectDir, name string) toolBuildPlan {
+	spec, ok := toolSpecFor(name)
+	if !ok || spec.ModulePath == "" {
+		return toolBuildPlan{mode: toolBuildIsolated, spec: spec}
+	}
+	cmd := exec.Command("go", "list", "-m", "-f", "{{.Path}}\t{{.Version}}\t{{.Main}}", spec.ModulePath)
+	cmd.Dir = projectDir
+	out, err := cmd.Output()
+	if err != nil {
+		return toolBuildPlan{mode: toolBuildIsolated, spec: spec}
+	}
+	parts := strings.Split(strings.TrimSpace(string(out)), "\t")
+	if len(parts) < 3 {
+		return toolBuildPlan{mode: toolBuildIsolated, spec: spec}
+	}
+	if parts[2] == "true" {
+		return toolBuildPlan{mode: toolBuildMain, spec: spec}
+	}
+	if parts[1] != "" {
+		return toolBuildPlan{mode: toolBuildVersioned, spec: spec, version: parts[1]}
+	}
+	return toolBuildPlan{mode: toolBuildIsolated, spec: spec}
 }
 
 type generateDependencyPlan struct {
@@ -87,7 +134,7 @@ func ensureGenerateDeps(cfg *protogen.Config, verbose bool) error {
 			return err
 		}
 		for _, tool := range plan.nativeTools {
-			if err := ensureTool(toolsPath, tool, false, verbose); err != nil {
+			if err := ensureTool(projectDir, toolsPath, tool, false, verbose); err != nil {
 				return err
 			}
 		}
@@ -175,7 +222,7 @@ func ensureAllDeps(projectDir, toolsDir string, verbose, force bool) error {
 	// Build required tools
 	requiredTools := []string{"protoc-gen-go-lite", "protoc-gen-go-starpc", "protoc-gen-starpc-cpp", "protoc-gen-starpc-rust", "gofumpt"}
 	for _, toolName := range requiredTools {
-		if err := ensureTool(toolsPath, toolName, force, verbose); err != nil {
+		if err := ensureTool(absProjectDir, toolsPath, toolName, force, verbose); err != nil {
 			return fmt.Errorf("failed to ensure %s: %w", toolName, err)
 		}
 	}
@@ -251,7 +298,7 @@ func resolveCommonPackage(projectDir string) string {
 	return commonModule
 }
 
-func ensureTool(toolsPath, toolName string, force, verbose bool) error {
+func ensureTool(projectDir, toolsPath, toolName string, force, verbose bool) error {
 	binPath := filepath.Join(toolsPath, "bin", toolName)
 
 	// Check if already exists
@@ -261,15 +308,8 @@ func ensureTool(toolsPath, toolName string, force, verbose bool) error {
 		}
 	}
 
-	// Find the import path for this tool
-	var importPath string
-	for _, t := range defaultTools {
-		if t.Name == toolName {
-			importPath = t.ImportPath
-			break
-		}
-	}
-	if importPath == "" {
+	spec, ok := toolSpecFor(toolName)
+	if !ok {
 		return fmt.Errorf("unknown tool: %s", toolName)
 	}
 
@@ -277,10 +317,20 @@ func ensureTool(toolsPath, toolName string, force, verbose bool) error {
 		fmt.Printf("Building %s...\n", toolName)
 	}
 
-	// Build the tool
-	// #nosec G204 -- toolName and importPath come from hardcoded defaultTools list
-	cmd := exec.Command("go", "build", "-mod=readonly", "-v", "-o", filepath.Join("bin", toolName), importPath)
-	cmd.Dir = toolsPath
+	plan := selectedToolPlan(projectDir, toolName)
+	var cmd *exec.Cmd
+	if plan.mode == toolBuildVersioned {
+		cmd = exec.Command("go", "install", spec.ImportPath+"@"+plan.version)
+		cmd.Dir = projectDir
+		cmd.Env = append(os.Environ(), "GOBIN="+filepath.Join(toolsPath, "bin"))
+	} else {
+		cmd = exec.Command("go", "build", "-mod=readonly", "-v", "-o", binPath, spec.ImportPath)
+		if plan.mode == toolBuildMain {
+			cmd.Dir = projectDir
+		} else {
+			cmd.Dir = toolsPath
+		}
+	}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
@@ -325,7 +375,7 @@ func EnsureToolBuilt(projectDir, toolsDir, toolName string, verbose bool) (strin
 		return "", fmt.Errorf("failed to ensure tools directory: %w", err)
 	}
 
-	if err := ensureTool(toolsPath, toolName, false, verbose); err != nil {
+	if err := ensureTool(absProjectDir, toolsPath, toolName, false, verbose); err != nil {
 		return "", err
 	}
 

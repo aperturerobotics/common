@@ -201,7 +201,7 @@ func runGoimports(c *cli.Context) error {
 	}
 
 	goimportsPath := filepath.Join(projectDir, toolsDir, "bin", "goimports")
-	if err := ensureTool(filepath.Join(projectDir, toolsDir), "goimports", false, verbose); err != nil {
+	if err := ensureTool(projectDir, filepath.Join(projectDir, toolsDir), "goimports", false, verbose); err != nil {
 		return err
 	}
 

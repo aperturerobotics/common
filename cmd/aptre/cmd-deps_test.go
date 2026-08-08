@@ -67,3 +67,13 @@ func TestEnsureGenerateDepsPythonOnlyCreatesNoToolOrNodeDirectories(t *testing.T
 		}
 	}
 }
+
+func TestSelectedToolPlanBranches(t *testing.T) {
+	project := t.TempDir()
+	if got := selectedToolPlan(project, "gofumpt"); got.mode != toolBuildIsolated {
+		t.Fatalf("generic mode=%q", got.mode)
+	}
+	if got := selectedToolPlan(project, "protoc-gen-go-lite"); got.mode != toolBuildIsolated {
+		t.Fatalf("unselected product mode=%q", got.mode)
+	}
+}
