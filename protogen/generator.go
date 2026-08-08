@@ -108,17 +108,24 @@ func (g *Generator) Generate(ctx context.Context) error {
 		return fmt.Errorf("failed to setup project symlinks: %w", err)
 	}
 
-	// Discover proto files
-	protoFiles, err := DiscoverProtoFiles(g.ProjectDir, g.Config.Targets, g.Config.Exclude)
+	// Discover proto files.
+	protoFiles, unmatchedTargets, err := discoverProtoFiles(g.ProjectDir, g.Config.Targets, g.Config.Exclude)
 	if err != nil {
 		return fmt.Errorf("failed to discover proto files: %w", err)
 	}
-
+	if g.Config.TargetsExplicit && len(unmatchedTargets) != 0 {
+		return fmt.Errorf("proto target %q matched no proto sources", unmatchedTargets[0])
+	}
 	if len(protoFiles) == 0 {
 		if g.Verbose {
 			fmt.Fprintln(g.Stdout, "No proto files found")
 		}
 		return nil
+	}
+	if g.Config.CheckProtoContracts {
+		if err := CheckProtoContracts(g.ProjectDir, protoFiles); err != nil {
+			return err
+		}
 	}
 
 	if g.Verbose {

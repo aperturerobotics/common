@@ -3,6 +3,7 @@ package protogen
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -16,17 +17,29 @@ import (
 // Uses git ls-files to find tracked proto files.
 // excludePatterns allows excluding files that match certain patterns.
 func DiscoverProtoFiles(projectDir string, patterns, excludePatterns []string) ([]string, error) {
+	files, _, err := discoverProtoFiles(projectDir, patterns, excludePatterns)
+	return files, err
+}
+
+// discoverProtoFiles returns selected files and target patterns that matched no
+// tracked proto source before exclusions. Generator uses the unmatched list to
+// reject explicitly requested targets while preserving default empty projects.
+func discoverProtoFiles(projectDir string, patterns, excludePatterns []string) ([]string, []string, error) {
 	var allFiles []string
+	var unmatched []string
 	seen := make(map[string]struct{})
 
 	for _, pattern := range patterns {
 		files, err := discoverPattern(projectDir, pattern)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
+		}
+		if len(files) == 0 {
+			unmatched = append(unmatched, pattern)
 		}
 		for _, f := range files {
 			if _, ok := seen[f]; !ok {
-				// Check if file matches any exclude pattern
+				// Check if file matches any exclude pattern.
 				if matchesAnyPattern(f, excludePatterns) {
 					continue
 				}
@@ -36,7 +49,7 @@ func DiscoverProtoFiles(projectDir string, patterns, excludePatterns []string) (
 		}
 	}
 
-	return allFiles, nil
+	return allFiles, unmatched, nil
 }
 
 // matchesAnyPattern checks if a file path matches any of the given glob patterns.
@@ -58,6 +71,9 @@ func matchesAnyPattern(filePath string, patterns []string) bool {
 
 // discoverPattern finds proto files matching a single pattern using git ls-files.
 func discoverPattern(projectDir, pattern string) ([]string, error) {
+	if err := validateTargetPattern(projectDir, pattern); err != nil {
+		return nil, err
+	}
 	cmd := exec.Command("git", "ls-files", pattern)
 	cmd.Dir = projectDir
 
@@ -66,8 +82,20 @@ func discoverPattern(projectDir, pattern string) ([]string, error) {
 	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
-		// If git ls-files fails, fall back to filepath.Glob
-		return filepath.Glob(filepath.Join(projectDir, pattern))
+		// If git ls-files fails, fall back to a project-relative filepath glob.
+		matches, err := filepath.Glob(filepath.Join(projectDir, pattern))
+		if err != nil {
+			return nil, err
+		}
+		files := make([]string, 0, len(matches))
+		for _, match := range matches {
+			rel, err := filepath.Rel(projectDir, match)
+			if err != nil {
+				return nil, err
+			}
+			files = append(files, rel)
+		}
+		return files, nil
 	}
 
 	var files []string
@@ -79,7 +107,45 @@ func discoverPattern(projectDir, pattern string) ([]string, error) {
 		}
 	}
 
-	return files, scanner.Err()
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+	if len(files) != 0 || !isExplicitProtoPath(pattern) {
+		return files, nil
+	}
+	path := filepath.Join(projectDir, pattern)
+	info, err := os.Stat(path)
+	if err == nil && info.Mode().IsRegular() {
+		rel, err := filepath.Rel(projectDir, path)
+		if err != nil {
+			return nil, err
+		}
+		return []string{rel}, nil
+	}
+	if os.IsNotExist(err) {
+		return nil, nil
+	}
+	return nil, err
+}
+
+func isExplicitProtoPath(pattern string) bool {
+	return strings.HasSuffix(pattern, ".proto") && !strings.ContainsAny(pattern, "*?[")
+}
+
+func validateTargetPattern(projectDir, pattern string) error {
+	if filepath.IsAbs(pattern) {
+		return fmt.Errorf("proto target %q escapes project directory", pattern)
+	}
+	root, err := filepath.Abs(projectDir)
+	if err != nil {
+		return err
+	}
+	candidate := filepath.Clean(filepath.Join(root, pattern))
+	rel, err := filepath.Rel(root, candidate)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return fmt.Errorf("proto target %q escapes project directory", pattern)
+	}
+	return nil
 }
 
 // GetGoModule reads the module path from go.mod in the given directory.

@@ -22,6 +22,12 @@ type Config struct {
 	// Targets is the list of proto file glob patterns to process.
 	// Default: ["./*.proto"]
 	Targets []string
+	// TargetsExplicit reports whether the caller explicitly selected Targets.
+	// Explicit targets must each match at least one source.
+	TargetsExplicit bool
+	// CheckProtoContracts enables strict house-style validation for selected
+	// first-party schema sources. It is opt-in for legacy compatibility.
+	CheckProtoContracts bool
 	// Exclude is a list of proto file glob patterns to exclude.
 	// Files matching any of these patterns will be skipped.
 	Exclude []string

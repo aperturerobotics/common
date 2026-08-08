@@ -226,11 +226,15 @@ func TestGenerateStarpcPythonServiceOutputsAndStaleRemoval(t *testing.T) {
 	protoFile := []byte(`syntax = "proto3";
 package scratch;
 
+// Scratch contains the value used by this generation test.
 message Scratch {
+  // Value contains the generated test value.
   string value = 1;
 }
 
+// ScratchService exposes Scratch requests for this generation test.
 service ScratchService {
+  // Get returns the requested Scratch value.
   rpc Get(Scratch) returns (Scratch);
 }
 `)
@@ -318,7 +322,9 @@ package scratch;
 
 option go_package = "example.com/scratch";
 
+// Scratch contains the value used by this generation test.
 message Scratch {
+  // Value contains the generated test value.
   string value = 1;
 }
 `)
@@ -388,7 +394,9 @@ package scratch;
 
 option go_package = "example.com/scratch";
 
+// Scratch contains the value used by this generation test.
 message Scratch {
+  // Value contains the generated test value.
   string value = 1;
 }
 `)
@@ -451,7 +459,9 @@ func TestGenerateCSharpAndPython(t *testing.T) {
 	protoFile := []byte(`syntax = "proto3";
 package scratch;
 
+// Scratch contains the value used by this generation test.
 message Scratch {
+  // Value contains the generated test value.
   string value = 1;
 }
 `)
@@ -577,11 +587,24 @@ func TestGeneratePythonRewritesCanonicalLocalImports(t *testing.T) {
 package app;
 import "github.com/example/project/dep/dep.proto";
 import "google/protobuf/timestamp.proto";
-message App { dep.Dependency dependency = 1; google.protobuf.Timestamp observed_at = 2; }
+
+// App contains a dependency and its observation time.
+message App {
+  // Dependency contains the imported dependency value.
+  dep.Dependency dependency = 1;
+
+  // ObservedAt records when the dependency was observed.
+  google.protobuf.Timestamp observed_at = 2;
+}
 `,
 		"dep/dep.proto": `syntax = "proto3";
 package dep;
-message Dependency { string value = 1; }
+
+// Dependency contains the imported dependency value.
+message Dependency {
+  // Value contains the dependency value.
+  string value = 1;
+}
 `,
 	} {
 		path := filepath.Join(projectDir, rel)
@@ -644,5 +667,48 @@ message Dependency { string value = 1; }
 	cmd.Env = append(os.Environ(), "UV_PROJECT_ENVIRONMENT="+filepath.Join(t.TempDir(), ".venv"))
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("generated Python import: %v\\n%s", err, out)
+	}
+}
+
+func TestGenerateExplicitUntrackedAndMissingTargets(t *testing.T) {
+	t.Helper()
+	projectDir := t.TempDir()
+	rootDir := repoRoot(t)
+	if err := os.WriteFile(filepath.Join(projectDir, "go.mod"), []byte("module example.com/targettest\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(projectDir, "untracked.proto"), []byte(`syntax = "proto3";
+package targettest;
+message Target {}
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := exec.Command("go", "run", "./cmd/aptre", "generate", "--deps=false", "--project-dir", projectDir, "--targets", "untracked.proto", "--language", "csharp")
+	cmd.Dir = rootDir
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("explicit untracked target: %v\n%s", err, output)
+	}
+	if _, err := os.Stat(filepath.Join(projectDir, "Untracked.cs")); err != nil {
+		t.Fatalf("untracked target output: %v", err)
+	}
+
+	cmd = exec.Command("go", "run", "./cmd/aptre", "generate", "--deps=false", "--project-dir", projectDir, "--targets", "missing.proto")
+	cmd.Dir = rootDir
+	output, err := cmd.CombinedOutput()
+	if err == nil || !strings.Contains(string(output), "matched no proto sources") {
+		t.Fatalf("missing target error = %v\n%s", err, output)
+	}
+
+	if err := os.WriteFile(filepath.Join(projectDir, "strict.proto"), []byte(`syntax = "proto3";
+message Strict { string key = 1; }
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cmd = exec.Command("go", "run", "./cmd/aptre", "generate", "--deps=false", "--check-proto-contracts", "--project-dir", projectDir, "--targets", "strict.proto")
+	cmd.Dir = rootDir
+	output, err = cmd.CombinedOutput()
+	if err == nil || !strings.Contains(string(output), "must use an expanded block") {
+		t.Fatalf("strict target error = %v\n%s", err, output)
 	}
 }

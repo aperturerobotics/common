@@ -109,17 +109,38 @@ message GetBusInfoResponse {
 3. **Generate code**:
 
 ```bash
-# Stage files for git (required for discovery)
+# Default and glob targets discover tracked proto sources.
 git add -A
 
 # Generate all languages
 go run github.com/aperturerobotics/common/cmd/aptre@latest generate
+
+# A literal explicit .proto target may be untracked.
+go run github.com/aperturerobotics/common/cmd/aptre@latest generate --targets api/service.proto
 
 # Generate only Go output
 go run github.com/aperturerobotics/common/cmd/aptre@latest generate --language go
 
 # Or with verbose output
 go run github.com/aperturerobotics/common/cmd/aptre@latest generate --verbose
+```
+
+### Proto contract checks
+
+`--check-proto-contracts` opts selected first-party sources into the house
+schema check. The default remains compatible with legacy schemas, so existing
+documented or enum-migration work is not required before ordinary generation.
+Strict sources need declaration and member comments, expanded enum and message
+blocks, blank lines between declarations, and a package-scoped zero enum value
+such as `ENDPOINT_KIND_UNKNOWN = 0`.
+
+An explicit literal `.proto` target may be an existing untracked file. Missing
+or zero-match explicit targets fail instead of silently succeeding; default and
+glob discovery continue to select tracked sources.
+
+```bash
+go run github.com/aperturerobotics/common/cmd/aptre@latest generate \
+  --targets api/service.proto --check-proto-contracts
 ```
 
 ## CLI Commands
