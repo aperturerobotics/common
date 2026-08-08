@@ -240,17 +240,31 @@ func toolsStampPath(toolsPath string) string {
 	return filepath.Join(toolsPath, ".common-tools-stamp")
 }
 
-func reconcileToolsStamp(stampPath, identity string, extract func() error) (bool, error) {
+func reconcileToolsStamp(stampPath, identity string, extract func() error, invalidate func() error) (bool, error) {
 	if data, err := os.ReadFile(stampPath); err == nil && strings.TrimSpace(string(data)) == identity {
 		return false, nil
 	}
 	if err := extract(); err != nil {
 		return false, err
 	}
+	if invalidate != nil {
+		if err := invalidate(); err != nil {
+			return false, err
+		}
+	}
 	if err := os.WriteFile(stampPath, []byte(identity+"\n"), 0o644); err != nil {
 		return false, err
 	}
 	return true, nil
+}
+
+func invalidateToolBinaries(toolsPath string) error {
+	for _, spec := range defaultTools {
+		if err := os.Remove(filepath.Join(toolsPath, "bin", spec.Name)); err != nil && !os.IsNotExist(err) {
+			return err
+		}
+	}
+	return nil
 }
 
 func ensureToolsDir(projectDir, toolsPath string, verbose bool) error {
@@ -271,6 +285,8 @@ func ensureToolsDir(projectDir, toolsPath string, verbose bool) error {
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		return cmd.Run()
+	}, func() error {
+		return invalidateToolBinaries(toolsPath)
 	})
 	return err
 }

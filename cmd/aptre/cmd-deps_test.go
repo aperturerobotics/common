@@ -83,20 +83,20 @@ func TestReconcileToolsStampLifecycle(t *testing.T) {
 	path := filepath.Join(t.TempDir(), ".common-tools-stamp")
 	calls := 0
 	extract := func() error { calls++; return nil }
-	changed, err := reconcileToolsStamp(path, "common@v1", extract)
+	changed, err := reconcileToolsStamp(path, "common@v1", extract, nil)
 	if err != nil || !changed || calls != 1 {
 		t.Fatalf("first %v %v %d", changed, err, calls)
 	}
-	changed, err = reconcileToolsStamp(path, "common@v1", extract)
+	changed, err = reconcileToolsStamp(path, "common@v1", extract, nil)
 	if err != nil || changed || calls != 1 {
 		t.Fatalf("noop %v %v %d", changed, err, calls)
 	}
-	changed, err = reconcileToolsStamp(path, "common@v2", extract)
+	changed, err = reconcileToolsStamp(path, "common@v2", extract, nil)
 	if err != nil || !changed || calls != 2 {
 		t.Fatalf("change %v %v %d", changed, err, calls)
 	}
 	os.Remove(path)
-	changed, err = reconcileToolsStamp(path, "common@v3", extract)
+	changed, err = reconcileToolsStamp(path, "common@v3", extract, nil)
 	if err != nil || !changed || calls != 3 {
 		t.Fatalf("missing %v %v %d", changed, err, calls)
 	}
@@ -104,12 +104,51 @@ func TestReconcileToolsStampLifecycle(t *testing.T) {
 func TestReconcileToolsStampFailedExtractionDoesNotAdvance(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "stamp")
 	os.WriteFile(path, []byte("common@old\n"), 0o644)
-	_, err := reconcileToolsStamp(path, "common@new", func() error { return errors.New("failed") })
+	_, err := reconcileToolsStamp(path, "common@new", func() error { return errors.New("failed") }, nil)
 	if err == nil {
 		t.Fatal("expected error")
 	}
 	got, _ := os.ReadFile(path)
 	if string(got) != "common@old\n" {
 		t.Fatalf("stamp advanced: %q", got)
+	}
+}
+
+func TestInvalidateToolBinariesPreservesUnrelatedFiles(t *testing.T) {
+	d := t.TempDir()
+	bin := filepath.Join(d, "bin")
+	if err := os.MkdirAll(bin, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, spec := range defaultTools {
+		if err := os.WriteFile(filepath.Join(bin, spec.Name), []byte("old"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	keep := filepath.Join(bin, "keep")
+	if err := os.WriteFile(keep, []byte("keep"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := invalidateToolBinaries(d); err != nil {
+		t.Fatal(err)
+	}
+	for _, spec := range defaultTools {
+		if _, err := os.Stat(filepath.Join(bin, spec.Name)); !os.IsNotExist(err) {
+			t.Fatalf("%s retained", spec.Name)
+		}
+	}
+	if _, err := os.Stat(keep); err != nil {
+		t.Fatal("unrelated file removed")
+	}
+}
+
+func TestReconcileToolsStampDoesNotInvalidateOnMatch(t *testing.T) {
+	stamp := filepath.Join(t.TempDir(), "stamp")
+	if err := os.WriteFile(stamp, []byte("v1\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	changed, err := reconcileToolsStamp(stamp, "v1", func() error { t.Fatal("extract called"); return nil }, func() error { t.Fatal("invalidate called"); return nil })
+	if err != nil || changed {
+		t.Fatalf("matching stamp: changed=%v err=%v", changed, err)
 	}
 }
