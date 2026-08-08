@@ -236,31 +236,43 @@ func ensureAllDeps(projectDir, toolsDir string, verbose, force bool) error {
 	return nil
 }
 
+func toolsStampPath(toolsPath string) string {
+	return filepath.Join(toolsPath, ".common-tools-stamp")
+}
+
+func reconcileToolsStamp(stampPath, identity string, extract func() error) (bool, error) {
+	if data, err := os.ReadFile(stampPath); err == nil && strings.TrimSpace(string(data)) == identity {
+		return false, nil
+	}
+	if err := extract(); err != nil {
+		return false, err
+	}
+	if err := os.WriteFile(stampPath, []byte(identity+"\n"), 0o644); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 func ensureToolsDir(projectDir, toolsPath string, verbose bool) error {
-	if _, err := os.Stat(toolsPath); err == nil {
-		return nil // Already exists
+	if err := os.MkdirAll(toolsPath, 0o755); err != nil {
+		return err
 	}
-
-	if verbose {
-		fmt.Println("Setting up tools directory...")
-	}
-
-	relToolsPath, err := filepath.Rel(projectDir, toolsPath)
-	if err != nil {
-		relToolsPath = filepath.Base(toolsPath)
-	}
-
-	commonPackage := resolveCommonPackage(projectDir)
-	// Extracting the tools directory builds common's main package, which imports
-	// C++ embed packages (abseil-cpp, protobuf) that the caller's module may lack
-	// go.sum entries for. Pass -mod=mod so setup resolves them under a readonly
-	// ambient default (CI, direct binary) instead of relying on the go:aptre
-	// wrapper to set GOFLAGS.
-	cmd := exec.Command("go", "run", "-mod=mod", "-v", commonPackage, relToolsPath)
-	cmd.Dir = projectDir
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	identity := resolveCommonPackage(projectDir)
+	_, err := reconcileToolsStamp(toolsStampPath(toolsPath), identity, func() error {
+		if verbose {
+			fmt.Println("Synchronizing embedded tool metadata...")
+		}
+		relToolsPath, err := filepath.Rel(projectDir, toolsPath)
+		if err != nil {
+			relToolsPath = filepath.Base(toolsPath)
+		}
+		cmd := exec.Command("go", "run", "-mod=mod", "-v", identity, relToolsPath)
+		cmd.Dir = projectDir
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		return cmd.Run()
+	})
+	return err
 }
 
 func resolveCommonPackage(projectDir string) string {

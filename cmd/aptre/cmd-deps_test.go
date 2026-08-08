@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/aperturerobotics/common/protogen"
+	"github.com/pkg/errors"
 )
 
 func TestPlanGenerateDependenciesByLanguageAndRPC(t *testing.T) {
@@ -75,5 +76,40 @@ func TestSelectedToolPlanBranches(t *testing.T) {
 	}
 	if got := selectedToolPlan(project, "protoc-gen-go-lite"); got.mode != toolBuildIsolated {
 		t.Fatalf("unselected product mode=%q", got.mode)
+	}
+}
+
+func TestReconcileToolsStampLifecycle(t *testing.T) {
+	path := filepath.Join(t.TempDir(), ".common-tools-stamp")
+	calls := 0
+	extract := func() error { calls++; return nil }
+	changed, err := reconcileToolsStamp(path, "common@v1", extract)
+	if err != nil || !changed || calls != 1 {
+		t.Fatalf("first %v %v %d", changed, err, calls)
+	}
+	changed, err = reconcileToolsStamp(path, "common@v1", extract)
+	if err != nil || changed || calls != 1 {
+		t.Fatalf("noop %v %v %d", changed, err, calls)
+	}
+	changed, err = reconcileToolsStamp(path, "common@v2", extract)
+	if err != nil || !changed || calls != 2 {
+		t.Fatalf("change %v %v %d", changed, err, calls)
+	}
+	os.Remove(path)
+	changed, err = reconcileToolsStamp(path, "common@v3", extract)
+	if err != nil || !changed || calls != 3 {
+		t.Fatalf("missing %v %v %d", changed, err, calls)
+	}
+}
+func TestReconcileToolsStampFailedExtractionDoesNotAdvance(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "stamp")
+	os.WriteFile(path, []byte("common@old\n"), 0o644)
+	_, err := reconcileToolsStamp(path, "common@new", func() error { return errors.New("failed") })
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	got, _ := os.ReadFile(path)
+	if string(got) != "common@old\n" {
+		t.Fatalf("stamp advanced: %q", got)
 	}
 }
