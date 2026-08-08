@@ -330,3 +330,33 @@ func writeTestFile(t *testing.T, name string) {
 		t.Fatalf("write %s: %v", name, err)
 	}
 }
+
+func TestDiscoverNodePluginPackageBinFallbackAndPrecedence(t *testing.T) {
+	projectDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(projectDir, "go.mod"), []byte("module example.com/test\n\ngo 1.25.0\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	bin := filepath.Join(projectDir, "cmd", "protoc-gen-es-starpc")
+	writeTestFile(t, bin)
+	os.WriteFile(filepath.Join(projectDir, "package.json"), []byte(`{"bin":{"protoc-gen-es-starpc":"./cmd/protoc-gen-es-starpc"}}`), 0o644)
+	cfg := NewConfig()
+	cfg.ProjectDir = projectDir
+	cfg.Languages = []string{"ts"}
+	cfg.RPCLibraries = []string{"starpc"}
+	plugins, err := DiscoverPlugins(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plugins.ESStarpc == nil || plugins.ESStarpc.Path != bin {
+		t.Fatalf("fallback path=%v", plugins.ESStarpc)
+	}
+	installed := filepath.Join(projectDir, "node_modules", ".bin", "protoc-gen-es-starpc")
+	writeTestFile(t, installed)
+	plugins, err = DiscoverPlugins(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plugins.ESStarpc.Path != installed {
+		t.Fatalf("installed precedence=%q", plugins.ESStarpc.Path)
+	}
+}

@@ -3,6 +3,7 @@ package protogen
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -63,6 +64,45 @@ type Plugins struct {
 	// RustProst is the protoc-gen-prost plugin for Rust protobuf types.
 	// This uses an embedded WASM module, no external binary required.
 	RustProst *Plugin
+}
+
+func discoverNodePlugin(projectDir, binaryName string) string {
+	installed := filepath.Join(projectDir, "node_modules", ".bin", binaryName)
+	if info, err := os.Stat(installed); err == nil && info.Mode().IsRegular() && info.Mode()&0o111 != 0 {
+		return installed
+	}
+	data, err := os.ReadFile(filepath.Join(projectDir, "package.json"))
+	if err != nil {
+		return ""
+	}
+	var pkg struct {
+		Bin json.RawMessage `json:"bin"`
+	}
+	if json.Unmarshal(data, &pkg) != nil || len(pkg.Bin) == 0 {
+		return ""
+	}
+	var bins map[string]string
+	if pkg.Bin[0] == '"' {
+		var path string
+		if json.Unmarshal(pkg.Bin, &path) != nil {
+			return ""
+		}
+		bins = map[string]string{binaryName: path}
+	} else if json.Unmarshal(pkg.Bin, &bins) != nil {
+		return ""
+	}
+	rel, ok := bins[binaryName]
+	if !ok {
+		return ""
+	}
+	path := rel
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(projectDir, path)
+	}
+	if info, err := os.Stat(path); err == nil && info.Mode().IsRegular() && info.Mode()&0o111 != 0 {
+		return path
+	}
+	return ""
 }
 
 // DiscoverPlugins finds and configures available plugins.
@@ -188,10 +228,8 @@ func DiscoverPlugins(cfg *Config) (*Plugins, error) {
 
 	if hasTS && langs.Has(LanguageTypeScript) {
 		// TypeScript plugins from node_modules
-		nodeModules := filepath.Join(projectDir, "node_modules", ".bin")
-
-		esLitePath := filepath.Join(nodeModules, "protoc-gen-es-lite")
-		if _, err := os.Stat(esLitePath); err == nil {
+		esLitePath := discoverNodePlugin(projectDir, "protoc-gen-es-lite")
+		if esLitePath != "" {
 			plugins.ESLite = &Plugin{
 				Name:       "es-lite",
 				BinaryName: "protoc-gen-es-lite",
@@ -206,8 +244,8 @@ func DiscoverPlugins(cfg *Config) (*Plugins, error) {
 		}
 
 		if rpcs.Has(RPCLibraryStarpc) {
-			esStarpcPath := filepath.Join(nodeModules, "protoc-gen-es-starpc")
-			if _, err := os.Stat(esStarpcPath); err == nil {
+			esStarpcPath := discoverNodePlugin(projectDir, "protoc-gen-es-starpc")
+			if esStarpcPath != "" {
 				plugins.ESStarpc = &Plugin{
 					Name:       "es-starpc",
 					BinaryName: "protoc-gen-es-starpc",
