@@ -6,7 +6,7 @@ require (
 	github.com/aperturerobotics/abseil-cpp v0.0.0-20260131110040-4bb56e2f9017 // aperture-2
 	github.com/aperturerobotics/cli v1.1.0
 	github.com/aperturerobotics/go-protoc-gen-prost v0.0.0-20260705010911-9f53feac967b // master
-	github.com/aperturerobotics/go-protoc-wasi v0.0.0-20260712054757-d8078c296c17 // master
+	github.com/aperturerobotics/go-protoc-wasi v0.0.0-20260808023521-7b1595380c3f // master
 	github.com/aperturerobotics/go-websocket v1.8.15-0.20260619192713-a096778f08c1 // indirect
 	github.com/aperturerobotics/json-iterator-lite v1.1.0 // indirect
 	github.com/aperturerobotics/protobuf v0.0.0-20260203024654-8201686529c4 // wasi

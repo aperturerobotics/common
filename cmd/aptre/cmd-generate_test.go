@@ -6,11 +6,35 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 
+	"github.com/aperturerobotics/cli"
+
 	"github.com/aperturerobotics/common/protogen"
 )
+
+func TestGenerateLanguageFlagAliasSharesConfigField(t *testing.T) {
+	t.Helper()
+
+	var languageFlag *cli.StringSliceFlag
+	for _, flag := range generateCmd.Flags {
+		if candidate, ok := flag.(*cli.StringSliceFlag); ok && candidate.Name == "language" {
+			languageFlag = candidate
+			break
+		}
+	}
+	if languageFlag == nil {
+		t.Fatal("language flag is not registered")
+	}
+	if got := languageFlag.Names(); !slices.Equal(got, []string{"language", "l", "languages"}) {
+		t.Fatalf("language flag names = %v, want language, l, languages", got)
+	}
+	if languageFlag.Usage == "" {
+		t.Fatal("language flag help is empty")
+	}
+}
 
 func TestGenerateCompatibilityFixtureUsesPackageJSONHistoricalDefaults(t *testing.T) {
 	t.Helper()
@@ -264,6 +288,7 @@ message Scratch {
 
 	csharpPath := filepath.Join(projectDir, "Scratch.cs")
 	pythonPath := filepath.Join(projectDir, "scratch_pb2.py")
+	pythonStubPath := filepath.Join(projectDir, "scratch_pb2.pyi")
 	csharp, err := os.ReadFile(csharpPath)
 	if err != nil {
 		t.Fatalf("read C# output: %v", err)
@@ -278,6 +303,13 @@ message Scratch {
 			return nil
 		})
 		t.Fatalf("read Python output: %v; files: %v", err, files)
+	}
+	pythonStub, err := os.ReadFile(pythonStubPath)
+	if err != nil {
+		t.Fatalf("read Python stub output: %v", err)
+	}
+	if !bytes.Contains(pythonStub, []byte("Scratch")) {
+		t.Fatal("Python stub output does not contain Scratch")
 	}
 	if !bytes.Contains(csharp, []byte("class Scratch")) {
 		t.Fatal("C# output does not contain Scratch")
@@ -305,6 +337,9 @@ message Scratch {
 	if got, err := os.ReadFile(pythonPath); err != nil || !bytes.Equal(got, python) {
 		t.Fatalf("Python second-run output changed: %v", err)
 	}
+	if got, err := os.ReadFile(pythonStubPath); err != nil || !bytes.Equal(got, pythonStub) {
+		t.Fatalf("Python stub second-run output changed: %v", err)
+	}
 
 	cfg.Languages = []string{"csharp"}
 	gen, err = protogen.NewGenerator(cfg)
@@ -316,6 +351,9 @@ message Scratch {
 	}
 	if _, err := os.Stat(pythonPath); !os.IsNotExist(err) {
 		t.Fatalf("expected stale Python output removal, got %v", err)
+	}
+	if _, err := os.Stat(pythonStubPath); !os.IsNotExist(err) {
+		t.Fatalf("expected stale Python stub removal, got %v", err)
 	}
 	if got, err := os.ReadFile(csharpPath); err != nil || !bytes.Equal(got, csharp) {
 		t.Fatalf("C# output changed after language invalidation: %v", err)

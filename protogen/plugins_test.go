@@ -8,6 +8,61 @@ import (
 	"testing"
 )
 
+func TestDiscoverPluginsStarpcPythonSelected(t *testing.T) {
+	projectDir := newPluginTestProject(t, false)
+	cfg := NewConfig()
+	cfg.ProjectDir = projectDir
+	cfg.Languages = []string{"python"}
+	cfg.RPCLibraries = []string{"starpc-python"}
+
+	plugins, err := DiscoverPlugins(cfg)
+	if err != nil {
+		t.Fatalf("discover plugins: %v", err)
+	}
+	if plugins.StarpcPython == nil {
+		t.Fatal("expected starpc-python plugin")
+	}
+	if got := plugins.GetProtocArgs("/out", "/csharp"); !slices.Contains(got, "--starpc-python_out=/out") {
+		t.Fatalf("expected starpc-python arg, got %v", got)
+	}
+	h := NewNativePluginHandler(plugins, false)
+	if got := h.findPluginPath("protoc-gen-starpc-python", false); got != plugins.StarpcPython.Path {
+		t.Fatalf("handler path = %q, want %q", got, plugins.StarpcPython.Path)
+	}
+}
+
+func TestDiscoverPluginsStarpcPythonMissingBinaryFails(t *testing.T) {
+	projectDir := newPluginTestProject(t, false)
+	if err := os.Remove(filepath.Join(projectDir, ".tools", "bin", "protoc-gen-starpc-python")); err != nil {
+		t.Fatalf("remove test plugin: %v", err)
+	}
+	cfg := NewConfig()
+	cfg.ProjectDir = projectDir
+	cfg.Languages = []string{"python"}
+	cfg.RPCLibraries = []string{"starpc-python"}
+	if _, err := DiscoverPlugins(cfg); err == nil || !strings.Contains(err.Error(), "starpc-python selected") {
+		t.Fatalf("expected clear missing-plugin error, got %v", err)
+	}
+}
+
+func TestDiscoverPluginsStarpcPythonUnselected(t *testing.T) {
+	projectDir := newPluginTestProject(t, false)
+	cfg := NewConfig()
+	cfg.ProjectDir = projectDir
+	cfg.Languages = []string{"python"}
+	cfg.RPCLibraries = []string{"none"}
+	plugins, err := DiscoverPlugins(cfg)
+	if err != nil {
+		t.Fatalf("discover plugins: %v", err)
+	}
+	if plugins.StarpcPython != nil {
+		t.Fatal("expected no starpc-python plugin")
+	}
+	if slices.Contains(plugins.GetProtocArgs("/out", "/csharp"), "--starpc-python_out=/out") {
+		t.Fatal("unexpected starpc-python arg")
+	}
+}
+
 func TestDiscoverPluginsDefaultAllLanguages(t *testing.T) {
 	t.Helper()
 
@@ -213,7 +268,7 @@ func TestDiscoverPluginsCSharpAndPython(t *testing.T) {
 	if err != nil {
 		t.Fatalf("discover plugins: %v", err)
 	}
-	want := []string{"--csharp_out=/csharp", "--python_out=/out"}
+	want := []string{"--csharp_out=/csharp", "--python_out=/out", "--pyi_out=/out"}
 	if args := plugins.GetProtocArgs("/out", "/csharp"); !slices.Equal(args, want) {
 		t.Fatalf("expected protoc args %v, got %v", want, args)
 	}
@@ -251,6 +306,7 @@ func newPluginTestProject(t *testing.T, withPackageJSON bool) string {
 		"protoc-gen-starpc-cpp",
 		"protoc-gen-starpc-rust",
 		"protoc-gen-prost",
+		"protoc-gen-starpc-python",
 	} {
 		writeTestFile(t, filepath.Join(projectDir, ".tools", "bin", name))
 	}

@@ -12,6 +12,8 @@ type RPCLibrary string
 const (
 	// RPCLibraryStarpc enables StarPC RPC stubs.
 	RPCLibraryStarpc RPCLibrary = "starpc"
+	// RPCLibraryStarpcPython enables StarPC Python RPC stubs.
+	RPCLibraryStarpcPython RPCLibrary = "starpc-python"
 )
 
 // RPCLibraries contains the enabled RPC stub generators.
@@ -35,6 +37,8 @@ func NewRPCLibraries(names []string) (RPCLibraries, error) {
 				return RPCLibraries{}, nil
 			case RPCLibraryStarpc:
 				libs[RPCLibraryStarpc] = struct{}{}
+			case RPCLibraryStarpcPython:
+				libs[RPCLibraryStarpcPython] = struct{}{}
 			default:
 				return nil, errors.Errorf("unknown RPC library %q", name)
 			}

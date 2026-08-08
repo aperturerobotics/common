@@ -259,3 +259,18 @@ func TestConfigGetLanguagesUnknown(t *testing.T) {
 		t.Fatal("expected unknown language error")
 	}
 }
+
+func TestConfigGetRPCLibrariesStarpcPython(t *testing.T) {
+	cfg := NewConfig()
+	cfg.RPCLibraries = []string{"starpc-python"}
+	rpcs, err := cfg.GetRPCLibraries()
+	if err != nil {
+		t.Fatalf("get RPC libraries: %v", err)
+	}
+	if !rpcs.Has(RPCLibraryStarpcPython) {
+		t.Fatal("expected starpc-python RPC generation to be enabled")
+	}
+	if rpcs.Has(RPCLibraryStarpc) {
+		t.Fatal("starpc-python must not imply starpc")
+	}
+}

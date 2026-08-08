@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/aperturerobotics/cli"
+	"github.com/aperturerobotics/common/protogen"
 )
 
 // Tool definitions
@@ -26,6 +27,81 @@ var defaultTools = []struct {
 	{"go-mod-outdated", "github.com/psampaz/go-mod-outdated"},
 	{"goreleaser", "github.com/goreleaser/goreleaser/v2"},
 	{"wasmbrowsertest", "github.com/agnivade/wasmbrowsertest"},
+}
+
+type generateDependencyPlan struct {
+	nativeTools       []string
+	ensureNodeModules bool
+}
+
+func planGenerateDependencies(cfg *protogen.Config) (generateDependencyPlan, error) {
+	langs, err := cfg.GetLanguages()
+	if err != nil {
+		return generateDependencyPlan{}, err
+	}
+	rpcs, err := cfg.GetRPCLibraries()
+	if err != nil {
+		return generateDependencyPlan{}, err
+	}
+
+	var tools []string
+	if langs.Has(protogen.LanguageGo) {
+		tools = append(tools, "protoc-gen-go-lite")
+		if rpcs.Has(protogen.RPCLibraryStarpc) {
+			tools = append(tools, "protoc-gen-go-starpc")
+		}
+		tools = append(tools, "gofumpt")
+	}
+	if langs.Has(protogen.LanguageCpp) && rpcs.Has(protogen.RPCLibraryStarpc) {
+		tools = append(tools, "protoc-gen-starpc-cpp")
+	}
+	if langs.Has(protogen.LanguageRust) && rpcs.Has(protogen.RPCLibraryStarpc) {
+		tools = append(tools, "protoc-gen-starpc-rust")
+	}
+	hasPackageJSON, err := cfg.HasPackageJSON()
+	if err != nil {
+		return generateDependencyPlan{}, err
+	}
+	return generateDependencyPlan{
+		nativeTools:       tools,
+		ensureNodeModules: hasPackageJSON && langs.Has(protogen.LanguageTypeScript),
+	}, nil
+}
+
+func ensureGenerateDeps(cfg *protogen.Config, verbose bool) error {
+	plan, err := planGenerateDependencies(cfg)
+	if err != nil {
+		return err
+	}
+	if len(plan.nativeTools) != 0 {
+		projectDir, err := cfg.GetProjectDir()
+		if err != nil {
+			return err
+		}
+		toolsDir, err := cfg.GetToolsDir()
+		if err != nil {
+			return err
+		}
+		toolsPath := toolsDir
+		if err := ensureToolsDir(projectDir, toolsPath, verbose); err != nil {
+			return err
+		}
+		for _, tool := range plan.nativeTools {
+			if err := ensureTool(toolsPath, tool, false, verbose); err != nil {
+				return err
+			}
+		}
+	}
+	if plan.ensureNodeModules {
+		projectDir, err := cfg.GetProjectDir()
+		if err != nil {
+			return err
+		}
+		if err := ensureNodeModules(projectDir, verbose); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 var depsCmd = &cli.Command{

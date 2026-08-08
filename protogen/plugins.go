@@ -18,6 +18,7 @@ type PluginType int
 
 const (
 	PluginTypeGo PluginType = iota
+	PluginTypePython
 	PluginTypeTypeScript
 	PluginTypeCpp
 	PluginTypeRust
@@ -57,6 +58,8 @@ type Plugins struct {
 	CppStarpc *Plugin
 	// RustStarpc is the protoc-gen-starpc-rust plugin.
 	RustStarpc *Plugin
+	// StarpcPython is the protoc-gen-starpc-python plugin.
+	StarpcPython *Plugin
 	// RustProst is the protoc-gen-prost plugin for Rust protobuf types.
 	// This uses an embedded WASM module, no external binary required.
 	RustProst *Plugin
@@ -125,6 +128,14 @@ func DiscoverPlugins(cfg *Config) (*Plugins, error) {
 				}
 			}
 		}
+	}
+
+	if langs.Has(LanguagePython) && rpcs.Has(RPCLibraryStarpcPython) {
+		starpcPythonPath := filepath.Join(toolsBin, "protoc-gen-starpc-python")
+		if _, err := os.Stat(starpcPythonPath); err != nil {
+			return nil, fmt.Errorf("starpc-python selected but plugin is unavailable at %s (owned provisioning begins in Phase 4)", starpcPythonPath)
+		}
+		plugins.StarpcPython = &Plugin{Name: "starpc-python", BinaryName: "protoc-gen-starpc-python", Path: starpcPythonPath, Type: PluginTypePython, OutFlag: "starpc-python_out", Options: map[string]string{}}
 	}
 
 	if hasGo && langs.Has(LanguageCpp) && rpcs.Has(RPCLibraryStarpc) {
@@ -246,6 +257,12 @@ func (p *Plugins) GetProtocArgs(outDir, csharpOutDir string) []string {
 	// Python output (built-in to protoc)
 	if p.Languages.Has(LanguagePython) {
 		args = append(args, fmt.Sprintf("--python_out=%s", outDir))
+		args = append(args, fmt.Sprintf("--pyi_out=%s", outDir))
+	}
+
+	// Python StarPC RPC plugin
+	if p.StarpcPython != nil {
+		args = append(args, fmt.Sprintf("--%s=%s", p.StarpcPython.OutFlag, outDir))
 	}
 
 	// Go plugins
@@ -380,6 +397,10 @@ func (h *NativePluginHandler) findPluginPath(program string, searchPath bool) st
 	// Check our configured plugins first
 	if h.Plugins != nil {
 		switch program {
+		case "protoc-gen-starpc-python":
+			if h.Plugins.StarpcPython != nil {
+				return h.Plugins.StarpcPython.Path
+			}
 		case "protoc-gen-go-lite":
 			if h.Plugins.GoLite != nil {
 				return h.Plugins.GoLite.Path

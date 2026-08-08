@@ -50,12 +50,12 @@ var generateCmd = &cli.Command{
 		},
 		&cli.StringSliceFlag{
 			Name:    "language",
-			Aliases: []string{"l"},
+			Aliases: []string{"l", "languages"},
 			Usage:   "Output language to generate: go, ts, cpp, rust, csharp, python (can be specified multiple times)",
 		},
 		&cli.StringSliceFlag{
 			Name:  "rpc",
-			Usage: "RPC stub libraries to generate: starpc, none, false (can be specified multiple times)",
+			Usage: "RPC stub libraries to generate: starpc, starpc-python, none, false (can be specified multiple times)",
 		},
 		&cli.StringFlag{
 			Name:    "project-dir",
@@ -93,7 +93,7 @@ func runGenerate(c *cli.Context) error {
 
 	// Ensure dependencies if requested
 	if c.Bool("deps") {
-		if err := ensureDeps(cfg.ProjectDir, cfg.ToolsDir, cfg.Verbose); err != nil {
+		if err := ensureGenerateDeps(cfg, cfg.Verbose); err != nil {
 			return fmt.Errorf("failed to ensure dependencies: %w", err)
 		}
 	}
