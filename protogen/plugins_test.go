@@ -31,6 +31,46 @@ func TestDiscoverPluginsStarpcPythonSelected(t *testing.T) {
 	}
 }
 
+func TestDiscoverPluginsStarpcPythonVenvFallback(t *testing.T) {
+	projectDir := newPluginTestProject(t, false)
+	if err := os.RemoveAll(filepath.Join(projectDir, ".tools")); err != nil {
+		t.Fatal(err)
+	}
+	venvPath := filepath.Join(projectDir, ".venv", "bin", "protoc-gen-starpc-python")
+	writeTestFile(t, venvPath)
+	cfg := NewConfig()
+	cfg.ProjectDir = projectDir
+	cfg.Languages = []string{"python"}
+	cfg.RPCLibraries = []string{"starpc-python"}
+	plugins, err := DiscoverPlugins(cfg)
+	if err != nil {
+		t.Fatalf("discover plugins: %v", err)
+	}
+	if plugins.StarpcPython == nil || plugins.StarpcPython.Path != venvPath {
+		t.Fatalf("venv fallback path = %v, want %q", plugins.StarpcPython, venvPath)
+	}
+}
+
+func TestDiscoverPluginsStarpcPythonScriptsFallback(t *testing.T) {
+	projectDir := newPluginTestProject(t, false)
+	if err := os.RemoveAll(filepath.Join(projectDir, ".tools")); err != nil {
+		t.Fatal(err)
+	}
+	scriptsPath := filepath.Join(projectDir, ".venv", "Scripts", "protoc-gen-starpc-python.exe")
+	writeTestFile(t, scriptsPath)
+	cfg := NewConfig()
+	cfg.ProjectDir = projectDir
+	cfg.Languages = []string{"python"}
+	cfg.RPCLibraries = []string{"starpc-python"}
+	plugins, err := DiscoverPlugins(cfg)
+	if err != nil {
+		t.Fatalf("discover plugins: %v", err)
+	}
+	if plugins.StarpcPython == nil || plugins.StarpcPython.Path != scriptsPath {
+		t.Fatalf("Scripts fallback path = %v, want %q", plugins.StarpcPython, scriptsPath)
+	}
+}
+
 func TestDiscoverPluginsStarpcPythonMissingBinaryFails(t *testing.T) {
 	projectDir := newPluginTestProject(t, false)
 	if err := os.Remove(filepath.Join(projectDir, ".tools", "bin", "protoc-gen-starpc-python")); err != nil {
@@ -40,7 +80,7 @@ func TestDiscoverPluginsStarpcPythonMissingBinaryFails(t *testing.T) {
 	cfg.ProjectDir = projectDir
 	cfg.Languages = []string{"python"}
 	cfg.RPCLibraries = []string{"starpc-python"}
-	if _, err := DiscoverPlugins(cfg); err == nil || !strings.Contains(err.Error(), "starpc-python selected") {
+	if _, err := DiscoverPlugins(cfg); err == nil || !strings.Contains(err.Error(), "uv sync --all-packages") || !strings.Contains(err.Error(), ".venv/bin/protoc-gen-starpc-python") {
 		t.Fatalf("expected clear missing-plugin error, got %v", err)
 	}
 }

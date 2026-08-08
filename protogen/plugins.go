@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"strings"
 
 	prost "github.com/aperturerobotics/go-protoc-gen-prost"
 	"github.com/tetratelabs/wazero"
@@ -171,11 +172,23 @@ func DiscoverPlugins(cfg *Config) (*Plugins, error) {
 	}
 
 	if langs.Has(LanguagePython) && rpcs.Has(RPCLibraryStarpcPython) {
-		starpcPythonPath := filepath.Join(toolsBin, "protoc-gen-starpc-python")
-		if _, err := os.Stat(starpcPythonPath); err != nil {
-			return nil, fmt.Errorf("starpc-python selected but plugin is unavailable at %s (owned provisioning begins in Phase 4)", starpcPythonPath)
+		binaryName := "protoc-gen-starpc-python"
+		candidates := []string{
+			filepath.Join(toolsBin, binaryName),
+			filepath.Join(projectDir, ".venv", "bin", binaryName),
+			filepath.Join(projectDir, ".venv", "Scripts", binaryName+".exe"),
 		}
-		plugins.StarpcPython = &Plugin{Name: "starpc-python", BinaryName: "protoc-gen-starpc-python", Path: starpcPythonPath, Type: PluginTypePython, OutFlag: "starpc-python_out", Options: map[string]string{}}
+		starpcPythonPath := ""
+		for _, candidate := range candidates {
+			if info, statErr := os.Stat(candidate); statErr == nil && info.Mode().IsRegular() && info.Mode()&0o111 != 0 {
+				starpcPythonPath = candidate
+				break
+			}
+		}
+		if starpcPythonPath == "" {
+			return nil, fmt.Errorf("starpc-python selected but plugin is unavailable; checked %s; run `uv sync --all-packages`", strings.Join(candidates, ", "))
+		}
+		plugins.StarpcPython = &Plugin{Name: "starpc-python", BinaryName: binaryName, Path: starpcPythonPath, Type: PluginTypePython, OutFlag: "starpc-python_out", Options: map[string]string{}}
 	}
 
 	if hasGo && langs.Has(LanguageCpp) && rpcs.Has(RPCLibraryStarpc) {
