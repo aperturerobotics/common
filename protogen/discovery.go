@@ -132,7 +132,7 @@ func GetGeneratedFiles(protoFile, projectDir, modulePath string, hasGo, hasTS bo
 }
 
 // FindGeneratedFilesForProto finds actual enabled outputs for a proto file.
-func FindGeneratedFilesForProto(protoFile, projectDir, vendorDir, modulePath string, langs Languages) ([]string, error) {
+func FindGeneratedFilesForProto(protoFile, projectDir, vendorDir, modulePath string, langs Languages, rpcs RPCLibraries) ([]string, error) {
 	protoDir := filepath.Dir(protoFile)
 	baseName := strings.TrimSuffix(filepath.Base(protoFile), ".proto")
 
@@ -178,6 +178,9 @@ func FindGeneratedFilesForProto(protoFile, projectDir, vendorDir, modulePath str
 	}
 	if langs.Has(LanguagePython) {
 		relativePatterns = append(relativePatterns, baseName+"_pb2.py", baseName+"_pb2.pyi")
+		if rpcs.Has(RPCLibraryStarpcPython) {
+			relativePatterns = append(relativePatterns, baseName+"_srpc.py", baseName+"_srpc.pyi")
+		}
 	}
 
 	searches := []struct {

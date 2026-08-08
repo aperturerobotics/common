@@ -220,7 +220,7 @@ func (g *Generator) Generate(ctx context.Context) error {
 			packageKey := GetPackageKey(g.ModulePath, files[0])
 			var generatedFiles []string
 			for _, f := range files {
-				gf, err := FindGeneratedFilesForProto(f, g.ProjectDir, g.VendorDir, g.ModulePath, g.Plugins.Languages)
+				gf, err := FindGeneratedFilesForProto(f, g.ProjectDir, g.VendorDir, g.ModulePath, g.Plugins.Languages, g.Plugins.RPCLibraries)
 				if err != nil {
 					return fmt.Errorf("failed to find generated files for %s: %w", f, err)
 				}
@@ -461,7 +461,7 @@ func (g *Generator) formatGeneratedFiles(protoFiles []string) error {
 	var goFiles, tsFiles []string
 
 	for _, f := range protoFiles {
-		gf, err := FindGeneratedFilesForProto(f, g.ProjectDir, g.VendorDir, g.ModulePath, g.Plugins.Languages)
+		gf, err := FindGeneratedFilesForProto(f, g.ProjectDir, g.VendorDir, g.ModulePath, g.Plugins.Languages, g.Plugins.RPCLibraries)
 		if err != nil {
 			continue
 		}

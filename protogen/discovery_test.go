@@ -33,6 +33,7 @@ func TestFindGeneratedFilesForProtoBuiltInLanguages(t *testing.T) {
 		vendorDir,
 		modulePath,
 		Languages{LanguageGo: {}, LanguageCSharp: {}, LanguagePython: {}},
+		RPCLibraries{},
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -62,11 +63,51 @@ func TestFindGeneratedFilesForProtoDoesNotClaimUnrelatedCSharp(t *testing.T) {
 		vendorDir,
 		"example.com/project",
 		Languages{LanguageCSharp: {}, LanguagePython: {}},
+		RPCLibraries{},
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(got) != 0 {
 		t.Fatalf("unexpected generated files: %v", got)
+	}
+}
+
+func TestFindGeneratedFilesForProtoStarpcPythonClaimsServiceOutputs(t *testing.T) {
+	projectDir := t.TempDir()
+	vendorDir := filepath.Join(projectDir, "vendor")
+	modulePath := "example.com/project"
+	for _, name := range []string{"match_state_pb2.py", "match_state_pb2.pyi", "match_state_srpc.py", "match_state_srpc.pyi"} {
+		if err := os.WriteFile(filepath.Join(projectDir, name), nil, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, err := FindGeneratedFilesForProto(
+		"match_state.proto", projectDir, vendorDir, modulePath,
+		Languages{LanguagePython: {}}, RPCLibraries{RPCLibraryStarpcPython: {}},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"match_state_pb2.py", "match_state_pb2.pyi", "match_state_srpc.py", "match_state_srpc.pyi"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("want %v, got %v", want, got)
+	}
+}
+
+func TestFindGeneratedFilesForProtoStarpcPythonUnselected(t *testing.T) {
+	projectDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(projectDir, "match_state_srpc.py"), nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, err := FindGeneratedFilesForProto(
+		"match_state.proto", projectDir, projectDir+"/vendor", "example.com/project",
+		Languages{LanguagePython: {}}, RPCLibraries{},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 0 {
+		t.Fatalf("unexpected outputs without starpc-python: %v", got)
 	}
 }

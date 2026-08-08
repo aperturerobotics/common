@@ -123,6 +123,175 @@ func TestGenerateCompatibilityFixtureUsesPackageJSONHistoricalDefaults(t *testin
 	}
 }
 
+const fakeStarpcPythonSource = `package main
+
+import (
+	"encoding/binary"
+	"fmt"
+	"io"
+	"os"
+	"strings"
+)
+
+func main() {
+	req, err := io.ReadAll(os.Stdin)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	var names []string
+	pos := 0
+	for pos < len(req) {
+		tag, n := binary.Uvarint(req[pos:])
+		if n <= 0 {
+			break
+		}
+		pos += n
+		field := int(tag >> 3)
+		wire := int(tag & 7)
+		switch wire {
+		case 0:
+			if _, n := binary.Uvarint(req[pos:]); n <= 0 {
+				break
+			}
+			pos += n
+		case 1:
+			pos += 8
+		case 2:
+			l, n := binary.Uvarint(req[pos:])
+			if n <= 0 {
+				break
+			}
+			pos += n
+			if field == 1 {
+				names = append(names, string(req[pos:pos+int(l)]))
+			}
+			pos += int(l)
+		case 5:
+			pos += 4
+		}
+	}
+	var resp []byte
+	for _, name := range names {
+		base := strings.TrimSuffix(name, ".proto")
+		var file []byte
+		file = appendString(file, 1, base+"_srpc.py")
+		file = appendString(file, 15, "generated stub for "+base+"\n")
+		resp = appendBytes(resp, 15, file)
+		file = file[:0]
+		file = appendString(file, 1, base+"_srpc.pyi")
+		file = appendString(file, 15, "generated stub types for "+base+"\n")
+		resp = appendBytes(resp, 15, file)
+	}
+	os.Stdout.Write(resp)
+}
+
+func appendString(dst []byte, field int, value string) []byte {
+	return appendBytes(dst, field, []byte(value))
+}
+
+func appendBytes(dst []byte, field int, payload []byte) []byte {
+	dst = binary.AppendUvarint(dst, uint64((field<<3)|2))
+	dst = binary.AppendUvarint(dst, uint64(len(payload)))
+	return append(dst, payload...)
+}
+`
+
+func TestGenerateStarpcPythonServiceOutputsAndStaleRemoval(t *testing.T) {
+	t.Helper()
+
+	projectDir := t.TempDir()
+	fakeSrc := t.TempDir()
+	if err := os.WriteFile(filepath.Join(fakeSrc, "main.go"), []byte(fakeStarpcPythonSource), 0o644); err != nil {
+		t.Fatalf("write fake plugin source: %v", err)
+	}
+	toolsBin := filepath.Join(projectDir, ".tools", "bin")
+	if err := os.MkdirAll(toolsBin, 0o755); err != nil {
+		t.Fatalf("create tools bin: %v", err)
+	}
+	rootDir := repoRoot(t)
+	runTestCommand(t, rootDir, "go", "build", "-o", filepath.Join(toolsBin, "protoc-gen-starpc-python"), filepath.Join(fakeSrc, "main.go"))
+
+	goMod := []byte("module example.com/scratch\n\ngo 1.25.0\n")
+	if err := os.WriteFile(filepath.Join(projectDir, "go.mod"), goMod, 0o644); err != nil {
+		t.Fatalf("write go.mod: %v", err)
+	}
+	protoFile := []byte(`syntax = "proto3";
+package scratch;
+
+message Scratch {
+  string value = 1;
+}
+
+service ScratchService {
+  rpc Get(Scratch) returns (Scratch);
+}
+`)
+	if err := os.WriteFile(filepath.Join(projectDir, "scratch.proto"), protoFile, 0o644); err != nil {
+		t.Fatalf("write scratch.proto: %v", err)
+	}
+	runTestCommand(t, projectDir, "git", "init")
+	runTestCommand(t, projectDir, "git", "add", "scratch.proto")
+
+	cfg := protogen.NewConfig()
+	cfg.ProjectDir = projectDir
+	cfg.Languages = []string{"python"}
+	cfg.RPCLibraries = []string{"starpc-python"}
+
+	gen, err := protogen.NewGenerator(cfg)
+	if err != nil {
+		t.Fatalf("new generator: %v", err)
+	}
+	if err := gen.Generate(t.Context()); err != nil {
+		t.Fatalf("generate: %v", err)
+	}
+	for _, name := range []string{"scratch_pb2.py", "scratch_pb2.pyi", "scratch_srpc.py", "scratch_srpc.pyi"} {
+		if _, err := os.Stat(filepath.Join(projectDir, name)); err != nil {
+			t.Fatalf("missing explicit service output %s: %v", name, err)
+		}
+	}
+	stubBytes, err := os.ReadFile(filepath.Join(projectDir, "scratch_srpc.py"))
+	if err != nil {
+		t.Fatalf("read service stub: %v", err)
+	}
+
+	var stdout bytes.Buffer
+	gen, err = protogen.NewGenerator(cfg)
+	if err != nil {
+		t.Fatalf("new cached generator: %v", err)
+	}
+	gen.Verbose = true
+	gen.Stdout = &stdout
+	if err := gen.Generate(t.Context()); err != nil {
+		t.Fatalf("cached generate: %v", err)
+	}
+	if !strings.Contains(stdout.String(), "Skipping . (up to date)") {
+		t.Fatalf("expected second-run cache reuse, got %q", stdout.String())
+	}
+	if got, err := os.ReadFile(filepath.Join(projectDir, "scratch_srpc.py")); err != nil || !bytes.Equal(got, stubBytes) {
+		t.Fatalf("service stub second-run changed: %v", err)
+	}
+
+	cfg.RPCLibraries = []string{"none"}
+	gen, err = protogen.NewGenerator(cfg)
+	if err != nil {
+		t.Fatalf("new message-only generator: %v", err)
+	}
+	if err := gen.Generate(t.Context()); err != nil {
+		t.Fatalf("message-only generate: %v", err)
+	}
+	for _, name := range []string{"scratch_srpc.py", "scratch_srpc.pyi"} {
+		if _, err := os.Stat(filepath.Join(projectDir, name)); !os.IsNotExist(err) {
+			t.Fatalf("expected stale service output removal for %s: %v", name, err)
+		}
+	}
+	for _, name := range []string{"scratch_pb2.py", "scratch_pb2.pyi"} {
+		if _, err := os.Stat(filepath.Join(projectDir, name)); err != nil {
+			t.Fatalf("message output %s removed unexpectedly: %v", name, err)
+		}
+	}
+}
+
 func TestGenerateGoOnly(t *testing.T) {
 	t.Helper()
 
