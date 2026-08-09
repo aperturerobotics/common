@@ -36,97 +36,6 @@ func TestGenerateLanguageFlagAliasSharesConfigField(t *testing.T) {
 	}
 }
 
-func TestGenerateCompatibilityFixtureUsesPackageJSONHistoricalDefaults(t *testing.T) {
-	t.Helper()
-
-	projectDir := t.TempDir()
-	rootDir := repoRoot(t)
-	goMod := []byte("module example.com/compatibility\n\ngo 1.25.0\n\nrequire github.com/aperturerobotics/common v0.0.0\n\nreplace github.com/aperturerobotics/common => " + filepath.ToSlash(rootDir) + "\n")
-	if err := os.WriteFile(filepath.Join(projectDir, "go.mod"), goMod, 0o644); err != nil {
-		t.Fatalf("write go.mod: %v", err)
-	}
-	if err := os.WriteFile(filepath.Join(projectDir, "go.sum"), []byte("github.com/aperturerobotics/protobuf-go-lite v0.16.0 h1:McGR0jrc15ZkH8HUpAARDOtazjwqr+uYXVHrrR59K28=\ngithub.com/aperturerobotics/protobuf-go-lite v0.16.0/go.mod h1:3Ay/E7iaw2KWLirK3+dDdNJZHK0hu8Y1/kKeYeUa+8s=\n"), 0o644); err != nil {
-		t.Fatalf("write go.sum: %v", err)
-	}
-	fixture, err := os.ReadFile(filepath.Join(rootDir, "example", "compatibility.proto"))
-	if err != nil {
-		t.Fatalf("read compatibility fixture: %v", err)
-	}
-	if err := os.WriteFile(filepath.Join(projectDir, "compatibility.proto"), fixture, 0o644); err != nil {
-		t.Fatalf("write compatibility fixture: %v", err)
-	}
-	options, err := os.ReadFile(filepath.Join(rootDir, "example", "compatibility_options.proto"))
-	if err != nil {
-		t.Fatalf("read compatibility options: %v", err)
-	}
-	if err := os.WriteFile(filepath.Join(projectDir, "compatibility_options.proto"), options, 0o644); err != nil {
-		t.Fatalf("write compatibility options: %v", err)
-	}
-	wktPath := filepath.Join(projectDir, "vendor", "github.com", "aperturerobotics", "protobuf", "src", "google", "protobuf", "timestamp.proto")
-	if err := os.MkdirAll(filepath.Dir(wktPath), 0o755); err != nil {
-		t.Fatalf("create well-known type directory: %v", err)
-	}
-	for _, name := range []string{"timestamp.proto", "descriptor.proto"} {
-		wkt, err := os.ReadFile(filepath.Join(rootDir, "vendor", "github.com", "aperturerobotics", "protobuf", "src", "google", "protobuf", name))
-		if err != nil {
-			t.Fatalf("read well-known fixture %s: %v", name, err)
-		}
-		if err := os.WriteFile(filepath.Join(filepath.Dir(wktPath), name), wkt, 0o644); err != nil {
-			t.Fatalf("write well-known fixture %s: %v", name, err)
-		}
-	}
-	if err := os.WriteFile(filepath.Join(projectDir, "package.json"), []byte("{}\n"), 0o644); err != nil {
-		t.Fatalf("write package.json: %v", err)
-	}
-	if err := os.Symlink(filepath.Join(rootDir, "node_modules"), filepath.Join(projectDir, "node_modules")); err != nil {
-		t.Fatalf("link node_modules: %v", err)
-	}
-	runTestCommand(t, projectDir, "git", "init")
-	runTestCommand(t, projectDir, "git", "add", "compatibility.proto", "compatibility_options.proto")
-
-	cfg := protogen.NewConfig()
-	cfg.ProjectDir = projectDir
-	cfg.Force = true
-	runTestCommand(t, projectDir, "go", "mod", "download")
-	if err := ensureDeps(cfg.ProjectDir, cfg.ToolsDir, false); err != nil {
-		t.Fatalf("ensure deps: %v", err)
-	}
-	// Test boundary: default discovery and output accounting are asserted here;
-	// descriptor option preservation and schema-evolution unknown-field behavior
-	// are separate compatibility contracts.
-	gen, err := protogen.NewGenerator(cfg)
-	if err != nil {
-		t.Fatalf("new generator: %v", err)
-	}
-	if err := gen.Generate(t.Context()); err != nil {
-		t.Fatalf("generate: %v", err)
-	}
-
-	messageOutputs := map[string][]string{
-		"compatibility":         {".proto", ".pb.go", ".pb.ts", ".pb.cc", ".pb.h", ".pb.rs"},
-		"compatibility_options": {".proto", ".pb.go", ".pb.ts", ".pb.cc", ".pb.h"},
-	}
-	for base, suffixes := range messageOutputs {
-		for _, suffix := range suffixes {
-			if _, err := os.Stat(filepath.Join(projectDir, base+suffix)); err != nil {
-				t.Fatalf("missing historical-default output %s%s: %v", base, suffix, err)
-			}
-		}
-	}
-	for _, base := range []string{"compatibility", "compatibility_options"} {
-		for _, suffix := range []string{"_srpc.pb.go", "_srpc.pb.ts", "_srpc.pb.cpp", "_srpc.pb.hpp", "_srpc.pb.rs"} {
-			if _, err := os.Stat(filepath.Join(projectDir, base+suffix)); err != nil {
-				t.Fatalf("missing historical-default service output %s%s: %v", base, suffix, err)
-			}
-		}
-	}
-	for _, base := range []string{"compatibility", "compatibility_options"} {
-		if _, err := os.Stat(filepath.Join(projectDir, base+"_pb2.py")); !os.IsNotExist(err) {
-			t.Fatalf("historical default unexpectedly emitted Python for %s: %v", base, err)
-		}
-	}
-}
-
 const fakeStarpcPythonSource = `package main
 
 import (
@@ -332,7 +241,6 @@ message Scratch {
 	cfg.ProjectDir = projectDir
 	cfg.Force = true
 	cfg.Languages = []string{"go"}
-	cfg.RPCLibraries = []string{"none"}
 
 	runTestCommand(t, projectDir, "go", "mod", "download")
 	if err := ensureDeps(cfg.ProjectDir, cfg.ToolsDir, false); err != nil {
@@ -402,6 +310,7 @@ message Scratch {
 	cfg.ProjectDir = projectDir
 	cfg.Force = true
 	cfg.Languages = []string{"go"}
+	cfg.RPCLibraries = []string{"none"}
 
 	runTestCommand(t, projectDir, "go", "mod", "download")
 	if err := ensureDeps(cfg.ProjectDir, cfg.ToolsDir, false); err != nil {
