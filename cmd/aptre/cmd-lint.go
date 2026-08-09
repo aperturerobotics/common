@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/aperturerobotics/cli"
+	"github.com/aperturerobotics/common/sourcecontract"
 )
 
 var lintCmd = &cli.Command{
@@ -42,6 +43,10 @@ func runLint(c *cli.Context) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	if err := sourcecontract.Check(projectDir); err != nil {
+		return err
 	}
 
 	lintPath, err := EnsureToolBuilt(projectDir, toolsDir, "golangci-lint", verbose)

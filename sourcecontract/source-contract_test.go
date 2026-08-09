@@ -143,6 +143,51 @@ service Records { rpc Read(Outer) returns (Outer); }
 	}
 }
 
+func TestCheckUsesAcronymWordBoundariesForEnumPrefixes(t *testing.T) {
+	t.Run("valid", func(t *testing.T) {
+		root := newGitProject(t)
+		writeSource(t, root, "valid.proto", `syntax = "proto3";
+
+// HTTPState describes the HTTP lifecycle state.
+enum HTTPState {
+  // HTTP_STATE_UNKNOWN is the default HTTP lifecycle state.
+  HTTP_STATE_UNKNOWN = 0;
+}
+`)
+		if err := Check(root); err != nil {
+			t.Fatalf("Check() rejected acronym enum prefix: %v", err)
+		}
+	})
+
+	t.Run("letter-split-invalid", func(t *testing.T) {
+		root := newGitProject(t)
+		writeSource(t, root, "invalid.proto", `syntax = "proto3";
+
+// HTTPState describes the HTTP lifecycle state.
+enum HTTPState {
+  // H_T_T_P_STATE_UNKNOWN is an invalid letter-split default prefix.
+  H_T_T_P_STATE_UNKNOWN = 0;
+}
+`)
+		err := Check(root)
+		assertDiagnostics(t, err, "HTTPState", "enum-prefixed")
+	})
+}
+
+func TestCheckCoversMultilineExtendFields(t *testing.T) {
+	root := newGitProject(t)
+	writeSource(t, root, "extend.proto", `syntax = "proto3";
+
+extend google.protobuf.MethodOptions
+{
+  string extension_name = 50001;
+}
+`)
+
+	err := Check(root)
+	assertDiagnostics(t, err, "ExtensionName")
+}
+
 func TestCheckRequiresExactProtobufCommentShape(t *testing.T) {
 	root := newGitProject(t)
 	writeSource(t, root, "comments.proto", `syntax = "proto3";
