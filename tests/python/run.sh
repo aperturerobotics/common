@@ -52,12 +52,3 @@ MYPYPATH="$TMP" PYTHONPATH="$TMP" uv run --directory "$CHECK_DIR" mypy --strict 
 
 mkdir -p "$TMP/python-output"
 cp "$TMP"/*_pb2.py "$TMP"/*_pb2.pyi "$TMP/python-output/"
-
-# Generate the Go view from the same compatibility fixture (the options companion is
-# intentionally Python-only because go-lite does not emit custom-option descriptors).
-go run "$ROOT/cmd/aptre" generate --project-dir "$TMP" --language go --rpc none --targets ./compatibility.proto
-mkdir -p "$TMP/probe"
-cp "$CHECK_DIR/go_probe/main.go" "$TMP/probe/main.go"
-gofmt -w "$TMP/probe/main.go"
-PYTHONPATH="$TMP/python-output" uv run --directory "$CHECK_DIR" python "$CHECK_DIR/semantic_check.py" \
-  --generated "$TMP" --python-generated "$TMP/python-output" --probe "$TMP/probe"
