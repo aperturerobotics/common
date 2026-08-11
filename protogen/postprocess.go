@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 )
 
@@ -221,13 +222,14 @@ func (p *PostProcessor) ProcessGoFile(filePath string) error {
 	return nil
 }
 
-// ProcessPythonFile rewrites local canonical module imports to adjacent imports.
+// ProcessPythonFile rewrites canonical Go module imports to the module-relative
+// packages installed by the current project and its vendored dependencies.
 func (p *PostProcessor) ProcessPythonFile(filePath string) error {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return err
 	}
-	prefix := strings.ReplaceAll(strings.ReplaceAll(p.ModulePath, "/", "."), "-", "_") + "."
+	prefixes := p.pythonImportPrefixes()
 	lines := strings.Split(string(data), "\n")
 	modified := false
 	for i, line := range lines {
@@ -236,22 +238,58 @@ func (p *PostProcessor) ProcessPythonFile(filePath string) error {
 			continue
 		}
 		from := strings.TrimPrefix(trimmed, "from ")
-		if !strings.HasPrefix(from, prefix) {
-			continue
+		for _, prefix := range prefixes {
+			if !strings.HasPrefix(from, prefix) {
+				continue
+			}
+			rest := strings.TrimPrefix(from, prefix)
+			if strings.IndexByte(rest, ' ') <= 0 {
+				continue
+			}
+			indent := line[:len(line)-len(trimmed)]
+			lines[i] = indent + "from " + rest
+			modified = true
+			break
 		}
-		rest := strings.TrimPrefix(from, prefix)
-		space := strings.IndexByte(rest, ' ')
-		if space <= 0 {
-			continue
-		}
-		indent := line[:len(line)-len(trimmed)]
-		lines[i] = indent + "from " + rest
-		modified = true
 	}
 	if !modified {
 		return nil
 	}
 	return os.WriteFile(filePath, []byte(strings.Join(lines, "\n")), 0o644) //nolint:gosec
+}
+
+func (p *PostProcessor) pythonImportPrefixes() []string {
+	modules := map[string]struct{}{p.ModulePath: {}}
+	modulesFile := filepath.Join(p.VendorDir, "modules.txt")
+	if data, err := os.ReadFile(modulesFile); err == nil {
+		scanner := bufio.NewScanner(bytes.NewReader(data))
+		for scanner.Scan() {
+			line := scanner.Text()
+			if !strings.HasPrefix(line, "# ") || strings.HasPrefix(line, "## ") {
+				continue
+			}
+			fields := strings.Fields(strings.TrimPrefix(line, "# "))
+			if len(fields) < 2 || (fields[1] != "=>" && !strings.HasPrefix(fields[1], "v")) {
+				continue
+			}
+			modules[fields[0]] = struct{}{}
+		}
+	}
+	prefixes := make([]string, 0, len(modules))
+	for module := range modules {
+		if module == "" {
+			continue
+		}
+		prefix := strings.ReplaceAll(strings.ReplaceAll(module, "/", "."), "-", "_")
+		prefixes = append(prefixes, prefix+".")
+	}
+	slices.SortFunc(prefixes, func(a, b string) int {
+		if len(a) != len(b) {
+			return len(b) - len(a)
+		}
+		return strings.Compare(a, b)
+	})
+	return prefixes
 }
 
 // ProcessTsFile processes a TypeScript file.

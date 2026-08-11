@@ -1,9 +1,14 @@
 package protogen
 
 import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"io"
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -192,5 +197,117 @@ func TestHashProtoFilesPortableAndContentSensitive(t *testing.T) {
 	}
 	if hashC == hashA {
 		t.Fatalf("content hash must change when a proto source changes")
+	}
+}
+
+func TestToolVersionChangeInvalidatesCachedPackage(t *testing.T) {
+	dir, files := writeProtoTree(t, map[string]string{
+		"foo.proto": "syntax = \"proto3\";\npackage foo;\n",
+	})
+	cache := NewCache()
+	cache.ProtocFlagsHash = "flags"
+	cache.ToolVersions = "starpc-python=old"
+	if err := cache.UpdatePackage("example/foo", files, nil, dir); err != nil {
+		t.Fatal(err)
+	}
+
+	stale, err := cache.NeedsRegeneration(
+		"example/foo", files, dir, "flags", "starpc-python=old", false,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stale {
+		t.Fatal("matching tool state invalidated cached output")
+	}
+	stale, err = cache.NeedsRegeneration(
+		"example/foo", files, dir, "flags", "starpc-python=new", false,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !stale {
+		t.Fatal("changed tool state reused cached output")
+	}
+}
+
+func TestGetToolVersionsIncludesUVLock(t *testing.T) {
+	dir := t.TempDir()
+	lock := []byte("version = 1\nrevision = 3\n")
+	if err := os.WriteFile(filepath.Join(dir, "uv.lock"), lock, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	generator := &Generator{
+		ProjectDir: dir,
+		Config:     NewConfig(),
+		Plugins:    &Plugins{StarpcPython: &Plugin{}},
+	}
+	versions := generator.getToolVersions()
+	want := sha256.Sum256(lock)
+	if !strings.Contains(versions, "uv.lock="+hex.EncodeToString(want[:])) {
+		t.Fatalf("tool versions omit uv.lock digest: %q", versions)
+	}
+}
+
+func TestGetToolVersionsIgnoresUVLockWithoutStarpcPython(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "uv.lock"), []byte("changed"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	generator := &Generator{
+		ProjectDir: dir,
+		Config:     NewConfig(),
+		Plugins:    &Plugins{},
+	}
+	if versions := generator.getToolVersions(); strings.Contains(versions, "uv.lock=") {
+		t.Fatalf("unselected Python plugin invalidated tool state: %q", versions)
+	}
+}
+
+func TestGenerateFailureDoesNotPersistToolVersions(t *testing.T) {
+	dir := t.TempDir()
+	vendorDir := filepath.Join(dir, "vendor")
+	if err := os.MkdirAll(vendorDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "bad.proto"), []byte("not protobuf"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "uv.lock"), []byte("changed plugin"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	config := NewConfig()
+	config.ProjectDir = dir
+	config.Targets = []string{"bad.proto"}
+	cache := NewCache()
+	cache.ToolVersions = "accepted"
+	plugins := &Plugins{
+		Languages:    Languages{LanguagePython: {}},
+		RPCLibraries: RPCLibraries{RPCLibraryStarpcPython: {}},
+		StarpcPython: &Plugin{
+			Name:       "starpc-python",
+			BinaryName: "protoc-gen-starpc-python",
+			Path:       "/bin/false",
+			Type:       PluginTypePython,
+			OutFlag:    "starpc-python_out",
+		},
+	}
+	generator := &Generator{
+		Config:     config,
+		Plugins:    plugins,
+		Cache:      cache,
+		ProjectDir: dir,
+		ModuleDir:  dir,
+		ModulePath: "example.com/project",
+		VendorDir:  vendorDir,
+		OutDir:     vendorDir,
+		Stdout:     io.Discard,
+		Stderr:     io.Discard,
+	}
+	if err := generator.Generate(context.Background()); err == nil {
+		t.Fatal("invalid source generation unexpectedly succeeded")
+	}
+	if cache.ToolVersions != "accepted" {
+		t.Fatalf("failed generation persisted tool state %q", cache.ToolVersions)
 	}
 }
