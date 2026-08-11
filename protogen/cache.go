@@ -97,8 +97,12 @@ func (c *Cache) SetToolVersions(versions string) {
 // - The file content hash has changed
 // - The protoc flags have changed
 // - Force is true
-func (c *Cache) NeedsRegeneration(packageKey string, protoFiles []string, projectDir string, flagsHash string, force bool) (bool, error) {
+func (c *Cache) NeedsRegeneration(packageKey string, protoFiles []string, projectDir string, flagsHash string, toolVersions string, force bool) (bool, error) {
 	if force {
+		return true, nil
+	}
+
+	if c.ToolVersions != toolVersions {
 		return true, nil
 	}
 

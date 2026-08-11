@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
@@ -125,9 +127,8 @@ func (g *Generator) Generate(ctx context.Context) error {
 		fmt.Fprintf(g.Stdout, "Found %d proto files\n", len(protoFiles))
 	}
 
-	// Get tool versions for cache invalidation
+	// Get tool versions for cache invalidation.
 	toolVersions := g.getToolVersions()
-	g.Cache.SetToolVersions(toolVersions)
 
 	// Build protoc arguments
 	protocArgs := g.buildProtocArgs()
@@ -157,7 +158,7 @@ func (g *Generator) Generate(ctx context.Context) error {
 		currentPackages[packageKey] = struct{}{}
 
 		// Check if regeneration is needed
-		needsRegen, err := g.Cache.NeedsRegeneration(packageKey, files, g.ProjectDir, flagsHash, g.Config.Force)
+		needsRegen, err := g.Cache.NeedsRegeneration(packageKey, files, g.ProjectDir, flagsHash, toolVersions, g.Config.Force)
 		if err != nil {
 			return fmt.Errorf("failed to check cache for %s: %w", dir, err)
 		}
@@ -247,6 +248,7 @@ func (g *Generator) Generate(ctx context.Context) error {
 	g.Cache.CleanOrphanedPackages(currentPackages)
 
 	g.Cache.SetProtocFlags(protocArgs, g.ModuleDir)
+	g.Cache.SetToolVersions(toolVersions)
 	// Save cache
 	cacheFile, _ := g.Config.GetCacheFilePath()
 	if err := g.Cache.Save(cacheFile); err != nil {
@@ -450,6 +452,13 @@ func (g *Generator) getToolVersions() string {
 					}
 				}
 			}
+		}
+	}
+
+	if g.Plugins != nil && g.Plugins.StarpcPython != nil {
+		if data, err := os.ReadFile(filepath.Join(g.ProjectDir, "uv.lock")); err == nil {
+			digest := sha256.Sum256(data)
+			versions = append(versions, "uv.lock="+hex.EncodeToString(digest[:]))
 		}
 	}
 

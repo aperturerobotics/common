@@ -122,3 +122,53 @@ func TestProcessPythonFileRewritesPyi(t *testing.T) {
 		t.Fatalf("got %q", got)
 	}
 }
+
+func TestProcessPythonFileRewritesVendoredModuleImports(t *testing.T) {
+	projectDir := t.TempDir()
+	vendorDir := filepath.Join(projectDir, "vendor")
+	if err := os.MkdirAll(vendorDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	modules := `# github.com/aperturerobotics/starpc v0.52.0
+## explicit; go 1.25.0
+# github.com/aperturerobotics/starpc/extensions v0.1.0
+## explicit; go 1.25.0
+# github.com/foo/bar v1.0.0
+## explicit; go 1.25.0
+github.com/foo/bar/pkg
+`
+	if err := os.WriteFile(filepath.Join(vendorDir, "modules.txt"), []byte(modules), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	file := filepath.Join(projectDir, "resource_pb2.py")
+	content := `from github.com.s4wave.spacewave.local import local_pb2
+from github.com.aperturerobotics.starpc.rpcstream import rpcstream_pb2
+from github.com.aperturerobotics.starpc.extensions.echo import echo_pb2
+from github.com.foo.bar.pkg import package_pb2
+from github.com.foo.barista.foo import barista_pb2
+from google.protobuf import timestamp_pb2
+from undeclared.example import example_pb2
+`
+	if err := os.WriteFile(file, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	pp := NewPostProcessor(projectDir, vendorDir, "github.com/s4wave/spacewave", nil, false)
+	if err := pp.ProcessPythonFile(file); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `from local import local_pb2
+from rpcstream import rpcstream_pb2
+from echo import echo_pb2
+from pkg import package_pb2
+from github.com.foo.barista.foo import barista_pb2
+from google.protobuf import timestamp_pb2
+from undeclared.example import example_pb2
+`
+	if string(got) != want {
+		t.Fatalf("unexpected dependency import rewrite:\n%s", got)
+	}
+}
