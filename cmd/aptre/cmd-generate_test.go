@@ -509,7 +509,7 @@ message Dependency { string value = 1; }
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(wktDir, "timestamp.proto"), wkt, 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(wktDir, "timestamp.proto"), wkt, 0o644); err != nil { //nolint:gosec // wktDir is inside t.TempDir.
 		t.Fatal(err)
 	}
 	goMod := []byte("module github.com/example/project\n\ngo 1.25.0\n")
@@ -549,7 +549,7 @@ message Dependency { string value = 1; }
 			t.Fatalf("%s rewrote WKT import", rel)
 		}
 	}
-	cmd := exec.Command("uv", "run", "--directory", filepath.Join(rootDir, "tests", "python"), "python", "-c", "import sys; sys.path.insert(0, sys.argv[1]); import app.app_pb2", projectDir)
+	cmd := exec.Command("uv", "run", "--directory", filepath.Join(rootDir, "tests", "python"), "python", "-c", "import sys; sys.path.insert(0, sys.argv[1]); import app.app_pb2", projectDir) //nolint:gosec // arguments are fixed or test-owned paths.
 	cmd.Env = append(os.Environ(), "UV_PROJECT_ENVIRONMENT="+filepath.Join(t.TempDir(), ".venv"))
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("generated Python import: %v\\n%s", err, out)
