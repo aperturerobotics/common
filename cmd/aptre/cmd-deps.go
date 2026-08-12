@@ -56,7 +56,7 @@ func selectedToolPlan(projectDir, name string) toolBuildPlan {
 	if !ok || spec.ModulePath == "" {
 		return toolBuildPlan{mode: toolBuildIsolated, spec: spec}
 	}
-	cmd := exec.Command("go", "list", "-m", "-f", "{{.Path}}\t{{.Version}}\t{{.Main}}", spec.ModulePath)
+	cmd := exec.Command("go", "list", "-m", "-f", "{{.Path}}\t{{.Version}}\t{{.Main}}", spec.ModulePath) //nolint:gosec // spec comes from the fixed tool table.
 	cmd.Dir = projectDir
 	out, err := cmd.Output()
 	if err != nil {
@@ -347,7 +347,7 @@ func ensureTool(projectDir, toolsPath, toolName string, force, verbose bool) err
 	plan := selectedToolPlan(projectDir, toolName)
 	var cmd *exec.Cmd
 	if plan.mode == toolBuildVersioned {
-		cmd = exec.Command("go", "install", spec.ImportPath+"@"+plan.version)
+		cmd = exec.Command("go", "install", spec.ImportPath+"@"+plan.version) //nolint:gosec // spec and version come from the fixed tool plan.
 		cmd.Dir = projectDir
 		cmd.Env = append(os.Environ(), "GOBIN="+filepath.Join(toolsPath, "bin"))
 	} else {

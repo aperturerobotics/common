@@ -91,11 +91,11 @@ func (c *Cache) SetToolVersions(versions string) {
 	c.ToolVersions = versions
 }
 
-// NeedsRegeneration checks if a proto file needs regeneration.
+// NeedsRegeneration checks if a cached package needs regeneration.
 // Returns true if:
-// - The file is not in the cache
-// - The file content hash has changed
-// - The protoc flags have changed
+// - The package is not in the cache
+// - The proto file list or content hash has changed
+// - The protoc flags or selected tool versions have changed
 // - Force is true
 func (c *Cache) NeedsRegeneration(packageKey string, protoFiles []string, projectDir string, flagsHash string, toolVersions string, force bool) (bool, error) {
 	if force {
