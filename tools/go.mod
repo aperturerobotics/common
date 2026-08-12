@@ -8,7 +8,7 @@ require (
 	github.com/aperturerobotics/goprotowrap v0.4.1 // latest
 	github.com/aperturerobotics/protobuf v0.0.0-20260203024654-8201686529c4 // indirect; wasi
 	// github.com/s4wave/goscript v0.0.61 // master
-	github.com/aperturerobotics/protobuf-go-lite v0.16.0 // latest
+	github.com/aperturerobotics/protobuf-go-lite v0.17.0 // latest
 	github.com/aperturerobotics/starpc v0.52.0 // latest
 )
 
