@@ -21,7 +21,7 @@ require (
 	github.com/sirupsen/logrus v1.9.5-0.20260629095817-a23d315dfebb // indirect
 	github.com/tetratelabs/wazero v1.12.0
 	github.com/xrash/smetrics v0.0.0-20250705151800-55b8f293f342 // indirect
-	golang.org/x/mod v0.39.0
+	golang.org/x/mod v0.40.0
 	golang.org/x/sys v0.47.0 // indirect
 )
 
