@@ -114,6 +114,32 @@ func TestReconcileToolsStampFailedExtractionDoesNotAdvance(t *testing.T) {
 	}
 }
 
+func TestInvalidateToolBinariesRemovesCustomGolangCIStamp(t *testing.T) {
+	d := t.TempDir()
+	bin := filepath.Join(d, "bin")
+	if err := os.MkdirAll(bin, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, spec := range defaultTools {
+		if err := os.WriteFile(filepath.Join(bin, spec.Name), []byte("old"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// A custom golangci-lint build replaced the stock binary and wrote its
+	// stamp; invalidation must drop the stamp with the binary so the next
+	// ensureTool run rebuilds the custom build instead of the stock one.
+	stamp := filepath.Join(bin, ".golangci-lint-custom-stamp")
+	if err := os.WriteFile(stamp, []byte("v1\n/conf"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := invalidateToolBinaries(d); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(stamp); !os.IsNotExist(err) {
+		t.Fatalf("custom stamp retained: %v", err)
+	}
+}
+
 func TestInvalidateToolBinariesPreservesUnrelatedFiles(t *testing.T) {
 	d := t.TempDir()
 	bin := filepath.Join(d, "bin")

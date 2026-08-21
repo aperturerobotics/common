@@ -258,9 +258,22 @@ func reconcileToolsStamp(stampPath, identity string, extract func() error, inval
 	return true, nil
 }
 
+func customGolangCIStampPath(toolsPath string) string {
+	return filepath.Join(toolsPath, "bin", ".golangci-lint-custom-stamp")
+}
+
 func invalidateToolBinaries(toolsPath string) error {
+	paths := make([]string, 0, len(defaultTools)+1)
 	for _, spec := range defaultTools {
-		if err := os.Remove(filepath.Join(toolsPath, "bin", spec.Name)); err != nil && !os.IsNotExist(err) {
+		paths = append(paths, filepath.Join(toolsPath, "bin", spec.Name))
+	}
+	// The custom golangci-lint build replaces bin/golangci-lint and records its
+	// version and config in this stamp. Removing the binary while keeping the
+	// stamp makes the next ensureTool rebuild the stock binary, which cannot
+	// resolve the configured plugin linters.
+	paths = append(paths, customGolangCIStampPath(toolsPath))
+	for _, path := range paths {
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
 			return err
 		}
 	}
@@ -425,7 +438,7 @@ func maybeBuildCustomGolangCILint(projectDir, toolsPath string, verbose bool) er
 		return fmt.Errorf("missing version in %s", customConfPath)
 	}
 	baseLintPath := filepath.Join(toolsPath, "bin", "golangci-lint")
-	customStampPath := filepath.Join(toolsPath, "bin", ".golangci-lint-custom-stamp")
+	customStampPath := customGolangCIStampPath(toolsPath)
 	customStamp := strings.Join([]string{version, customConfPath}, "\n")
 	if stampDat, err := os.ReadFile(customStampPath); err == nil && string(stampDat) == customStamp {
 		return nil
