@@ -46,8 +46,8 @@ func TestDiscoverPluginsStarpcPythonVenvFallback(t *testing.T) {
 	if err != nil {
 		t.Fatalf("discover plugins: %v", err)
 	}
-	if plugins.StarpcPython == nil || plugins.StarpcPython.Path != venvPath {
-		t.Fatalf("venv fallback path = %v, want %q", plugins.StarpcPython, venvPath)
+	if plugins.StarpcPython == nil || plugins.StarpcPython.Path != physicalPluginPath(t, venvPath) {
+		t.Fatalf("venv fallback path = %v, want %q", plugins.StarpcPython, physicalPluginPath(t, venvPath))
 	}
 }
 
@@ -66,8 +66,8 @@ func TestDiscoverPluginsStarpcPythonScriptsFallback(t *testing.T) {
 	if err != nil {
 		t.Fatalf("discover plugins: %v", err)
 	}
-	if plugins.StarpcPython == nil || plugins.StarpcPython.Path != scriptsPath {
-		t.Fatalf("Scripts fallback path = %v, want %q", plugins.StarpcPython, scriptsPath)
+	if plugins.StarpcPython == nil || plugins.StarpcPython.Path != physicalPluginPath(t, scriptsPath) {
+		t.Fatalf("Scripts fallback path = %v, want %q", plugins.StarpcPython, physicalPluginPath(t, scriptsPath))
 	}
 }
 
@@ -360,6 +360,15 @@ func newPluginTestProject(t *testing.T, withPackageJSON bool) string {
 	return projectDir
 }
 
+func physicalPluginPath(t *testing.T, path string) string {
+	t.Helper()
+	physical, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return physical
+}
+
 func writeTestFile(t *testing.T, name string) {
 	t.Helper()
 
@@ -387,7 +396,7 @@ func TestDiscoverNodePluginPackageBinFallbackAndPrecedence(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if plugins.ESStarpc == nil || plugins.ESStarpc.Path != bin {
+	if plugins.ESStarpc == nil || plugins.ESStarpc.Path != physicalPluginPath(t, bin) {
 		t.Fatalf("fallback path=%v", plugins.ESStarpc)
 	}
 	installed := filepath.Join(projectDir, "node_modules", ".bin", "protoc-gen-es-starpc")
@@ -396,7 +405,7 @@ func TestDiscoverNodePluginPackageBinFallbackAndPrecedence(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if plugins.ESStarpc.Path != installed {
+	if plugins.ESStarpc.Path != physicalPluginPath(t, installed) {
 		t.Fatalf("installed precedence=%q", plugins.ESStarpc.Path)
 	}
 }

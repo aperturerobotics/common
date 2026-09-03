@@ -13,6 +13,7 @@ pub struct ExampleMsg {
 /// EchoMsg is the message body for Echo.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct EchoMsg {
+    /// Body contains the Echo request payload.
     #[prost(string, tag="1")]
     pub body: ::prost::alloc::string::String,
 }

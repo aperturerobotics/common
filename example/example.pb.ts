@@ -47,6 +47,8 @@ export const ExampleMsg: MessageType<ExampleMsg> =
  */
 export interface EchoMsg {
   /**
+   * Body contains the Echo request payload.
+   *
    * @generated from field: string body = 1;
    */
   body?: string

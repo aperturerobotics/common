@@ -14,14 +14,22 @@ import (
 )
 
 type result struct {
-	Wire             string   `json:"wire"`
-	UnknownPreserved bool     `json:"unknown_preserved"`
-	ParsedPresent    string   `json:"parsed_present"`
-	ParsedText       string   `json:"parsed_text"`
-	ParsedMapValue   string   `json:"parsed_map_value"`
-	ParsedSeconds    int64    `json:"parsed_seconds"`
-	ParsedNanos      int32    `json:"parsed_nanos"`
-	Fields           []string `json:"fields"`
+	// Wire contains the base64-encoded fixture wire message.
+	Wire string `json:"wire"`
+	// UnknownPreserved reports whether an unknown field survived round-trip encoding.
+	UnknownPreserved bool `json:"unknown_preserved"`
+	// ParsedPresent contains the decoded optional value.
+	ParsedPresent string `json:"parsed_present"`
+	// ParsedText contains the decoded oneof text value.
+	ParsedText string `json:"parsed_text"`
+	// ParsedMapValue contains the decoded map entry.
+	ParsedMapValue string `json:"parsed_map_value"`
+	// ParsedSeconds contains the decoded timestamp seconds.
+	ParsedSeconds int64 `json:"parsed_seconds"`
+	// ParsedNanos contains the decoded timestamp nanoseconds.
+	ParsedNanos int32 `json:"parsed_nanos"`
+	// Fields lists fields observed through reflection.
+	Fields []string `json:"fields"`
 }
 
 func main() {

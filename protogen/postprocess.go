@@ -126,7 +126,6 @@ func (p *PostProcessor) ProcessGeneratedFiles(protoFile string) error {
 	if err := p.ProcessRustFiles(protoFile); err != nil {
 		return err
 	}
-
 	return nil
 }
 

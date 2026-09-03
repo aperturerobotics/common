@@ -97,6 +97,7 @@ func (c *Cache) SetToolVersions(versions string) {
 // - The file content hash has changed
 // - The protoc flags have changed
 // - Force is true
+// NeedsRegeneration reports whether a package output is stale.
 func (c *Cache) NeedsRegeneration(packageKey string, protoFiles []string, projectDir string, flagsHash string, force bool) (bool, error) {
 	if force {
 		return true, nil
@@ -144,6 +145,7 @@ func (c *Cache) UpdatePackage(packageKey string, protoFiles []string, generatedF
 
 // GetPackageKey generates a cache key for a proto file.
 // Uses the format: "module/path/to/dir;package_name"
+// GetPackageKey returns the module-qualified package key for a proto source.
 func GetPackageKey(modulePath, protoFile string) string {
 	dir := filepath.Dir(protoFile)
 	return filepath.Join(modulePath, dir)

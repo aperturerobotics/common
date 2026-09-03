@@ -12,10 +12,12 @@ import (
 	"github.com/aperturerobotics/common/protogen"
 )
 
-// Tool definitions.
 type toolSpec struct {
-	Name       string
+	// Name identifies the tool binary.
+	Name string
+	// ImportPath identifies the tool command package.
 	ImportPath string
+	// ModulePath identifies the module that supplies the tool.
 	ModulePath string
 }
 
@@ -24,9 +26,12 @@ var defaultTools = []toolSpec{
 	{Name: "protoc-gen-go-starpc", ImportPath: "github.com/aperturerobotics/starpc/cmd/protoc-gen-go-starpc", ModulePath: "github.com/aperturerobotics/starpc"},
 	{Name: "protoc-gen-starpc-cpp", ImportPath: "github.com/aperturerobotics/starpc/cmd/protoc-gen-starpc-cpp", ModulePath: "github.com/aperturerobotics/starpc"},
 	{Name: "protoc-gen-starpc-rust", ImportPath: "github.com/aperturerobotics/starpc/cmd/protoc-gen-starpc-rust", ModulePath: "github.com/aperturerobotics/starpc"},
-	{Name: "gofumpt", ImportPath: "mvdan.cc/gofumpt"}, {Name: "goimports", ImportPath: "golang.org/x/tools/cmd/goimports"},
-	{Name: "golangci-lint", ImportPath: "github.com/golangci/golangci-lint/v2/cmd/golangci-lint"}, {Name: "go-mod-outdated", ImportPath: "github.com/psampaz/go-mod-outdated"},
-	{Name: "goreleaser", ImportPath: "github.com/goreleaser/goreleaser/v2"}, {Name: "wasmbrowsertest", ImportPath: "github.com/agnivade/wasmbrowsertest"},
+	{Name: "gofumpt", ImportPath: "mvdan.cc/gofumpt"},
+	{Name: "goimports", ImportPath: "golang.org/x/tools/cmd/goimports"},
+	{Name: "golangci-lint", ImportPath: "github.com/golangci/golangci-lint/v2/cmd/golangci-lint"},
+	{Name: "go-mod-outdated", ImportPath: "github.com/psampaz/go-mod-outdated"},
+	{Name: "goreleaser", ImportPath: "github.com/goreleaser/goreleaser/v2"},
+	{Name: "wasmbrowsertest", ImportPath: "github.com/agnivade/wasmbrowsertest"},
 }
 
 type toolBuildMode uint8
@@ -56,7 +61,7 @@ func selectedToolPlan(projectDir, name string) toolBuildPlan {
 	if !ok || spec.ModulePath == "" {
 		return toolBuildPlan{mode: toolBuildIsolated, spec: spec}
 	}
-	cmd := exec.Command("go", "list", "-m", "-f", "{{.Path}}\t{{.Version}}\t{{.Main}}", spec.ModulePath)
+	cmd := exec.Command("go", "list", "-m", "-f", "{{.Path}}\t{{.Version}}\t{{.Main}}", spec.ModulePath) //nolint:gosec // Tool module paths come from the fixed tool table.
 	cmd.Dir = projectDir
 	out, err := cmd.Output()
 	if err != nil {
@@ -347,7 +352,7 @@ func ensureTool(projectDir, toolsPath, toolName string, force, verbose bool) err
 	plan := selectedToolPlan(projectDir, toolName)
 	var cmd *exec.Cmd
 	if plan.mode == toolBuildVersioned {
-		cmd = exec.Command("go", "install", spec.ImportPath+"@"+plan.version)
+		cmd = exec.Command("go", "install", spec.ImportPath+"@"+plan.version) //nolint:gosec // Tool paths and resolved versions come from Go module metadata.
 		cmd.Dir = projectDir
 		cmd.Env = append(os.Environ(), "GOBIN="+filepath.Join(toolsPath, "bin"))
 	} else {

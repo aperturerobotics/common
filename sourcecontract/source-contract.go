@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/pkg/errors"
 )
@@ -24,13 +25,21 @@ var (
 	generatedGoRegexp       = regexp.MustCompile(generatedGoPattern)
 	protoDeclarationPattern = regexp.MustCompile(`^\s*(enum|message|service)\s+([A-Za-z_][A-Za-z0-9_]*)\b`)
 	protoExtendPattern      = regexp.MustCompile(`^\s*extend\s+[^\s{]+`)
-	protoEnumValuePattern   = regexp.MustCompile(`\b([A-Z][A-Z0-9_]*)\s*=\s*([0-9]+)\b`)
+	protoEnumValuePattern   = regexp.MustCompile(`(?:^|[;{]\s*)\s*([A-Z][A-Z0-9_]*)\s*=\s*(-?(?:0[xX][0-9A-Fa-f]+|0[0-7]*|[1-9][0-9]*))\b`)
 	protoFieldPattern       = regexp.MustCompile(`(?:^|[;{]\s*)\s*(?:optional\s+|repeated\s+)?(?:map\s*<[^>]+>|[.A-Za-z_][.A-Za-z0-9_]*)\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*[0-9]+\b`)
 	protoRPCPattern         = regexp.MustCompile(`\brpc\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(`)
 )
 
 // Check checks the selected project source and returns deterministic diagnostics.
 func Check(projectDir string) error {
+	projectDir, err := filepath.Abs(projectDir)
+	if err != nil {
+		return errors.Wrap(err, "resolve absolute project root")
+	}
+	projectDir, err = filepath.EvalSymlinks(projectDir)
+	if err != nil {
+		return errors.Wrap(err, "resolve physical project root")
+	}
 	paths, err := projectSources(projectDir)
 	if err != nil {
 		return err
@@ -42,6 +51,9 @@ func Check(projectDir string) error {
 		}
 		fullPath := filepath.Join(projectDir, filepath.FromSlash(path))
 		info, err := os.Lstat(fullPath)
+		if os.IsNotExist(err) {
+			continue
+		}
 		if err != nil {
 			return errors.Wrapf(err, "inspect source %s", path)
 		}
@@ -78,16 +90,27 @@ func Check(projectDir string) error {
 }
 
 type diagnostic struct {
-	path, rule, message string
-	line, column        int
+	path    string
+	rule    string
+	message string
+	line    int
+	column  int
 }
 
 func newDiagnostic(path string, line, column int, rule, message string) diagnostic {
 	return diagnostic{path: path, line: line, column: column, rule: rule, message: message}
 }
 
+// String renders one diagnostic record.
 func (d diagnostic) String() string {
-	return d.path + ":" + strconv.Itoa(d.line) + ":" + strconv.Itoa(d.column) + ": " + d.rule + ": " + d.message
+	return diagnosticPath(d.path) + ":" + strconv.Itoa(d.line) + ":" + strconv.Itoa(d.column) + ": " + d.rule + ": " + d.message
+}
+
+func diagnosticPath(path string) string {
+	if utf8.ValidString(path) && !strings.ContainsAny(path, ":\\\"\n\r\t") {
+		return path
+	}
+	return strconv.QuoteToASCII(path)
 }
 
 func (d diagnostic) less(other diagnostic) bool {
@@ -144,6 +167,9 @@ func isGeneratedGo(data []byte) bool {
 }
 
 func checkGo(path string, data []byte) []diagnostic {
+	if strings.HasSuffix(path, "_test.go") {
+		return nil
+	}
 	files := token.NewFileSet()
 	file, err := parser.ParseFile(files, path, data, parser.ParseComments)
 	if err != nil {
@@ -153,24 +179,37 @@ func checkGo(path string, data []byte) []diagnostic {
 	for _, declaration := range file.Decls {
 		switch typed := declaration.(type) {
 		case *ast.FuncDecl:
+			if !typed.Name.IsExported() {
+				continue
+			}
 			diagnostics = append(diagnostics, goCommentDiagnostic(files, path, typed.Name, typed.Doc, "go-declaration")...)
 		case *ast.GenDecl:
 			for _, specification := range typed.Specs {
 				switch spec := specification.(type) {
 				case *ast.TypeSpec:
-					comment := spec.Doc
-					if comment == nil && len(typed.Specs) == 1 {
-						comment = typed.Doc
+					if spec.Name.IsExported() {
+						comment := spec.Doc
+						if comment == nil && len(typed.Specs) == 1 {
+							comment = typed.Doc
+						}
+						diagnostics = append(diagnostics, goCommentDiagnostic(files, path, spec.Name, comment, "go-declaration")...)
 					}
-					diagnostics = append(diagnostics, goCommentDiagnostic(files, path, spec.Name, comment, "go-declaration")...)
 					ast.Inspect(spec.Type, func(node ast.Node) bool {
 						structure, ok := node.(*ast.StructType)
 						if !ok {
 							return true
 						}
 						for _, field := range structure.Fields.List {
+							if len(field.Names) == 0 {
+								if name := embeddedFieldName(field.Type); name != nil && name.IsExported() {
+									diagnostics = append(diagnostics, goCommentDiagnostic(files, path, name, field.Doc, "go-field")...)
+								}
+								continue
+							}
 							for _, name := range field.Names {
-								diagnostics = append(diagnostics, goCommentDiagnostic(files, path, name, field.Doc, "go-field")...)
+								if name.IsExported() {
+									diagnostics = append(diagnostics, goCommentDiagnostic(files, path, name, field.Doc, "go-field")...)
+								}
 							}
 						}
 						return true
@@ -181,13 +220,77 @@ func checkGo(path string, data []byte) []diagnostic {
 						comment = typed.Doc
 					}
 					for _, name := range spec.Names {
+						if !name.IsExported() {
+							continue
+						}
 						diagnostics = append(diagnostics, goCommentDiagnostic(files, path, name, comment, "go-declaration")...)
+					}
+					if spec.Type != nil {
+						ast.Inspect(spec.Type, func(node ast.Node) bool {
+							structure, ok := node.(*ast.StructType)
+							if !ok {
+								return true
+							}
+							for _, field := range structure.Fields.List {
+								for _, name := range exportedFieldNames(field) {
+									diagnostics = append(diagnostics, goCommentDiagnostic(files, path, name, field.Doc, "go-field")...)
+								}
+							}
+							return true
+						})
+					}
+					for _, value := range spec.Values {
+						ast.Inspect(value, func(node ast.Node) bool {
+							structure, ok := node.(*ast.StructType)
+							if !ok {
+								return true
+							}
+							for _, field := range structure.Fields.List {
+								for _, name := range exportedFieldNames(field) {
+									diagnostics = append(diagnostics, goCommentDiagnostic(files, path, name, field.Doc, "go-field")...)
+								}
+							}
+							return true
+						})
 					}
 				}
 			}
 		}
 	}
 	return diagnostics
+}
+
+func exportedFieldNames(field *ast.Field) []*ast.Ident {
+	if len(field.Names) == 0 {
+		if name := embeddedFieldName(field.Type); name != nil && name.IsExported() {
+			return []*ast.Ident{name}
+		}
+		return nil
+	}
+	var names []*ast.Ident
+	for _, name := range field.Names {
+		if name.IsExported() {
+			names = append(names, name)
+		}
+	}
+	return names
+}
+
+func embeddedFieldName(expression ast.Expr) *ast.Ident {
+	switch typed := expression.(type) {
+	case *ast.Ident:
+		return typed
+	case *ast.SelectorExpr:
+		return typed.Sel
+	case *ast.StarExpr:
+		return embeddedFieldName(typed.X)
+	case *ast.IndexExpr:
+		return embeddedFieldName(typed.X)
+	case *ast.IndexListExpr:
+		return embeddedFieldName(typed.X)
+	default:
+		return nil
+	}
 }
 
 func goCommentDiagnostic(files *token.FileSet, path string, name *ast.Ident, comment *ast.CommentGroup, rule string) []diagnostic {
@@ -212,7 +315,8 @@ func validGoComment(files *token.FileSet, name string, line int, comment *ast.Co
 }
 
 type protoBlock struct {
-	kind, name  string
+	kind        string
+	name        string
 	parentDepth int
 	firstValue  bool
 }
@@ -278,7 +382,7 @@ func checkProto(path, source string) []diagnostic {
 			}
 			if nearest.firstValue {
 				nearest.firstValue = false
-				if proto3 && (name != screamingSnake(nearest.name)+"_UNKNOWN" || value != "0") {
+				if proto3 && (!validZeroEnumName(nearest.name, name) || !integerLiteralIsZero(value)) {
 					diagnostics = append(diagnostics, newDiagnostic(path, lineNumber, column, "proto-enum-zero", nearest.name+" must start with its enum-prefixed UNKNOWN = 0 value"))
 				}
 			}
@@ -419,6 +523,16 @@ func blankLineCount(lines []string, start, end int) int {
 		}
 	}
 	return count
+}
+
+func validZeroEnumName(enumName, valueName string) bool {
+	prefix := screamingSnake(enumName)
+	return valueName == prefix+"_UNKNOWN" || valueName == prefix+"_UNSPECIFIED"
+}
+
+func integerLiteralIsZero(value string) bool {
+	parsed, err := strconv.ParseInt(value, 0, 64)
+	return err == nil && parsed == 0
 }
 
 func protoPublicName(name string) string {

@@ -17,7 +17,7 @@ func TestRunLintChecksSourceBeforeBuildingTools(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(projectDir, "go.mod"), []byte(goMod), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(projectDir, "invalid.go"), []byte("package fixture\n\nfunc invalid() {}\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(projectDir, "invalid.go"), []byte("package fixture\n\nfunc Invalid() {}\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	runLintGit(t, projectDir, "init", "--quiet")

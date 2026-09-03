@@ -19,30 +19,26 @@ type Config struct {
 	// ProjectDir is the project directory.
 	// If empty, uses the current working directory.
 	ProjectDir string
-	// Targets is the list of proto file glob patterns to process.
-	// Default: ["./*.proto"]
+	// Targets lists the proto source patterns to generate. It defaults to
+	// ["./*.proto"].
 	Targets []string
 	// TargetsExplicit reports whether the caller explicitly selected Targets.
 	// Explicit targets must each match at least one source.
 	TargetsExplicit bool
-	// CheckProtoContracts enables strict house-style validation for selected
-	// first-party schema sources. It is opt-in for legacy compatibility.
-	CheckProtoContracts bool
 	// Exclude is a list of proto file glob patterns to exclude.
 	// Files matching any of these patterns will be skipped.
 	Exclude []string
 	// Force regenerates all files regardless of cache.
 	Force bool
-	// CacheFile is the path to the cache file.
-	// Default: ".protoc-manifest.json"
+	// CacheFile locates the generation cache. It defaults to
+	// ".protoc-manifest.json".
 	CacheFile string
 	// Verbose enables verbose output.
 	Verbose bool
-	// GoLiteFeatures is the go-lite features to enable.
-	// Default: "marshal+unmarshal+size+equal+json+clone+text"
+	// GoLiteFeatures selects protobuf-go-lite generator features. It defaults to
+	// "marshal+unmarshal+size+equal+json+clone+text".
 	GoLiteFeatures string
-	// ToolsDir is the tools directory containing plugin binaries.
-	// Default: ".tools"
+	// ToolsDir locates generator tool binaries. It defaults to ".tools".
 	ToolsDir string
 	// ExtraArgs contains any additional protoc arguments.
 	ExtraArgs []string
@@ -59,12 +55,16 @@ type Config struct {
 }
 
 type packageJSONConfig struct {
+	// Aptre contains package-level aptre configuration.
 	Aptre *packageJSONAptreConfig `json:"aptre"`
 }
 
 type packageJSONAptreConfig struct {
-	Languages          []string `json:"languages"`
-	RPCLibraries       []string `json:"rpc"`
+	// Languages selects generated output languages.
+	Languages []string `json:"languages"`
+	// RPCLibraries selects generated RPC libraries.
+	RPCLibraries []string `json:"rpc"`
+	// TsImportBoundaries identifies TypeScript import rewrite boundaries.
 	TsImportBoundaries []string `json:"tsImportBoundaries"`
 }
 
@@ -80,10 +80,19 @@ func NewConfig() *Config {
 
 // GetProjectDir returns the project directory, defaulting to cwd.
 func (c *Config) GetProjectDir() (string, error) {
-	if c.ProjectDir != "" {
-		return filepath.Abs(c.ProjectDir)
+	projectDir := c.ProjectDir
+	if projectDir == "" {
+		var err error
+		projectDir, err = os.Getwd()
+		if err != nil {
+			return "", err
+		}
 	}
-	return os.Getwd()
+	absolute, err := filepath.Abs(projectDir)
+	if err != nil {
+		return "", err
+	}
+	return filepath.EvalSymlinks(absolute)
 }
 
 // GetModuleDir returns the nearest ancestor directory containing go.mod.

@@ -19,5 +19,6 @@ service Echoer {
 
 // EchoMsg is the message body for Echo.
 message EchoMsg {
+  // Body contains the Echo request payload.
   string body = 1;
 }

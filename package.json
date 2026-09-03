@@ -55,7 +55,7 @@
     "format:js:all": "oxfmt './**/*.{ts,tsx,js,html,css,scss}'",
     "gen": "rimraf ./.tools && go mod tidy && cd ./tools && go mod tidy && cd ../ && bash embed.bash && npm run format && npm run go:aptre:gen",
     "gen:force": "rimraf ./.tools && go mod tidy && cd ./tools && go mod tidy && cd ../ && bash embed.bash && npm run format && npm run go:aptre:gen --force",
-    "go:aptre:gen": "go run github.com/aperturerobotics/common/cmd/aptre generate",
+    "go:aptre:gen": "go run github.com/aperturerobotics/common/cmd/aptre generate --exclude 'example/compatibility.proto' --exclude 'example/compatibility_options.proto'",
     "go:aptre": "go run github.com/aperturerobotics/common/cmd/aptre",
     "test": "npm run test:js && npm run test:go",
     "test:js": "vitest run && npm run typecheck",

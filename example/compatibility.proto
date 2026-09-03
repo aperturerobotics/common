@@ -5,31 +5,49 @@ import "google/protobuf/timestamp.proto";
 
 option go_package = "example.com/compatibility";
 
+// Compatibility carries fields used to verify schema and codec compatibility.
 message Compatibility {
+  // Kind identifies the compatibility fixture variant.
   enum Kind {
+    // KIND_UNSPECIFIED is the compatibility-preserving zero value.
     KIND_UNSPECIFIED = 0;
+
+    // KIND_PRIMARY identifies the primary compatibility fixture variant.
     KIND_PRIMARY = 1;
   }
 
+  // Nested carries a value inside the compatibility fixture.
   message Nested {
+    // Value contains the nested fixture value.
     string value = 1;
   }
 
+  // Present exercises explicit proto3 field presence.
   optional string present = 1;
+  // Entries exercises map encoding with nested messages.
   map<string, Nested> entries = 2;
   oneof payload {
+    // Text contains the textual payload variant.
     string text = 3;
+    // Raw contains the binary payload variant.
     bytes raw = 4;
   }
+  // Kind selects the compatibility fixture variant.
   Kind kind = 5;
+  // ObservedAt records the fixture observation time.
   google.protobuf.Timestamp observed_at = 6;
 }
 
+// CompatibilityService exercises service descriptor compatibility.
 service CompatibilityService {
+  // Get returns the supplied compatibility fixture.
   rpc Get(Compatibility) returns (Compatibility);
 }
 
+// SchemaEvolution carries stable and newly introduced fields.
 message SchemaEvolution {
+  // Stable contains the original fixture value.
   string stable = 1;
+  // FutureField contains the field introduced by schema evolution.
   int32 future_field = 2;
 }

@@ -122,11 +122,6 @@ func (g *Generator) Generate(ctx context.Context) error {
 		}
 		return nil
 	}
-	if g.Config.CheckProtoContracts {
-		if err := CheckProtoContracts(g.ProjectDir, protoFiles); err != nil {
-			return err
-		}
-	}
 
 	if g.Verbose {
 		fmt.Fprintf(g.Stdout, "Found %d proto files\n", len(protoFiles))

@@ -19,10 +19,15 @@ import (
 type PluginType int
 
 const (
+	// PluginTypeGo identifies the Go plugin family.
 	PluginTypeGo PluginType = iota
+	// PluginTypePython identifies the Python plugin family.
 	PluginTypePython
+	// PluginTypeTypeScript identifies the TypeScript plugin family.
 	PluginTypeTypeScript
+	// PluginTypeCpp identifies the C++ plugin family.
 	PluginTypeCpp
+	// PluginTypeRust identifies the Rust plugin family.
 	PluginTypeRust
 )
 

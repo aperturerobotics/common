@@ -46,7 +46,8 @@ func (x *ExampleMsg) GetOtherMsg() *other.OtherMsg {
 // EchoMsg is the message body for Echo.
 type EchoMsg struct {
 	unknownFields []byte
-	Body          string `protobuf:"bytes,1,opt,name=body,proto3" json:"body,omitempty"`
+	// Body contains the Echo request payload.
+	Body string `protobuf:"bytes,1,opt,name=body,proto3" json:"body,omitempty"`
 }
 
 func (x *EchoMsg) Reset() {

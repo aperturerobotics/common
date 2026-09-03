@@ -28,10 +28,6 @@ var generateCmd = &cli.Command{
 			Aliases: []string{"f"},
 			Usage:   "Regenerate all files regardless of cache",
 		},
-		&cli.BoolFlag{
-			Name:  "check-proto-contracts",
-			Usage: "Validate selected first-party proto sources against the house contract",
-		},
 		&cli.StringFlag{
 			Name:  "cache-file",
 			Usage: "Path to the cache file",
@@ -79,7 +75,6 @@ func runGenerate(c *cli.Context) error {
 	cfg := protogen.NewConfig()
 	cfg.Targets = c.StringSlice("targets")
 	cfg.TargetsExplicit = c.IsSet("targets")
-	cfg.CheckProtoContracts = c.Bool("check-proto-contracts")
 	cfg.Exclude = c.StringSlice("exclude")
 	cfg.Force = c.Bool("force")
 	cfg.CacheFile = c.String("cache-file")

@@ -52,14 +52,14 @@ func TestGenerateCompatibilityFixtureUsesPackageJSONHistoricalDefaults(t *testin
 	if err != nil {
 		t.Fatalf("read compatibility fixture: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(projectDir, "compatibility.proto"), fixture, 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(projectDir, "compatibility.proto"), fixture, 0o644); err != nil { //nolint:gosec // projectDir is a test temporary directory.
 		t.Fatalf("write compatibility fixture: %v", err)
 	}
 	options, err := os.ReadFile(filepath.Join(rootDir, "example", "compatibility_options.proto"))
 	if err != nil {
 		t.Fatalf("read compatibility options: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(projectDir, "compatibility_options.proto"), options, 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(projectDir, "compatibility_options.proto"), options, 0o644); err != nil { //nolint:gosec // projectDir is a test temporary directory.
 		t.Fatalf("write compatibility options: %v", err)
 	}
 	wktPath := filepath.Join(projectDir, "vendor", "github.com", "aperturerobotics", "protobuf", "src", "google", "protobuf", "timestamp.proto")
@@ -71,7 +71,7 @@ func TestGenerateCompatibilityFixtureUsesPackageJSONHistoricalDefaults(t *testin
 		if err != nil {
 			t.Fatalf("read well-known fixture %s: %v", name, err)
 		}
-		if err := os.WriteFile(filepath.Join(filepath.Dir(wktPath), name), wkt, 0o644); err != nil {
+		if err := os.WriteFile(filepath.Join(filepath.Dir(wktPath), name), wkt, 0o644); err != nil { //nolint:gosec // name comes from the fixed fixture table.
 			t.Fatalf("write well-known fixture %s: %v", name, err)
 		}
 	}
@@ -226,15 +226,11 @@ func TestGenerateStarpcPythonServiceOutputsAndStaleRemoval(t *testing.T) {
 	protoFile := []byte(`syntax = "proto3";
 package scratch;
 
-// Scratch contains the value used by this generation test.
 message Scratch {
-  // Value contains the generated test value.
   string value = 1;
 }
 
-// ScratchService exposes Scratch requests for this generation test.
 service ScratchService {
-  // Get returns the requested Scratch value.
   rpc Get(Scratch) returns (Scratch);
 }
 `)
@@ -322,9 +318,7 @@ package scratch;
 
 option go_package = "example.com/scratch";
 
-// Scratch contains the value used by this generation test.
 message Scratch {
-  // Value contains the generated test value.
   string value = 1;
 }
 `)
@@ -394,9 +388,7 @@ package scratch;
 
 option go_package = "example.com/scratch";
 
-// Scratch contains the value used by this generation test.
 message Scratch {
-  // Value contains the generated test value.
   string value = 1;
 }
 `)
@@ -459,9 +451,7 @@ func TestGenerateCSharpAndPython(t *testing.T) {
 	protoFile := []byte(`syntax = "proto3";
 package scratch;
 
-// Scratch contains the value used by this generation test.
 message Scratch {
-  // Value contains the generated test value.
   string value = 1;
 }
 `)
@@ -587,24 +577,11 @@ func TestGeneratePythonRewritesCanonicalLocalImports(t *testing.T) {
 package app;
 import "github.com/example/project/dep/dep.proto";
 import "google/protobuf/timestamp.proto";
-
-// App contains a dependency and its observation time.
-message App {
-  // Dependency contains the imported dependency value.
-  dep.Dependency dependency = 1;
-
-  // ObservedAt records when the dependency was observed.
-  google.protobuf.Timestamp observed_at = 2;
-}
+message App { dep.Dependency dependency = 1; google.protobuf.Timestamp observed_at = 2; }
 `,
 		"dep/dep.proto": `syntax = "proto3";
 package dep;
-
-// Dependency contains the imported dependency value.
-message Dependency {
-  // Value contains the dependency value.
-  string value = 1;
-}
+message Dependency { string value = 1; }
 `,
 	} {
 		path := filepath.Join(projectDir, rel)
@@ -623,7 +600,7 @@ message Dependency {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(wktDir, "timestamp.proto"), wkt, 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(wktDir, "timestamp.proto"), wkt, 0o644); err != nil { //nolint:gosec // wktDir is a test temporary directory.
 		t.Fatal(err)
 	}
 	goMod := []byte("module github.com/example/project\n\ngo 1.25.0\n")
@@ -663,7 +640,7 @@ message Dependency {
 			t.Fatalf("%s rewrote WKT import", rel)
 		}
 	}
-	cmd := exec.Command("uv", "run", "--directory", filepath.Join(rootDir, "tests", "python"), "python", "-c", "import sys; sys.path.insert(0, sys.argv[1]); import app.app_pb2", projectDir)
+	cmd := exec.Command("uv", "run", "--directory", filepath.Join(rootDir, "tests", "python"), "python", "-c", "import sys; sys.path.insert(0, sys.argv[1]); import app.app_pb2", projectDir) //nolint:gosec // All arguments are test-controlled paths and code.
 	cmd.Env = append(os.Environ(), "UV_PROJECT_ENVIRONMENT="+filepath.Join(t.TempDir(), ".venv"))
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("generated Python import: %v\\n%s", err, out)
@@ -698,17 +675,5 @@ message Target {}
 	output, err := cmd.CombinedOutput()
 	if err == nil || !strings.Contains(string(output), "matched no proto sources") {
 		t.Fatalf("missing target error = %v\n%s", err, output)
-	}
-
-	if err := os.WriteFile(filepath.Join(projectDir, "strict.proto"), []byte(`syntax = "proto3";
-message Strict { string key = 1; }
-`), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	cmd = exec.Command("go", "run", "./cmd/aptre", "generate", "--deps=false", "--check-proto-contracts", "--project-dir", projectDir, "--targets", "strict.proto")
-	cmd.Dir = rootDir
-	output, err = cmd.CombinedOutput()
-	if err == nil || !strings.Contains(string(output), "must use an expanded block") {
-		t.Fatalf("strict target error = %v\n%s", err, output)
 	}
 }

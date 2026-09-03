@@ -27,8 +27,12 @@ func TestConfigGetGoModuleFromSubdir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get module dir: %v", err)
 	}
-	if moduleDir != tmpDir {
-		t.Fatalf("expected module dir %q, got %q", tmpDir, moduleDir)
+	physicalTmpDir, err := filepath.EvalSymlinks(tmpDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if moduleDir != physicalTmpDir {
+		t.Fatalf("expected module dir %q, got %q", physicalTmpDir, moduleDir)
 	}
 
 	modulePath, err := cfg.GetGoModule()

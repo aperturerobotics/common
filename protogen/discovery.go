@@ -74,6 +74,11 @@ func discoverPattern(projectDir, pattern string) ([]string, error) {
 	if err := validateTargetPattern(projectDir, pattern); err != nil {
 		return nil, err
 	}
+	if isExplicitProtoPath(pattern) {
+		if err := validateExistingExplicitTarget(projectDir, pattern); err != nil {
+			return nil, err
+		}
+	}
 	cmd := exec.Command("git", "ls-files", pattern)
 	cmd.Dir = projectDir
 
@@ -130,6 +135,29 @@ func discoverPattern(projectDir, pattern string) ([]string, error) {
 
 func isExplicitProtoPath(pattern string) bool {
 	return strings.HasSuffix(pattern, ".proto") && !strings.ContainsAny(pattern, "*?[")
+}
+
+func validateExistingExplicitTarget(projectDir, pattern string) error {
+	path := filepath.Join(projectDir, pattern)
+	if _, err := os.Stat(path); err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	root, err := filepath.EvalSymlinks(projectDir)
+	if err != nil {
+		return err
+	}
+	candidate, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		return err
+	}
+	rel, err := filepath.Rel(root, candidate)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return fmt.Errorf("proto target %q escapes project directory", pattern)
+	}
+	return nil
 }
 
 func validateTargetPattern(projectDir, pattern string) error {
