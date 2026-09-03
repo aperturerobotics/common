@@ -16,8 +16,8 @@ func TestExampleMsg(t *testing.T) {
 		if msg.ExampleField != "" {
 			t.Errorf("Expected empty ExampleField, got %q", msg.ExampleField)
 		}
-		if msg.OtherMsg != nil {
-			t.Error("Expected nil OtherMsg, got non-nil")
+		if got := msg.MarshalProtoText(); got != "ExampleMsg {}" {
+			t.Errorf("Expected empty message, got %q", got)
 		}
 	})
 
