@@ -1,0 +1,4 @@
+version: v2.1.6
+plugins:
+  - module: 'github.com/aperturerobotics/common/lint/protobufnil'
+    path: ./lint/protobufnil
