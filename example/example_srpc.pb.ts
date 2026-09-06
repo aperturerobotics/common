@@ -4,7 +4,7 @@
 
 import { EchoMsg } from './example.pb.js'
 import { MethodKind } from '@aptre/protobuf-es-lite'
-import { ProtoRpc } from 'starpc'
+import { ProtoRpc, ServerContext } from 'starpc'
 
 /**
  * Echoer service returns the given message.
@@ -40,6 +40,24 @@ export interface Echoer {
    * @generated from rpc example.Echoer.Echo
    */
   Echo(request: EchoMsg, abortSignal?: AbortSignal): Promise<EchoMsg>
+}
+
+/**
+ * Echoer service returns the given message.
+ *
+ * @generated from service example.Echoer
+ */
+export interface EchoerHandler {
+  /**
+   * Echo returns the given message.
+   *
+   * @generated from rpc example.Echoer.Echo
+   */
+  Echo(
+    request: EchoMsg,
+    abortSignal: AbortSignal,
+    context: ServerContext,
+  ): Promise<EchoMsg>
 }
 
 export const EchoerServiceName = EchoerDefinition.typeName

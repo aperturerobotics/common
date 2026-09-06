@@ -136,6 +136,7 @@ func receiverIdent(pass *analysis.Pass, expr ast.Expr) bool {
 	}
 	return false
 }
+
 func nilOperand(bin *ast.BinaryExpr) ast.Expr {
 	if bin.Op != token.EQL && bin.Op != token.NEQ {
 		return nil
