@@ -101,6 +101,7 @@ func TestReconcileToolsStampLifecycle(t *testing.T) {
 		t.Fatalf("missing %v %v %d", changed, err, calls)
 	}
 }
+
 func TestReconcileToolsStampFailedExtractionDoesNotAdvance(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "stamp")
 	os.WriteFile(path, []byte("common@old\n"), 0o644)

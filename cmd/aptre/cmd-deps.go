@@ -24,9 +24,12 @@ var defaultTools = []toolSpec{
 	{Name: "protoc-gen-go-starpc", ImportPath: "github.com/aperturerobotics/starpc/cmd/protoc-gen-go-starpc", ModulePath: "github.com/aperturerobotics/starpc"},
 	{Name: "protoc-gen-starpc-cpp", ImportPath: "github.com/aperturerobotics/starpc/cmd/protoc-gen-starpc-cpp", ModulePath: "github.com/aperturerobotics/starpc"},
 	{Name: "protoc-gen-starpc-rust", ImportPath: "github.com/aperturerobotics/starpc/cmd/protoc-gen-starpc-rust", ModulePath: "github.com/aperturerobotics/starpc"},
-	{Name: "gofumpt", ImportPath: "mvdan.cc/gofumpt"}, {Name: "goimports", ImportPath: "golang.org/x/tools/cmd/goimports"},
-	{Name: "golangci-lint", ImportPath: "github.com/golangci/golangci-lint/v2/cmd/golangci-lint"}, {Name: "go-mod-outdated", ImportPath: "github.com/psampaz/go-mod-outdated"},
-	{Name: "goreleaser", ImportPath: "github.com/goreleaser/goreleaser/v2"}, {Name: "wasmbrowsertest", ImportPath: "github.com/agnivade/wasmbrowsertest"},
+	{Name: "gofumpt", ImportPath: "mvdan.cc/gofumpt"},
+	{Name: "goimports", ImportPath: "golang.org/x/tools/cmd/goimports"},
+	{Name: "golangci-lint", ImportPath: "github.com/golangci/golangci-lint/v2/cmd/golangci-lint"},
+	{Name: "go-mod-outdated", ImportPath: "github.com/psampaz/go-mod-outdated"},
+	{Name: "goreleaser", ImportPath: "github.com/goreleaser/goreleaser/v2"},
+	{Name: "wasmbrowsertest", ImportPath: "github.com/agnivade/wasmbrowsertest"},
 }
 
 type toolBuildMode uint8
