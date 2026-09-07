@@ -4,12 +4,12 @@ go 1.27.1
 
 require (
 	github.com/agnivade/wasmbrowsertest v0.11.0 // cancelCtx
-	github.com/aperturerobotics/common v0.35.1-0.20260808123156-c77af26f63bd // latest
+	github.com/aperturerobotics/common v0.35.4-0.20260907221801-94b9f6461eae // latest
 	github.com/aperturerobotics/goprotowrap v0.4.1 // latest
 	// github.com/s4wave/goscript v0.0.61 // master
 	github.com/aperturerobotics/protobuf-go-lite v0.18.0 // latest
 	github.com/aperturerobotics/starpc v0.52.1 // latest
-	github.com/golangci/golangci-lint/v2 v2.13.2
+	github.com/golangci/golangci-lint/v2 v2.13.2 // latest
 	github.com/goreleaser/goreleaser/v2 v2.18.1 // latest
 	github.com/psampaz/go-mod-outdated v0.9.0 // latest
 	golang.org/x/tools v0.49.0 // latest

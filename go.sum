@@ -16,8 +16,8 @@ github.com/aperturerobotics/protobuf-go-lite v0.18.0 h1:M4ylc1wvu6hjwU6bSsfgYhdx
 github.com/aperturerobotics/protobuf-go-lite v0.18.0/go.mod h1:3Ay/E7iaw2KWLirK3+dDdNJZHK0hu8Y1/kKeYeUa+8s=
 github.com/aperturerobotics/starpc v0.52.1 h1:oz8EpHO3SIPLLL6lx6di2IBlQNyhsumcEB3rI/KJUKg=
 github.com/aperturerobotics/starpc v0.52.1/go.mod h1:04caiWwOtqsuwiIc5aLoNtp6ega99V7AhFinALdfFXc=
-github.com/aperturerobotics/util v1.34.9 h1:Eyhu1Citt+od7jKIb+Q92h/CEujWCFsvdvJavQeoRjM=
-github.com/aperturerobotics/util v1.34.9/go.mod h1:GxjGkYQNEj8xvLFz+T8ifqANtK5cMesOlCxh50htvBI=
+github.com/aperturerobotics/util v1.34.10-0.20260802062101-496aab6cefd2 h1:fIAb1MvcrFtw/6Bqg+mjOqiHjHPPcljvM53Sm8g/e5s=
+github.com/aperturerobotics/util v1.34.10-0.20260802062101-496aab6cefd2/go.mod h1:2uIQA8dHn5EQgEtRqcTS4zxJ51dEVehY9O++bJfU2hs=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/google/go-cmp v0.7.0 h1:wk8382ETsv4JYUZwIsn6YpYiWiBsYLSJiTsyBybVuN8=
