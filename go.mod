@@ -12,7 +12,7 @@ require (
 	github.com/aperturerobotics/starpc v0.52.1 // latest
 	github.com/pkg/errors v0.9.1
 	github.com/tetratelabs/wazero v1.12.0
-	golang.org/x/mod v0.40.0
+	golang.org/x/mod v0.41.0
 )
 
 require (
