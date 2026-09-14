@@ -2,5 +2,5 @@ version: v2.13.2
 plugins:
   - module: 'github.com/aperturerobotics/common/lint/protobufnil'
     path: ./lint/protobufnil
-  - module: 'github.com/aperturerobotics/common/lint/ownedresource'
-    path: ./lint/ownedresource
+  - module: 'github.com/aperturerobotics/common/lint/lostresource'
+    path: ./lint/lostresource

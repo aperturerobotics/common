@@ -1,4 +1,4 @@
-package ownedresource
+package lostresource
 
 import (
 	"go/ast"
@@ -23,9 +23,9 @@ type Flow struct {
 	graphs *ctrlflow.CFGs
 	// resource defines cleanup and transfer for the acquired result.
 	resource Resource
-	// scope bounds local variables; assignments outside it transfer ownership.
+	// scope bounds local variables; assignments outside it transfer the handle.
 	scope *types.Scope
-	// results identifies named returns that transfer ownership on a bare return.
+	// results identifies named returns that transfer the handle on a bare return.
 	results *types.Tuple
 }
 
@@ -101,7 +101,7 @@ func (f *Flow) Check(def ast.Node, call *ast.CallExpr, v *types.Var) {
 			if loss := f.search(block, i+1, state, make(map[string]bool)); loss != nil {
 				f.pass.Report(analysis.Diagnostic{
 					Pos: call.Pos(), End: call.End(),
-					Message: "owned " + v.Name() + " from " + functionName(f.pass.TypesInfo, call) + " is not released or transferred on all paths; use " + f.resource.cleanup(),
+					Message: v.Name() + " from " + functionName(f.pass.TypesInfo, call) + " is not released or transferred on all paths; use " + f.resource.cleanup(),
 					Related: []analysis.RelatedInformation{{Pos: loss.Pos(), Message: "this path loses " + v.Name() + " without releasing or transferring it"}},
 				})
 			}

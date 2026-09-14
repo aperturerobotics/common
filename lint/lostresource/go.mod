@@ -1,4 +1,4 @@
-module github.com/aperturerobotics/common/lint/ownedresource
+module github.com/aperturerobotics/common/lint/lostresource
 
 go 1.25.0
 

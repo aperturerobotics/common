@@ -1,4 +1,4 @@
-package ownedresource
+package lostresource
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	"golang.org/x/tools/go/analysis/analysistest"
 )
 
-// TestAnalyzer checks diagnostics and accepted ownership paths through real CFGs.
+// TestAnalyzer checks diagnostics and accepted release paths through real CFGs.
 func TestAnalyzer(t *testing.T) {
 	p := &Plugin{Resources: []Resource{
 		{Type: "handles.Handle", ReleaseMethods: []string{"Release"}, Consumers: []string{"handles.Release:0", "handles.Consume:1", "handles.Sink.Take:0"}, Borrowed: []string{"handles.Borrow"}},
@@ -24,7 +24,7 @@ func TestAnalyzer(t *testing.T) {
 
 // TestPlugin exercises the loader's settings decoder and contract validation.
 func TestPlugin(t *testing.T) {
-	constructor, err := register.GetPlugin("ownedresource")
+	constructor, err := register.GetPlugin("lostresource")
 	if err != nil {
 		t.Fatal(err)
 	}

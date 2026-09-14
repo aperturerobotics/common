@@ -11,7 +11,7 @@ type Handle interface {
 // Alias preserves the declared handle identity.
 type Alias = Handle
 
-// Lookalike has the same methods but no configured ownership contract.
+// Lookalike has the same methods but no configured resource contract.
 type Lookalike interface {
 	Read() int
 	Release()
@@ -32,7 +32,7 @@ type Strict interface{ Release() }
 // Success guarantees no acquired handle when the error is non-nil.
 type Success interface{ Release() }
 
-// Sink accepts ownership through an explicitly configured method.
+// Sink accepts a handle through an explicitly configured method.
 type Sink struct{}
 
 // Take consumes its first argument.
@@ -41,7 +41,7 @@ func (Sink) Take(Handle) {}
 // New acquires a handle.
 func New() Handle { return nil }
 
-// Many returns its owned handle at a nonzero tuple position.
+// Many returns its handle at a nonzero tuple position.
 func Many() (int, Alias, error) { return 0, nil, nil }
 
 // Generic exercises generic call resolution.
@@ -53,7 +53,7 @@ func Ptr() PointerAlias { return nil }
 // Other returns an unconfigured structural lookalike.
 func Other() Lookalike { return nil }
 
-// Borrow returns a handle owned by another component.
+// Borrow returns a handle held by another component.
 func Borrow() Handle { return nil }
 
 // Partial may acquire a handle even on error.

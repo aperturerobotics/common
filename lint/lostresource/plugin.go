@@ -1,6 +1,6 @@
-// Package ownedresource checks discarded handles and paths that lose an owned
-// call result before releasing it or transferring it to another component.
-package ownedresource
+// Package lostresource checks discarded handles and paths that lose a call
+// result before releasing it or transferring it to another component.
+package lostresource
 
 import (
 	"go/ast"
@@ -19,12 +19,12 @@ import (
 
 // init registers the module with golangci-lint's plugin loader.
 func init() {
-	register.Plugin("ownedresource", New)
+	register.Plugin("lostresource", New)
 }
 
-// Plugin holds the ownership contracts used by one configured linter.
+// Plugin holds the resource contracts used by one configured linter.
 type Plugin struct {
-	// Resources specifies owned result types; no structural ownership is inferred.
+	// Resources specifies result types; no structural contract is inferred.
 	Resources []Resource `json:"resources"`
 	// CheckPaths enables control-flow checks in addition to discarded results.
 	// An omitted value enables both checks.
@@ -40,7 +40,7 @@ func New(settings any) (register.LinterPlugin, error) {
 	return &p, nil
 }
 
-// GetLoadMode requests the resolved types needed for exact ownership matching.
+// GetLoadMode requests the resolved types needed for exact type matching.
 func (p *Plugin) GetLoadMode() string {
 	return register.LoadModeTypesInfo
 }
@@ -49,30 +49,30 @@ func (p *Plugin) GetLoadMode() string {
 func (p *Plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
 	// Reject ambiguous contracts before inspecting any source files.
 	if len(p.Resources) == 0 {
-		return nil, errors.New("ownedresource requires at least one resources entry")
+		return nil, errors.New("lostresource requires at least one resources entry")
 	}
 	seen := make(map[string]bool)
 	for _, r := range p.Resources {
 		if !strings.Contains(r.Type, ".") || seen[r.Type] {
-			return nil, errors.Errorf("ownedresource: invalid or duplicate type %q", r.Type)
+			return nil, errors.Errorf("lostresource: invalid or duplicate type %q", r.Type)
 		}
 		seen[r.Type] = true
 		if len(r.ReleaseMethods)+len(r.Consumers) == 0 {
-			return nil, errors.Errorf("ownedresource: %s needs release-methods or consumers", r.Type)
+			return nil, errors.Errorf("lostresource: %s needs release-methods or consumers", r.Type)
 		}
 		for _, consumer := range r.Consumers {
 			name, arg, ok := strings.Cut(consumer, ":")
 			index, err := strconv.Atoi(arg)
 			if !ok || !strings.Contains(name, ".") || err != nil || index < 0 {
-				return nil, errors.Errorf("ownedresource: invalid consumer %q; use package.Function:argument", consumer)
+				return nil, errors.Errorf("lostresource: invalid consumer %q; use package.Function:argument", consumer)
 			}
 		}
 	}
 
 	// Reuse the same typed CFG producer used by the lostcancel analyzer.
 	return []*analysis.Analyzer{{
-		Name:     "ownedresource",
-		Doc:      "checks discarded owned handles and paths missing release or ownership transfer",
+		Name:     "lostresource",
+		Doc:      "checks discarded handles and paths missing release or transfer",
 		Requires: []*analysis.Analyzer{inspect.Analyzer, ctrlflow.Analyzer},
 		Run:      p.run,
 	}}, nil
@@ -111,7 +111,7 @@ func (p *Plugin) run(pass *analysis.Pass) (any, error) {
 						if id != nil {
 							where = id
 						}
-						pass.ReportRangef(where, "owned %s result from %s is discarded; release with %s or transfer ownership", r.Type, name, r.cleanup())
+						pass.ReportRangef(where, "%s result from %s is discarded; release with %s or transfer it", r.Type, name, r.cleanup())
 						continue
 					}
 					if id == nil || p.CheckPaths != nil && !*p.CheckPaths {

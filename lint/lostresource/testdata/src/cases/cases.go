@@ -8,37 +8,37 @@ import (
 
 // dropped covers result positions, initializers, var specs, and ignored calls.
 func dropped() {
-	_ = h.New()                            // want "owned handles.Handle result .* is discarded"
-	h.New()                                // want "owned handles.Handle result .* is discarded"
-	_, _, _ = h.Many()                     // want "owned handles.Handle result .* is discarded"
-	var _, _, _ = h.Many()                 // want "owned handles.Handle result .* is discarded"
-	if _, _, err := h.Many(); err != nil { // want "owned handles.Handle result .* is discarded"
+	_ = h.New()                            // want "handles.Handle result .* is discarded"
+	h.New()                                // want "handles.Handle result .* is discarded"
+	_, _, _ = h.Many()                     // want "handles.Handle result .* is discarded"
+	var _, _, _ = h.Many()                 // want "handles.Handle result .* is discarded"
+	if _, _, err := h.Many(); err != nil { // want "handles.Handle result .* is discarded"
 		return
 	}
-	_, _ = h.Generic[int]() // want "owned handles.Handle result .* is discarded"
-	_ = h.Ptr()             // want "owned \\*handles.Pointer result .* is discarded"
-	defer h.New()           // want "owned handles.Handle result .* is discarded"
-	go h.New()              // want "owned handles.Handle result .* is discarded"
-	_, _ = 1, h.New()       // want "owned handles.Handle result .* is discarded"
+	_, _ = h.Generic[int]() // want "handles.Handle result .* is discarded"
+	_ = h.Ptr()             // want "\\*handles.Pointer result .* is discarded"
+	defer h.New()           // want "handles.Handle result .* is discarded"
+	go h.New()              // want "handles.Handle result .* is discarded"
+	_, _ = 1, h.New()       // want "handles.Handle result .* is discarded"
 	h.Other()
 	h.Borrow()
 }
 
 // missing proves that reading a handle does not release it.
 func missing() {
-	x := h.New() // want "owned x .* not released or transferred on all paths"
+	x := h.New() // want "x .* not released or transferred on all paths"
 	x.Read()
 }
 
-// blankUse does not transfer ownership.
+// blankUse does not transfer the handle.
 func blankUse() {
-	x := h.New() // want "owned x .* not released or transferred on all paths"
+	x := h.New() // want "x .* not released or transferred on all paths"
 	_ = x
 }
 
 // branch leaks only along its early return.
 func branch(stop bool) {
-	x := h.New() // want "owned x .* not released or transferred on all paths"
+	x := h.New() // want "x .* not released or transferred on all paths"
 	if stop {
 		return
 	}
@@ -73,21 +73,21 @@ func alias() {
 
 // droppedAlias must still release the copied handle.
 func droppedAlias() {
-	x := h.New() // want "owned x .* not released or transferred on all paths"
+	x := h.New() // want "x .* not released or transferred on all paths"
 	y := x
 	_ = y
 }
 
 // overwritten loses the old acquisition before the replacement is released.
 func overwritten() {
-	x := h.New() // want "owned x .* not released or transferred on all paths"
+	x := h.New() // want "x .* not released or transferred on all paths"
 	x = h.New()
 	x.Release()
 }
 
 // shadow keeps identifiers in nested scopes separate.
 func shadow() {
-	x := h.New() // want "owned x .* not released or transferred on all paths"
+	x := h.New() // want "x .* not released or transferred on all paths"
 	if x := h.New(); x != nil {
 		x.Release()
 	}
@@ -120,14 +120,14 @@ func wrapped() any {
 
 // consumer uses the configured argument position.
 func consumer() {
-	x := h.New() // want "owned x .* not released or transferred on all paths"
+	x := h.New() // want "x .* not released or transferred on all paths"
 	y := h.New()
 	h.Consume(x, y)
 }
 
 // inspected passes a borrowed handle to an ordinary function.
 func inspected() {
-	x := h.New() // want "owned x .* not released or transferred on all paths"
+	x := h.New() // want "x .* not released or transferred on all paths"
 	h.Inspect(x)
 }
 
@@ -159,7 +159,7 @@ func errorGuard() {
 
 // partialError must release a possible partial result.
 func partialError() {
-	x, err := h.Partial() // want "owned x .* not released or transferred on all paths"
+	x, err := h.Partial() // want "x .* not released or transferred on all paths"
 	if err != nil {
 		return
 	}
@@ -168,7 +168,7 @@ func partialError() {
 
 // changedError cannot reuse the acquisition's error guarantee.
 func changedError(err error) {
-	x, next := h.Fallible() // want "owned x .* not released or transferred on all paths"
+	x, next := h.Fallible() // want "x .* not released or transferred on all paths"
 	next = err
 	if next != nil {
 		return
@@ -187,7 +187,7 @@ func loop(n int) {
 // loopLeak loses a value on the continue path, including the last iteration.
 func loopLeak(n int, stop bool) {
 	for range n {
-		x := h.New() // want "owned x .* not released or transferred on all paths"
+		x := h.New() // want "x .* not released or transferred on all paths"
 		if stop {
 			continue
 		}
@@ -197,21 +197,21 @@ func loopLeak(n int, stop bool) {
 
 // unusedClosure does not execute its cleanup.
 func unusedClosure() {
-	x := h.New() // want "owned x .* not released or transferred on all paths"
+	x := h.New() // want "x .* not released or transferred on all paths"
 	cleanup := func() { x.Release() }
 	_ = cleanup
 }
 
 // unusedMethodValue does not invoke or register the captured release method.
 func unusedMethodValue() {
-	x := h.New() // want "owned x .* not released or transferred on all paths"
+	x := h.New() // want "x .* not released or transferred on all paths"
 	cleanup := x.Release
 	_ = cleanup
 }
 
-// joinedAliases keeps distinct ownership states when branches rejoin.
+// joinedAliases keeps distinct alias states when branches rejoin.
 func joinedAliases(keep bool) {
-	x := h.New() // want "owned x .* not released or transferred on all paths"
+	x := h.New() // want "x .* not released or transferred on all paths"
 	var alias h.Handle
 	if keep {
 		alias = x
@@ -229,7 +229,7 @@ func closureDefer() {
 
 // closureOverwrite reads the replaced variable when deferred cleanup executes.
 func closureOverwrite() {
-	x := h.New() // want "owned x .* not released or transferred on all paths"
+	x := h.New() // want "x .* not released or transferred on all paths"
 	defer func() { x.Release() }()
 	x = h.New()
 	x.Release()
@@ -237,7 +237,7 @@ func closureOverwrite() {
 
 // deferOrder loses the handle when the last registered defer clears it first.
 func deferOrder() {
-	x := h.New() // want "owned x .* not released or transferred on all paths"
+	x := h.New() // want "x .* not released or transferred on all paths"
 	defer func() { x.Release() }()
 	defer func() { x = nil }()
 }
@@ -251,7 +251,7 @@ func deferReleaseFirst() {
 
 // conditionalClosure leaves an unreleased return path inside its defer.
 func conditionalClosure(stop bool) {
-	x := h.New() // want "owned x .* not released or transferred on all paths"
+	x := h.New() // want "x .* not released or transferred on all paths"
 	defer func() {
 		if stop {
 			return
@@ -290,7 +290,7 @@ func unreachable() {
 
 // variableConstructor uses the declared result type of a function value.
 func variableConstructor(newHandle func() h.Handle) {
-	x := newHandle() // want "owned x .* not released or transferred on all paths"
+	x := newHandle() // want "x .* not released or transferred on all paths"
 	x.Read()
 }
 

@@ -35,7 +35,7 @@ jobs:
       - name: Test linter modules
         run: |
           (cd lint/protobufnil && go test ./...)
-          (cd lint/ownedresource && go test ./...)
+          (cd lint/lostresource && go test ./...)
       - run: bun run lint:js
       - run: bun run lint:go
       - run: bun run deps

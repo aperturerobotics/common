@@ -1,12 +1,12 @@
-# ownedresource
+# lostresource
 
-`ownedresource` is a golangci-lint module plugin that detects dropped resource
+`lostresource` is a golangci-lint module plugin that detects dropped resource
 handles. It matches explicitly configured result types using `go/types`, including
 aliases, generic instantiations, and tuple positions. Implementing `Release` or
-`Close` alone does not make a type owned.
+`Close` alone does not make a type a resource.
 
 It reports both discarded results and a control-flow path that returns or
-overwrites a handle without releasing it or transferring ownership. The path
+overwrites a handle without releasing it or transferring it. The path
 search uses `ctrlflow.Analyzer` and `go/cfg`, the same analysis infrastructure as
 Go's `lostcancel` check. Reading a handle does not release it.
 
@@ -30,23 +30,23 @@ version. Common's own build uses the local `path` form below:
 ```yaml
 version: v2.13.2
 plugins:
-  - module: github.com/aperturerobotics/common/lint/ownedresource
-    path: ./lint/ownedresource
+  - module: github.com/aperturerobotics/common/lint/lostresource
+    path: ./lint/lostresource
 ```
 
 Build with `golangci-lint custom` or the existing `aptre lint` integration. In a
 consumer repository, replace `path` with `version: <common commit>`.
 
-Enable the linter and specify ownership contracts in `.golangci.yml`:
+Enable the linter and specify resource contracts in `.golangci.yml`:
 
 ```yaml
 version: "2"
 linters:
   enable:
-    - ownedresource
+    - lostresource
   settings:
     custom:
-      ownedresource:
+      lostresource:
         type: module
         description: Checks discarded handles and missing resource releases.
         settings:
@@ -83,14 +83,14 @@ only the discarded-result check first. The default is `true`.
 | `nil-on-error` | Explicit guarantee that a non-nil final error implies no acquired handle. Defaults to false. |
 
 A consumer only discharges its configured argument. Add each consumed argument
-separately when a function owns several handles. Cleanup wrappers and adopting
+separately when a function takes several handles. Cleanup wrappers and adopting
 constructors need these contracts; arbitrary function calls are treated as
 borrowing. Use a body-only lookup when only the decoded value is needed.
 
 Assignments to `_`, variable declarations, conditional initializers, standalone
 calls, and discarded results in `go` and `defer` calls are checked. Returning a
 call or passing its results directly to another call is outside the named-variable
-path search; that receiving call must honor its ownership contract.
+path search; that receiving call must honor its resource contract.
 
 ## Path analysis and limits
 
@@ -105,12 +105,12 @@ the return or overwrite that loses it.
 Returning a handle, storing it in a field or aggregate, sending it on a channel,
 or passing it to a configured consumer transfers the obligation. The receiving
 component's eventual cleanup is not proven. Aggregate storage, pointer aliases,
-indirect cleanup calls, arbitrary closure protocols, and interprocedural ownership
-require further analysis. Configure explicit transfer wrappers for those APIs.
-Consumers must take ownership on every return path. Constructors that adopt a
-handle only on success need a wrapper that also releases it on failure. Cleanup
-registered before acquisition, asynchronous captured-variable changes, and mixed
-test-cleanup/defer lifetimes are not fully modeled.
+indirect cleanup calls, arbitrary closure protocols, and interprocedural
+transfer require further analysis. Configure explicit transfer wrappers for those
+APIs. Consumers must accept the handle on every return path. Constructors that
+adopt a handle only on success need a wrapper that also releases it on failure.
+Cleanup registered before acquisition, asynchronous captured-variable changes,
+and mixed test-cleanup/defer lifetimes are not fully modeled.
 
 Nil comparisons on the current handle are pruned, as are checks of its unchanged
 acquisition error under `nil-on-error`. Other correlated conditions may produce
@@ -123,6 +123,6 @@ retain runtime resource-count tests.
 Run its fixtures independently of common's root module:
 
 ```sh
-cd lint/ownedresource
+cd lint/lostresource
 go test ./...
 ```

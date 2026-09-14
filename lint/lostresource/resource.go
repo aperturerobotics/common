@@ -1,4 +1,4 @@
-package ownedresource
+package lostresource
 
 import (
 	"go/ast"
@@ -9,7 +9,8 @@ import (
 	"golang.org/x/tools/go/types/typeutil"
 )
 
-// Resource describes ownership of call results with one exact declared type.
+// Resource describes a call result of one exact declared type that must be
+// released or transferred.
 type Resource struct {
 	// Type is the declaring import path and type name, separated by a dot.
 	// A leading * selects pointers instead of values of the declared type.
