@@ -27,6 +27,10 @@ type Flow struct {
 	scope *types.Scope
 	// results identifies named returns that transfer the handle on a bare return.
 	results *types.Tuple
+	// nilOnFalse links a live acquisition to its penultimate found result.
+	nilOnFalse bool
+	// visiting prevents recursive callback protocols from recursing indefinitely.
+	visiting map[*ast.FuncLit]bool
 }
 
 // flowState contains the aliases and delayed closures on a single CFG path.
@@ -37,12 +41,24 @@ type flowState struct {
 	deferred []*ast.FuncLit
 	// err identifies the unchanged acquisition error for NilOnError contracts.
 	err *types.Var
+	// found is the unchanged acquisition result implied true by a live handle.
+	found *types.Var
+	// consumed tracks errors whose nil branch transfers this resource.
+	consumed map[*types.Var]bool
+	// closures tracks local cleanup functions without treating creation as execution.
+	closures map[*types.Var]cleanupClosure
+}
+
+// cleanupClosure either captures variables in a literal or binds a release receiver.
+type cleanupClosure struct {
+	literal *ast.FuncLit
+	bound   bool
 }
 
 // NewFlow constructs a path checker for a validated Resource contract and an
 // analysis pass requiring ctrlflow.
 func NewFlow(pass *analysis.Pass, resource Resource) *Flow {
-	return &Flow{pass: pass, graphs: pass.ResultOf[ctrlflow.Analyzer].(*ctrlflow.CFGs), resource: resource}
+	return &Flow{pass: pass, graphs: pass.ResultOf[ctrlflow.Analyzer].(*ctrlflow.CFGs), resource: resource, visiting: make(map[*ast.FuncLit]bool)}
 }
 
 // Check reports a witness path that loses v, acquired by call in def.
@@ -82,12 +98,17 @@ func (f *Flow) Check(def ast.Node, call *ast.CallExpr, v *types.Var) {
 	}
 
 	// Start immediately after this acquisition, ignoring unreachable definitions.
-	state := flowState{aliases: map[*types.Var]bool{v: true}}
+	state := flowState{aliases: map[*types.Var]bool{v: true}, consumed: make(map[*types.Var]bool), closures: make(map[*types.Var]cleanupClosure)}
 	lhs, _ := bindings(def)
 	results, _ := f.pass.TypesInfo.TypeOf(call).(*types.Tuple)
 	if f.resource.NilOnError && results != nil && results.Len() > 1 && len(lhs) == results.Len() && types.Identical(results.At(results.Len()-1).Type(), types.Universe.Lookup("error").Type()) {
 		if id, ok := lhs[len(lhs)-1].(*ast.Ident); ok {
 			state.err, _ = f.pass.TypesInfo.ObjectOf(id).(*types.Var)
+		}
+	}
+	if f.nilOnFalse && results != nil && results.Len() > 1 && len(lhs) == results.Len() && types.Identical(results.At(results.Len()-2).Type(), types.Typ[types.Bool]) {
+		if id, ok := lhs[len(lhs)-2].(*ast.Ident); ok {
+			state.found, _ = f.pass.TypesInfo.ObjectOf(id).(*types.Var)
 		}
 	}
 	for _, block := range graph.Blocks {
@@ -130,12 +151,40 @@ func (f *Flow) search(block *cfg.Block, start int, state flowState, seen map[str
 	if state.err != nil {
 		key.WriteString("e" + strconv.Itoa(int(state.err.Pos())))
 	}
+	if state.found != nil {
+		key.WriteString("f" + strconv.Itoa(int(state.found.Pos())))
+	}
+	positions = positions[:0]
+	for v := range state.consumed {
+		positions = append(positions, int(v.Pos()))
+	}
+	slices.Sort(positions)
+	for _, pos := range positions {
+		key.WriteString("c" + strconv.Itoa(pos))
+	}
+	positions = positions[:0]
+	for v := range state.closures {
+		positions = append(positions, int(v.Pos()))
+	}
+	slices.Sort(positions)
+	for _, pos := range positions {
+		for v, closure := range state.closures {
+			if int(v.Pos()) == pos {
+				key.WriteString("l" + strconv.Itoa(pos) + ":" + strconv.FormatBool(closure.bound))
+				if closure.literal != nil {
+					key.WriteString(":" + strconv.Itoa(int(closure.literal.Pos())))
+				}
+			}
+		}
+	}
 	if seen[key.String()] {
 		return nil
 	}
 	seen[key.String()] = true
 	state.aliases = maps.Clone(state.aliases)
 	state.deferred = slices.Clone(state.deferred)
+	state.consumed = maps.Clone(state.consumed)
+	state.closures = maps.Clone(state.closures)
 
 	// Evaluate each operation before its writes, matching parallel assignment.
 	for _, node := range block.Nodes[start:] {
@@ -145,13 +194,13 @@ func (f *Flow) search(block *cfg.Block, start int, state flowState, seen map[str
 		if ret, ok := node.(*ast.ReturnStmt); ok {
 			if ret.Results == nil && f.results != nil {
 				for v := range f.results.Variables() {
-					if state.aliases[v] {
+					if state.aliases[v] || f.cleanupReleases(state.closures[v], state) {
 						return nil
 					}
 				}
 			}
 			for _, result := range ret.Results {
-				if f.transfers(result, state) {
+				if f.transfers(result, state) || f.cleanupReleases(f.cleanupFunction(result, state), state) {
 					return nil
 				}
 			}
@@ -171,6 +220,7 @@ func (f *Flow) search(block *cfg.Block, start int, state flowState, seen map[str
 			continue
 		}
 		next := maps.Clone(state.aliases)
+		nextClosures := maps.Clone(state.closures)
 		for i, target := range lhs {
 			var value ast.Expr
 			if len(lhs) == len(rhs) {
@@ -187,6 +237,17 @@ func (f *Flow) search(block *cfg.Block, start int, state flowState, seen map[str
 			if v != nil && v == state.err {
 				state.err = nil
 			}
+			if v != nil && v == state.found {
+				state.found = nil
+			}
+			delete(state.consumed, v)
+			delete(nextClosures, v)
+			if value != nil && v != nil {
+				closure := f.cleanupFunction(value, state)
+				if closure.literal != nil || closure.bound {
+					nextClosures[v] = closure
+				}
+			}
 			if value != nil && f.transfers(value, state) {
 				if v == nil || !f.scope.Contains(v.Pos()) || !f.alias(value, state) {
 					return nil
@@ -197,7 +258,24 @@ func (f *Flow) search(block *cfg.Block, start int, state flowState, seen map[str
 			delete(next, v)
 		}
 		state.aliases = next
-		if len(next) == 0 {
+		state.closures = nextClosures
+		// A successful adopting call transfers only on the nil-error branch.
+		if len(rhs) == 1 {
+			if call, ok := ast.Unparen(rhs[0]).(*ast.CallExpr); ok && f.consumes(call, state, f.resource.SuccessConsumers) {
+				results, ok := f.pass.TypesInfo.TypeOf(call).(*types.Tuple)
+				if ok && results.Len() == len(lhs) && types.Identical(results.At(results.Len()-1).Type(), types.Universe.Lookup("error").Type()) {
+					if id, ok := lhs[len(lhs)-1].(*ast.Ident); ok && id.Name != "_" {
+						v, _ := f.pass.TypesInfo.ObjectOf(id).(*types.Var)
+						state.consumed[v] = true
+					}
+				}
+			}
+		}
+		bound := false
+		for _, closure := range state.closures {
+			bound = bound || closure.bound
+		}
+		if len(next) == 0 && !bound {
 			return node
 		}
 	}
@@ -206,6 +284,9 @@ func (f *Flow) search(block *cfg.Block, start int, state flowState, seen map[str
 	// an explicit NilOnError contract. General boolean relations stay conservative.
 	for i, succ := range block.Succs {
 		if len(block.Succs) == 2 && len(block.Nodes) != 0 {
+			if f.consumedOnBranch(block.Nodes[len(block.Nodes)-1], i == 0, state) {
+				continue
+			}
 			if value, known := f.condition(block.Nodes[len(block.Nodes)-1], state); known && value != (i == 0) {
 				continue
 			}
@@ -278,7 +359,7 @@ func (f *Flow) effects(node ast.Node, state *flowState) bool {
 	// A deferred literal reads captured variables later; a method defer captures
 	// its receiver now. Keep those lifetimes distinct when a variable is overwritten.
 	if stmt, ok := node.(*ast.DeferStmt); ok {
-		if lit, ok := ast.Unparen(stmt.Call.Fun).(*ast.FuncLit); ok && len(stmt.Call.Args) == 0 {
+		if lit := f.cleanupFunction(stmt.Call.Fun, *state).literal; lit != nil && len(stmt.Call.Args) == 0 {
 			if !slices.Contains(state.deferred, lit) {
 				state.deferred = append(state.deferred, lit)
 			}
@@ -303,23 +384,14 @@ func (f *Flow) effects(node ast.Node, state *flowState) bool {
 				return false
 			}
 		case *ast.CallExpr:
-			if lit, ok := ast.Unparen(n.Fun).(*ast.FuncLit); ok && len(n.Args) == 0 {
-				done = f.closureReleases(lit, *state)
-				return !done
+			if f.cleanupReleases(f.cleanupFunction(n.Fun, *state), *state) {
+				done = true
+				return false
 			}
 			name := functionName(f.pass.TypesInfo, n)
-			for _, consumer := range f.resource.Consumers {
-				fn, arg, _ := strings.Cut(consumer, ":")
-				index, _ := strconv.Atoi(arg)
-				if sel, ok := ast.Unparen(n.Fun).(*ast.SelectorExpr); ok {
-					if selection := f.pass.TypesInfo.Selections[sel]; selection != nil && selection.Kind() == types.MethodExpr {
-						index++
-					}
-				}
-				if name == fn && index < len(n.Args) && f.transfers(n.Args[index], *state) {
-					done = true
-					return false
-				}
+			if f.consumes(n, *state, f.resource.Consumers) {
+				done = true
+				return false
 			}
 			if sel, ok := ast.Unparen(n.Fun).(*ast.SelectorExpr); ok {
 				selection := f.pass.TypesInfo.Selections[sel]
@@ -331,13 +403,12 @@ func (f *Flow) effects(node ast.Node, state *flowState) bool {
 				}
 			}
 			if (name == "testing.common.Cleanup" || name == "testing.TB.Cleanup") && len(n.Args) == 1 {
-				if lit, ok := ast.Unparen(n.Args[0]).(*ast.FuncLit); ok {
-					if !slices.Contains(state.deferred, lit) {
-						state.deferred = append(state.deferred, lit)
-					}
+				closure := f.cleanupFunction(n.Args[0], *state)
+				if closure.bound {
+					done = true
 				}
-				if sel, ok := ast.Unparen(n.Args[0]).(*ast.SelectorExpr); ok && slices.Contains(f.resource.ReleaseMethods, sel.Sel.Name) {
-					done = f.alias(sel.X, *state)
+				if closure.literal != nil && !slices.Contains(state.deferred, closure.literal) {
+					state.deferred = append(state.deferred, closure.literal)
 				}
 			}
 		}
@@ -346,8 +417,78 @@ func (f *Flow) effects(node ast.Node, state *flowState) bool {
 	return done
 }
 
+// consumes matches only the configured argument, accounting for method expressions.
+func (f *Flow) consumes(call *ast.CallExpr, state flowState, consumers []string) bool {
+	name := functionName(f.pass.TypesInfo, call)
+	for _, consumer := range consumers {
+		fn, arg, _ := strings.Cut(consumer, ":")
+		index, _ := strconv.Atoi(arg)
+		if sel, ok := ast.Unparen(call.Fun).(*ast.SelectorExpr); ok {
+			if selection := f.pass.TypesInfo.Selections[sel]; selection != nil && selection.Kind() == types.MethodExpr {
+				index++
+			}
+		}
+		if name == fn && index < len(call.Args) && f.transfers(call.Args[index], state) {
+			return true
+		}
+	}
+	return false
+}
+
+// cleanupFunction resolves local callbacks and bound method values.
+func (f *Flow) cleanupFunction(expr ast.Expr, state flowState) cleanupClosure {
+	switch expr := ast.Unparen(expr).(type) {
+	case *ast.Ident:
+		v, _ := f.pass.TypesInfo.ObjectOf(expr).(*types.Var)
+		return state.closures[v]
+	case *ast.FuncLit:
+		return cleanupClosure{literal: expr}
+	case *ast.SelectorExpr:
+		selection := f.pass.TypesInfo.Selections[expr]
+		if selection != nil && selection.Kind() == types.MethodVal && slices.Contains(f.resource.ReleaseMethods, expr.Sel.Name) && f.alias(expr.X, state) {
+			return cleanupClosure{bound: true}
+		}
+	}
+	return cleanupClosure{}
+}
+
+// cleanupReleases checks whether a callback consumes the acquisition when invoked.
+func (f *Flow) cleanupReleases(closure cleanupClosure, state flowState) bool {
+	return closure.bound || closure.literal != nil && f.closureReleases(closure.literal, state)
+}
+
+// consumedOnBranch recognizes the success branch of a configured adopting call.
+func (f *Flow) consumedOnBranch(node ast.Node, truth bool, state flowState) bool {
+	expr, ok := node.(ast.Expr)
+	if !ok {
+		return false
+	}
+	if unary, ok := ast.Unparen(expr).(*ast.UnaryExpr); ok && unary.Op == token.NOT {
+		return f.consumedOnBranch(unary.X, !truth, state)
+	}
+	binary, ok := ast.Unparen(expr).(*ast.BinaryExpr)
+	if !ok || binary.Op != token.EQL && binary.Op != token.NEQ {
+		return false
+	}
+	x, y := binary.X, binary.Y
+	if f.pass.TypesInfo.Types[x].IsNil() {
+		x, y = y, x
+	}
+	id, ok := ast.Unparen(x).(*ast.Ident)
+	if !ok || !f.pass.TypesInfo.Types[y].IsNil() {
+		return false
+	}
+	v, _ := f.pass.TypesInfo.ObjectOf(id).(*types.Var)
+	return state.consumed[v] && truth == (binary.Op == token.EQL)
+}
+
 // closureReleases checks all returning paths of an invoked cleanup literal.
 func (f *Flow) closureReleases(lit *ast.FuncLit, state flowState) bool {
+	if f.visiting[lit] {
+		return false
+	}
+	f.visiting[lit] = true
+	defer delete(f.visiting, lit)
 	graph := f.graphs.FuncLit(lit)
 	inner := *f
 	inner.results = nil
@@ -362,12 +503,24 @@ func (f *Flow) condition(node ast.Node, state flowState) (value, known bool) {
 		return false, false
 	}
 	switch expr := ast.Unparen(expr).(type) {
+	case *ast.Ident:
+		if state.found != nil && f.pass.TypesInfo.ObjectOf(expr) == state.found {
+			return true, true
+		}
 	case *ast.UnaryExpr:
 		if expr.Op == token.NOT {
 			value, known = f.condition(expr.X, state)
 			return !value, known
 		}
 	case *ast.BinaryExpr:
+		if expr.Op == token.LAND || expr.Op == token.LOR {
+			x, xKnown := f.condition(expr.X, state)
+			y, yKnown := f.condition(expr.Y, state)
+			if expr.Op == token.LAND {
+				return x && y, xKnown && yKnown || xKnown && !x || yKnown && !y
+			}
+			return x || y, xKnown && yKnown || xKnown && x || yKnown && y
+		}
 		if expr.Op != token.EQL && expr.Op != token.NEQ {
 			return false, false
 		}

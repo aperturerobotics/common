@@ -60,7 +60,7 @@ func (p *Plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
 		if len(r.ReleaseMethods)+len(r.Consumers) == 0 {
 			return nil, errors.Errorf("lostresource: %s needs release-methods or consumers", r.Type)
 		}
-		for _, consumer := range r.Consumers {
+		for _, consumer := range append(slices.Clone(r.Consumers), r.SuccessConsumers...) {
 			name, arg, ok := strings.Cut(consumer, ":")
 			index, err := strconv.Atoi(arg)
 			if !ok || !strings.Contains(name, ".") || err != nil || index < 0 {
@@ -71,15 +71,17 @@ func (p *Plugin) BuildAnalyzers() ([]*analysis.Analyzer, error) {
 
 	// Reuse the same typed CFG producer used by the lostcancel analyzer.
 	return []*analysis.Analyzer{{
-		Name:     "lostresource",
-		Doc:      "checks discarded handles and paths missing release or transfer",
-		Requires: []*analysis.Analyzer{inspect.Analyzer, ctrlflow.Analyzer},
-		Run:      p.run,
+		Name:      "lostresource",
+		Doc:       "checks discarded handles and paths missing release or transfer",
+		Requires:  []*analysis.Analyzer{inspect.Analyzer, ctrlflow.Analyzer},
+		FactTypes: []analysis.Fact{new(resultFact)},
+		Run:       p.run,
 	}}, nil
 }
 
 // run checks result positions and then follows locally acquired handles.
 func (p *Plugin) run(pass *analysis.Pass) (any, error) {
+	resultGuarantees(pass, p.Resources)
 	insp := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
 	insp.Preorder([]ast.Node{(*ast.AssignStmt)(nil), (*ast.ValueSpec)(nil), (*ast.ExprStmt)(nil), (*ast.GoStmt)(nil), (*ast.DeferStmt)(nil)}, func(node ast.Node) {
 		lhs, rhs := bindings(node)
@@ -97,8 +99,9 @@ func (p *Plugin) run(pass *analysis.Pass) (any, error) {
 				}
 			}
 			for j, typ := range resultTypes {
+				guarantee := callGuarantee(pass, call, j)
 				for _, r := range p.Resources {
-					if typ == nil || typeName(typ) != r.Type || slices.Contains(r.Borrowed, name) {
+					if typ == nil || typeName(typ) != r.Type || slices.Contains(r.Borrowed, name) || guarantee.AlwaysNil {
 						continue
 					}
 					var target ast.Expr
@@ -121,7 +124,10 @@ func (p *Plugin) run(pass *analysis.Pass) (any, error) {
 					if v == nil {
 						continue
 					}
-					NewFlow(pass, r).Check(node, call, v)
+					r.NilOnError = r.NilOnError || guarantee.NilOnError || slices.Contains(r.NilOnErrorFunctions, name)
+					flow := NewFlow(pass, r)
+					flow.nilOnFalse = guarantee.NilOnFalse || slices.Contains(r.NilOnFalseFunctions, name)
+					flow.Check(node, call, v)
 				}
 			}
 		}

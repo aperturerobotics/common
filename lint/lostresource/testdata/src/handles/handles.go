@@ -39,28 +39,31 @@ type Sink struct{}
 func (Sink) Take(Handle) {}
 
 // New acquires a handle.
-func New() Handle { return nil }
+func New() Handle
 
 // Many returns its handle at a nonzero tuple position.
-func Many() (int, Alias, error) { return 0, nil, nil }
+func Many() (int, Alias, error)
 
 // Generic exercises generic call resolution.
-func Generic[T any]() (T, Handle) { var t T; return t, nil }
+func Generic[T any]() (T, Handle) { var t T; return t, New() }
 
 // Ptr acquires a pointer through an alias.
-func Ptr() PointerAlias { return nil }
+func Ptr() PointerAlias
 
 // Other returns an unconfigured structural lookalike.
-func Other() Lookalike { return nil }
+func Other() Lookalike
 
 // Borrow returns a handle held by another component.
-func Borrow() Handle { return nil }
+func Borrow() Handle
 
 // Partial may acquire a handle even on error.
-func Partial() (Strict, error) { return nil, nil }
+func Partial() (Strict, error)
 
 // Fallible acquires a handle only on success.
-func Fallible() (Success, error) { return nil, nil }
+func Fallible() (Success, error)
+
+// Adopt consumes a handle on success and leaves it to the caller on error.
+func Adopt(Handle) (int, error)
 
 // Release consumes its argument.
 func Release(Handle) {}
