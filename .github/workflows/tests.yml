@@ -32,6 +32,10 @@ jobs:
       - name: Install protobuf library
         run: sudo apt-get install -y libprotobuf-dev
       - run: bun run test:go
+      - name: Test linter modules
+        run: |
+          (cd lint/protobufnil && go test ./...)
+          (cd lint/ownedresource && go test ./...)
       - run: bun run lint:js
       - run: bun run lint:go
       - run: bun run deps
