@@ -494,11 +494,6 @@ func maybeBuildCustomGolangCILint(projectDir, toolsPath string, verbose bool) er
 		}
 		return err
 	}
-	version := parseCustomGolangCILintVersion(string(customConfDat))
-	if version == "" {
-		return fmt.Errorf("missing version in %s", customConfPath)
-	}
-
 	// Reuse a custom binary only while its configuration and plugin files match.
 	baseLintPath := filepath.Join(toolsPath, "bin", "golangci-lint")
 	customStampPath := customGolangCIStampPath(toolsPath)
@@ -510,52 +505,49 @@ func maybeBuildCustomGolangCILint(projectDir, toolsPath string, verbose bool) er
 		return nil
 	}
 
-	// Preserve the builder until its replacement has been installed successfully.
-	builderPath := filepath.Join(toolsPath, "bin", "golangci-lint-builder")
-	if err := os.Rename(baseLintPath, builderPath); err != nil {
+	// Build beside the installed tool so failure leaves that executable intact.
+	buildDir, err := os.MkdirTemp(toolsPath, ".golangci-lint-build-")
+	if err != nil {
 		return err
 	}
-	defer func() {
-		if _, err := os.Stat(baseLintPath); err != nil {
-			_ = os.Rename(builderPath, baseLintPath)
-		}
-	}()
-
-	// Build with the configured plugins and the requested golangci-lint version.
-	args := []string{
-		"custom",
-		"--name", "golangci-lint",
-		"--destination", filepath.Join(toolsPath, "bin"),
-		"--version", version,
+	defer os.RemoveAll(buildDir)
+	buildConf, err := golangcilint.BuildConfig(customConfPath, customConfDat, buildDir)
+	if err != nil {
+		return err
 	}
-	cmd := exec.Command(builderPath, args...)
-	cmd.Dir = projectDir
+	if err := os.WriteFile(filepath.Join(buildDir, ".custom-gcl.yml"), buildConf, 0o600); err != nil {
+		return err
+	}
+
+	// The installed custom binary can be older than the tools module and cannot
+	// reliably rebuild itself. Compile the builder selected by the tools module.
+	builderPath := filepath.Join(buildDir, "builder")
+	cmd := exec.Command("go", "build", "-mod=readonly", "-o", builderPath, "github.com/golangci/golangci-lint/v2/cmd/golangci-lint")
+	cmd.Dir = toolsPath
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+
+	// Configuration fields keep plugin paths and output independent of the CWD.
+	cmd = exec.Command(builderPath, "custom")
+	if verbose {
+		cmd.Args = append(cmd.Args, "--verbose")
+	}
+	cmd.Dir = buildDir
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if verbose {
 		fmt.Printf("Building custom golangci-lint from %s...\n", customConfPath)
 	}
 	if err := cmd.Run(); err != nil {
-		_ = os.Rename(builderPath, baseLintPath)
 		return err
 	}
 
-	// Remove the obsolete builder before publishing the successful input stamp.
-	if err := os.Remove(builderPath); err != nil && !os.IsNotExist(err) {
+	// Publish the executable before marking its inputs as current.
+	if err := os.Rename(filepath.Join(buildDir, "golangci-lint"), baseLintPath); err != nil {
 		return err
 	}
 	return os.WriteFile(customStampPath, []byte(customStamp), 0o644) //nolint:gosec
-}
-
-// parseCustomGolangCILintVersion reads the version used by the custom builder.
-func parseCustomGolangCILintVersion(conf string) string {
-	for line := range strings.SplitSeq(conf, "\n") {
-		line = strings.TrimSpace(line)
-		if !strings.HasPrefix(line, "version:") {
-			continue
-		}
-		version := strings.TrimSpace(strings.TrimPrefix(line, "version:"))
-		return strings.Trim(version, `"'`)
-	}
-	return ""
 }
