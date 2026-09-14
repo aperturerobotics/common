@@ -93,7 +93,9 @@ only the discarded-result check first. The default is `true`.
 | `nil-on-false-functions` | Acquisition functions whose penultimate boolean is false only when no handle is returned. |
 
 A consumer only discharges its configured argument. Add each consumed argument
-separately when a function takes several handles. Cleanup wrappers and adopting
+separately when a function takes several handles. The argument may also be a
+callback proven to release the handle, when that API owns the callback's cleanup
+obligation. Cleanup wrappers and adopting
 constructors need these contracts; arbitrary function calls are treated as
 borrowing. Use a body-only lookup when only the decoded value is needed.
 
@@ -117,7 +119,9 @@ the return or overwrite that loses it.
 
 Returning a handle, storing it in a field or aggregate, sending it on a channel,
 or passing it to a configured consumer transfers the obligation. The receiving
-component's eventual cleanup is not proven. Aggregate storage, pointer aliases,
+component's eventual cleanup is not proven. Cleanup callbacks stored in aggregate
+literals or appended to cleanup collections follow the same transfer rule.
+Tracking cleanup after aggregate storage, pointer aliases,
 indirect cleanup calls, arbitrary closure protocols, and interprocedural
 transfer require further analysis. Configure explicit transfer wrappers for those
 APIs. Consumers must accept the handle on every return path. Configure constructors
