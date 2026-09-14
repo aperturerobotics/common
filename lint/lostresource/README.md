@@ -114,8 +114,9 @@ returning path transfers its cleanup obligation. Bound release methods capture
 their original receiver even when its variable is subsequently overwritten.
 An unused cleanup closure does not count as cleanup. Deferred closures read their
 captured variables at return; receiver defers capture the handle immediately.
-Diagnostics point to the acquisition and carry related information identifying
-the return or overwrite that loses it.
+Diagnostics point to the acquisition and include the line of the return or
+overwrite that loses it. Keeping both in one diagnostic lets a deliberate
+`nolint:lostresource` exception suppress the entire finding.
 
 Returning a handle, storing it in a field or aggregate, sending it on a channel,
 or passing it to a configured consumer transfers the obligation. The receiving
