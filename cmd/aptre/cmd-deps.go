@@ -515,7 +515,7 @@ func maybeBuildCustomGolangCILint(projectDir, toolsPath string, verbose bool) er
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(filepath.Join(buildDir, ".custom-gcl.yml"), buildConf, 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(buildDir, ".custom-gcl.yml"), buildConf, 0o600); err != nil { //nolint:gosec // Fixed filename inside our newly created build directory.
 		return err
 	}
 
