@@ -341,12 +341,22 @@ func (f *Flow) transfers(expr ast.Expr, state flowState) bool {
 	switch expr := ast.Unparen(expr).(type) {
 	case *ast.UnaryExpr:
 		return expr.Op == token.AND && f.transfers(expr.X, state)
+	case *ast.CallExpr:
+		if id, ok := ast.Unparen(expr.Fun).(*ast.Ident); ok {
+			if builtin, ok := f.pass.TypesInfo.ObjectOf(id).(*types.Builtin); ok && builtin.Name() == "append" {
+				for _, value := range expr.Args[1:] {
+					if f.transfers(value, state) || f.cleanupReleases(f.cleanupFunction(value, state), state) {
+						return true
+					}
+				}
+			}
+		}
 	case *ast.CompositeLit:
 		for _, elt := range expr.Elts {
 			if kv, ok := elt.(*ast.KeyValueExpr); ok {
 				elt = kv.Value
 			}
-			if f.transfers(elt, state) {
+			if f.transfers(elt, state) || f.cleanupReleases(f.cleanupFunction(elt, state), state) {
 				return true
 			}
 		}
@@ -428,8 +438,11 @@ func (f *Flow) consumes(call *ast.CallExpr, state flowState, consumers []string)
 				index++
 			}
 		}
-		if name == fn && index < len(call.Args) && f.transfers(call.Args[index], state) {
-			return true
+		if name == fn && index < len(call.Args) {
+			arg := call.Args[index]
+			if f.transfers(arg, state) || f.cleanupReleases(f.cleanupFunction(arg, state), state) {
+				return true
+			}
 		}
 	}
 	return false

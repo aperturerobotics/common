@@ -65,6 +65,9 @@ func Fallible() (Success, error)
 // Adopt consumes a handle on success and leaves it to the caller on error.
 func Adopt(Handle) (int, error)
 
+// TakeCleanup takes responsibility for invoking the cleanup callback.
+func TakeCleanup(func())
+
 // Release consumes its argument.
 func Release(Handle) {}
 

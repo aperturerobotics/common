@@ -10,7 +10,7 @@ import (
 // TestAnalyzer checks diagnostics and accepted release paths through real CFGs.
 func TestAnalyzer(t *testing.T) {
 	p := &Plugin{Resources: []Resource{
-		{Type: "handles.Handle", ReleaseMethods: []string{"Release"}, Consumers: []string{"handles.Release:0", "handles.Consume:1", "handles.Sink.Take:0"}, SuccessConsumers: []string{"handles.Adopt:0"}, Borrowed: []string{"handles.Borrow"}},
+		{Type: "handles.Handle", ReleaseMethods: []string{"Release"}, Consumers: []string{"handles.Release:0", "handles.Consume:1", "handles.Sink.Take:0", "handles.TakeCleanup:0"}, SuccessConsumers: []string{"handles.Adopt:0"}, Borrowed: []string{"handles.Borrow"}},
 		{Type: "*handles.Pointer", ReleaseMethods: []string{"Close"}},
 		{Type: "handles.Strict", ReleaseMethods: []string{"Release"}},
 		{Type: "handles.Success", ReleaseMethods: []string{"Release"}, NilOnError: true},
