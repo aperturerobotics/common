@@ -10,6 +10,13 @@ overwrites a handle without releasing it or transferring it. The path
 search uses `ctrlflow.Analyzer` and `go/cfg`, the same analysis infrastructure as
 Go's `lostcancel` check. Reading a handle does not release it.
 
+The analyzer also exports `go/analysis` facts for return guarantees proved from
+reachable CFG returns. It skips results that are always nil and prunes error or
+absence branches when the callee proves no handle can exist there. Forwarding
+functions share these facts across packages; local forwarding chains converge
+independently of declaration order. Interface dispatch, unknown implementations,
+and named results changed by defers need explicit contracts or cleanup.
+
 ```go
 handle, err := acquire() // possible leak: the error return skips release
 if err != nil {
@@ -79,8 +86,11 @@ only the discarded-result check first. The default is `true`.
 | `type` | Exact `import/path.Type`; prefix with `*` for a pointer result. |
 | `release-methods` | Methods that consume the acquired receiver. |
 | `consumers` | Cleanup or transfer functions, written `import/path.Function:0` or `import/path.Receiver.Method:0`. The zero-based position excludes a method receiver. |
+| `success-consumers` | Same syntax, but consumes only when the final returned error is nil. The caller must check that error and release on failure. |
 | `borrowed` | Fully qualified functions or methods returning borrowed values of this type. |
 | `nil-on-error` | Explicit guarantee that a non-nil final error implies no acquired handle. Defaults to false. |
+| `nil-on-error-functions` | Fully qualified acquisition functions with that guarantee, without applying it to every result of the type. |
+| `nil-on-false-functions` | Acquisition functions whose penultimate boolean is false only when no handle is returned. |
 
 A consumer only discharges its configured argument. Add each consumed argument
 separately when a function takes several handles. Cleanup wrappers and adopting
@@ -96,7 +106,10 @@ path search; that receiving call must honor its resource contract.
 
 The analysis follows local aliases, parallel assignments, overwrites, branches,
 loops, named returns, direct cleanup calls, method expressions, receiver defers,
-parameterless invoked or deferred literals, and `testing.T/B/F.Cleanup`.
+parameterless invoked or deferred literals, local cleanup callbacks, and
+`testing.T/B/F.Cleanup`. Returning a callback that releases the handle on every
+returning path transfers its cleanup obligation. Bound release methods capture
+their original receiver even when its variable is subsequently overwritten.
 An unused cleanup closure does not count as cleanup. Deferred closures read their
 captured variables at return; receiver defers capture the handle immediately.
 Diagnostics point to the acquisition and carry related information identifying
@@ -107,13 +120,15 @@ or passing it to a configured consumer transfers the obligation. The receiving
 component's eventual cleanup is not proven. Aggregate storage, pointer aliases,
 indirect cleanup calls, arbitrary closure protocols, and interprocedural
 transfer require further analysis. Configure explicit transfer wrappers for those
-APIs. Consumers must accept the handle on every return path. Constructors that
-adopt a handle only on success need a wrapper that also releases it on failure.
+APIs. Consumers must accept the handle on every return path. Configure constructors
+that adopt only on success under `success-consumers`; their error branch retains
+the caller's obligation. An ignored or overwritten error cannot prove adoption.
 Cleanup registered before acquisition, asynchronous captured-variable changes,
 and mixed test-cleanup/defer lifetimes are not fully modeled.
 
 Nil comparisons on the current handle are pruned, as are checks of its unchanged
-acquisition error under `nil-on-error`. Other correlated conditions may produce
+acquisition error and found result under inferred or configured guarantees.
+Boolean combinations preserve those known conditions. Other correlations may produce
 false positives. The CFG has no general short-circuit or panic/recover model;
 the check conservatively credits only the first short-circuit operand and follows
 `ctrlflow` for nonreturning calls. Infinite paths without an overwrite or return

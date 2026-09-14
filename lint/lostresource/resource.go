@@ -21,11 +21,18 @@ type Resource struct {
 	// Each entry is an import path, function or receiver.method, and :argument.
 	// Argument positions are zero-based and exclude a method's receiver.
 	Consumers []string `json:"consumers"`
+	// SuccessConsumers consume their argument only when their final error is nil.
+	// Entries use the same function:argument syntax as Consumers.
+	SuccessConsumers []string `json:"success-consumers"`
 	// Borrowed excludes results of these fully qualified functions or methods.
 	Borrowed []string `json:"borrowed"`
 	// NilOnError asserts that a non-nil final error means no handle was acquired.
 	// Leave false for APIs that can return a partially acquired handle and error.
 	NilOnError bool `json:"nil-on-error"`
+	// NilOnErrorFunctions gives the same guarantee for selected acquisition APIs.
+	NilOnErrorFunctions []string `json:"nil-on-error-functions"`
+	// NilOnFalseFunctions guarantees no resource when the penultimate bool is false.
+	NilOnFalseFunctions []string `json:"nil-on-false-functions"`
 }
 
 // typeName preserves declared identity across aliases and generic instantiations.
@@ -61,5 +68,9 @@ func (r Resource) cleanup() string {
 	for i := range apis {
 		apis[i] += "()"
 	}
-	return strings.Join(append(apis, r.Consumers...), " or ")
+	if len(apis) == 0 && len(r.Consumers) != 0 {
+		name, _, _ := strings.Cut(r.Consumers[0], ":")
+		apis = append(apis, name)
+	}
+	return strings.Join(apis, " or ")
 }
