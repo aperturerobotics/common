@@ -120,10 +120,12 @@ func (f *Flow) Check(def ast.Node, call *ast.CallExpr, v *types.Var) {
 				continue
 			}
 			if loss := f.search(block, i+1, state, make(map[string]bool)); loss != nil {
+				line := strconv.Itoa(f.pass.Fset.Position(loss.Pos()).Line)
 				f.pass.Report(analysis.Diagnostic{
 					Pos: call.Pos(), End: call.End(),
-					Message: v.Name() + " from " + functionName(f.pass.TypesInfo, call) + " is not released or transferred on all paths; use " + f.resource.cleanup(),
-					Related: []analysis.RelatedInformation{{Pos: loss.Pos(), Message: "this path loses " + v.Name() + " without releasing or transferring it"}},
+					// Keep the witness in the same diagnostic so driver-level nolint
+					// filtering cannot leave a separately reported witness behind.
+					Message: v.Name() + " from " + functionName(f.pass.TypesInfo, call) + " is not released or transferred on all paths; lost at line " + line + "; use " + f.resource.cleanup(),
 				})
 			}
 			return
