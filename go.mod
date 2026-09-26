@@ -8,11 +8,11 @@ require (
 	github.com/aperturerobotics/go-protoc-gen-prost v0.0.0-20260705010911-9f53feac967b // master
 	github.com/aperturerobotics/go-protoc-wasi v0.0.0-20260808023521-7b1595380c3f // master
 	github.com/aperturerobotics/protobuf v0.0.0-20260203024654-8201686529c4 // wasi
-	github.com/aperturerobotics/protobuf-go-lite v0.18.0 // latest
+	github.com/aperturerobotics/protobuf-go-lite v0.19.0 // latest
 	github.com/aperturerobotics/starpc v0.52.1 // latest
 	github.com/pkg/errors v0.9.1
 	github.com/tetratelabs/wazero v1.12.0
-	golang.org/x/mod v0.40.0
+	golang.org/x/mod v0.41.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
