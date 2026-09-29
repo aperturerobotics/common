@@ -1,6 +1,7 @@
 package main
 
 import (
+	"debug/buildinfo"
 	"fmt"
 	"os"
 	"os/exec"
@@ -390,28 +391,26 @@ func resolveCommonPackage(projectDir string) string {
 	return commonModule
 }
 
-// ensureTool builds a missing executable using its resolved dependency plan.
+// ensureTool builds a missing or stale executable using its resolved dependency plan.
 func ensureTool(projectDir, toolsPath, toolName string, force, verbose bool) error {
-	// Preserve existing executables unless explicitly rebuilding them.
-	binPath := filepath.Join(toolsPath, "bin", toolName)
-	if !force {
-		if _, err := os.Stat(binPath); err == nil {
-			return nil
-		}
-	}
-
-	// Resolve a supported tool before selecting its build source.
+	// Resolve a supported tool and the source the project selects for it.
 	spec, ok := toolSpecFor(toolName)
 	if !ok {
 		return fmt.Errorf("unknown tool: %s", toolName)
+	}
+	plan := selectedToolPlan(projectDir, toolName)
+
+	// Preserve an existing executable while it matches the selected source.
+	binPath := filepath.Join(toolsPath, "bin", toolName)
+	if !force && toolBinaryCurrent(binPath, plan) {
+		return nil
 	}
 
 	if verbose {
 		fmt.Printf("Building %s...\n", toolName)
 	}
 
-	// Select the project-pinned installation or the isolated tools module build.
-	plan := selectedToolPlan(projectDir, toolName)
+	// Install the project-pinned version or build from the isolated tools module.
 	var cmd *exec.Cmd
 	if plan.mode == toolBuildVersioned {
 		cmd = exec.Command("go", "install", spec.ImportPath+"@"+plan.version) //nolint:gosec // spec and version come from the fixed tool plan.
@@ -424,6 +423,38 @@ func ensureTool(projectDir, toolsPath, toolName string, force, verbose bool) err
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
+}
+
+// toolBinaryCurrent reports whether an executable exists and was built from the
+// planned source. A versioned tool must embed the project-selected module
+// version, so a project dependency bump rebuilds it. An isolated tool follows
+// the tools module, whose changes invalidate every binary through the stamp.
+func toolBinaryCurrent(binPath string, plan toolBuildPlan) bool {
+	if _, err := os.Stat(binPath); err != nil {
+		return false
+	}
+	if plan.mode != toolBuildVersioned {
+		return true
+	}
+	return builtModuleVersion(binPath, plan.spec.ModulePath) == plan.version
+}
+
+// builtModuleVersion reads the version of modulePath recorded in an executable's
+// build information, or returns empty when the executable does not record it.
+func builtModuleVersion(binPath, modulePath string) string {
+	info, err := buildinfo.ReadFile(binPath)
+	if err != nil {
+		return ""
+	}
+	if info.Main.Path == modulePath {
+		return info.Main.Version
+	}
+	for _, dep := range info.Deps {
+		if dep.Path == modulePath {
+			return dep.Version
+		}
+	}
+	return ""
 }
 
 // ensureNodeModules installs dependencies only when node_modules is absent.

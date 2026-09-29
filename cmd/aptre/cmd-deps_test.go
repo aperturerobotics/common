@@ -79,6 +79,39 @@ func TestSelectedToolPlanBranches(t *testing.T) {
 	}
 }
 
+func TestToolBinaryCurrentFollowsProjectVersion(t *testing.T) {
+	// The test executable records its own dependencies like an installed tool.
+	binPath, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	const modulePath = "github.com/aperturerobotics/cli"
+	version := builtModuleVersion(binPath, modulePath)
+	if version == "" {
+		t.Fatalf("test executable records no %s version", modulePath)
+	}
+
+	// A matching version reuses the binary; a bumped project version rebuilds it.
+	spec := toolSpec{Name: "tool", ModulePath: modulePath}
+	current := toolBuildPlan{mode: toolBuildVersioned, spec: spec, version: version}
+	if !toolBinaryCurrent(binPath, current) {
+		t.Fatal("matching version reported stale")
+	}
+	bumped := toolBuildPlan{mode: toolBuildVersioned, spec: spec, version: "v99.0.0"}
+	if toolBinaryCurrent(binPath, bumped) {
+		t.Fatal("bumped version reported current")
+	}
+
+	// Isolated tools only require the executable to exist.
+	isolated := toolBuildPlan{mode: toolBuildIsolated, spec: spec}
+	if !toolBinaryCurrent(binPath, isolated) {
+		t.Fatal("isolated tool reported stale")
+	}
+	if toolBinaryCurrent(filepath.Join(t.TempDir(), "missing"), isolated) {
+		t.Fatal("missing tool reported current")
+	}
+}
+
 func TestReconcileToolsStampLifecycle(t *testing.T) {
 	path := filepath.Join(t.TempDir(), ".common-tools-stamp")
 	calls := 0
