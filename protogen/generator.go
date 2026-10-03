@@ -6,17 +6,16 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
-	protoc "github.com/aperturerobotics/go-protoc-wasi"
-	"github.com/tetratelabs/wazero"
+	"github.com/pkg/errors"
 )
 
 // Generator handles protobuf code generation.
@@ -49,44 +48,51 @@ type Generator struct {
 
 // NewGenerator creates a new Generator.
 func NewGenerator(cfg *Config) (*Generator, error) {
+	// Resolve the project whose schemas and package configuration will be read.
 	projectDir, err := cfg.GetProjectDir()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get project directory: %w", err)
+		return nil, errors.Wrap(err, "failed to get project directory")
 	}
 
+	// The containing Go module supplies vendored dependencies.
 	moduleDir, err := cfg.GetModuleDir()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get module directory: %w", err)
+		return nil, errors.Wrap(err, "failed to get module directory")
 	}
 
+	// Protoc imports name the project by its module-relative identity.
 	modulePath, err := cfg.GetGoModule()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get Go module: %w", err)
+		return nil, errors.Wrap(err, "failed to get Go module")
 	}
 
+	// Locate the manifest that records previous generated outputs.
 	cacheFile, err := cfg.GetCacheFilePath()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get cache file path: %w", err)
+		return nil, errors.Wrap(err, "failed to get cache file path")
 	}
 
+	// Restore the prior generation state before selecting changed packages.
 	cache, err := LoadCache(cacheFile)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load cache: %w", err)
+		return nil, errors.Wrap(err, "failed to load cache")
 	}
 
+	// Resolve the configured generators from the project's tools.
 	plugins, err := DiscoverPlugins(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to discover plugins: %w", err)
+		return nil, errors.Wrap(err, "failed to discover plugins")
 	}
 
+	// TypeScript package boundaries determine generated import rewrites.
 	tsImportBoundaries, err := cfg.GetTsImportBoundaries()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get ts import boundaries: %w", err)
+		return nil, errors.Wrap(err, "failed to get ts import boundaries")
 	}
 
+	// Retain the resolved configuration and output streams for this run.
 	vendorDir := filepath.Join(moduleDir, "vendor")
 	outDir := vendorDir
-
 	return &Generator{
 		Config:             cfg,
 		Plugins:            plugins,
@@ -105,26 +111,32 @@ func NewGenerator(cfg *Config) (*Generator, error) {
 
 // Generate runs the proto generation.
 func (g *Generator) Generate(ctx context.Context) error {
+	// Protoc's canonical module paths resolve through temporary project symlinks.
 	defer g.cleanupProjectSymlinks()
 	if err := g.setupProjectSymlinks(); err != nil {
-		return fmt.Errorf("failed to setup project symlinks: %w", err)
+		return errors.Wrap(err, "failed to setup project symlinks")
 	}
 
 	// Discover proto files
 	protoFiles, err := DiscoverProtoFiles(g.ProjectDir, g.Config.Targets, g.Config.Exclude)
 	if err != nil {
-		return fmt.Errorf("failed to discover proto files: %w", err)
+		return errors.Wrap(err, "failed to discover proto files")
 	}
 
+	// Empty selection completes without invoking any generator.
 	if len(protoFiles) == 0 {
 		if g.Verbose {
-			fmt.Fprintln(g.Stdout, "No proto files found")
+			_, err := io.WriteString(g.Stdout, "No proto files found\n")
+			return err
 		}
 		return nil
 	}
 
+	// Report the complete input count before filtering by the manifest cache.
 	if g.Verbose {
-		fmt.Fprintf(g.Stdout, "Found %d proto files\n", len(protoFiles))
+		if _, err := io.WriteString(g.Stdout, "Found "+strconv.Itoa(len(protoFiles))+" proto files\n"); err != nil {
+			return err
+		}
 	}
 
 	// Get tool versions for cache invalidation.
@@ -152,6 +164,7 @@ func (g *Generator) Generate(ctx context.Context) error {
 	currentPackages := make(map[string]struct{})
 	var filesToGenerate []string
 
+	// Collect only packages whose source, flags or generator versions changed.
 	for _, dir := range dirs {
 		files := filesByDir[dir]
 		packageKey := GetPackageKey(g.ModulePath, files[0])
@@ -160,18 +173,22 @@ func (g *Generator) Generate(ctx context.Context) error {
 		// Check if regeneration is needed
 		needsRegen, err := g.Cache.NeedsRegeneration(packageKey, files, g.ProjectDir, flagsHash, toolVersions, g.Config.Force)
 		if err != nil {
-			return fmt.Errorf("failed to check cache for %s: %w", dir, err)
+			return errors.Wrapf(err, "failed to check cache for %s", dir)
 		}
 
 		if !needsRegen {
 			if g.Verbose {
-				fmt.Fprintf(g.Stdout, "Skipping %s (up to date)\n", dir)
+				if _, err := io.WriteString(g.Stdout, "Skipping "+dir+" (up to date)\n"); err != nil {
+					return err
+				}
 			}
 			continue
 		}
 
 		if g.Verbose {
-			fmt.Fprintf(g.Stdout, "Will generate %s\n", dir)
+			if _, err := io.WriteString(g.Stdout, "Will generate "+dir+"\n"); err != nil {
+				return err
+			}
 		}
 		filesToGenerate = append(filesToGenerate, files...)
 	}
@@ -179,11 +196,13 @@ func (g *Generator) Generate(ctx context.Context) error {
 	// Run protoc once for all files that need regeneration
 	if len(filesToGenerate) > 0 {
 		if g.Verbose {
-			fmt.Fprintf(g.Stdout, "Generating %d proto files\n", len(filesToGenerate))
+			if _, err := io.WriteString(g.Stdout, "Generating "+strconv.Itoa(len(filesToGenerate))+" proto files\n"); err != nil {
+				return err
+			}
 		}
 
 		if err := g.runProtoc(ctx, filesToGenerate); err != nil {
-			return fmt.Errorf("failed to generate protos: %w", err)
+			return errors.Wrap(err, "failed to generate protos")
 		}
 
 		// Post-process and update cache for each directory
@@ -213,7 +232,7 @@ func (g *Generator) Generate(ctx context.Context) error {
 			// Post-process generated files
 			for _, f := range files {
 				if err := postProcessor.ProcessGeneratedFiles(f); err != nil {
-					return fmt.Errorf("failed to post-process %s: %w", f, err)
+					return errors.Wrapf(err, "failed to post-process %s", f)
 				}
 			}
 
@@ -223,7 +242,7 @@ func (g *Generator) Generate(ctx context.Context) error {
 			for _, f := range files {
 				gf, err := FindGeneratedFilesForProto(f, g.ProjectDir, g.VendorDir, g.ModulePath, g.Plugins.Languages, g.Plugins.RPCLibraries)
 				if err != nil {
-					return fmt.Errorf("failed to find generated files for %s: %w", f, err)
+					return errors.Wrapf(err, "failed to find generated files for %s", f)
 				}
 				generatedFiles = append(generatedFiles, gf...)
 			}
@@ -234,12 +253,12 @@ func (g *Generator) Generate(ctx context.Context) error {
 						continue
 					}
 					if err := os.Remove(filepath.Join(g.ProjectDir, old)); err != nil && !os.IsNotExist(err) {
-						return fmt.Errorf("failed to remove stale generated file %s: %w", old, err)
+						return errors.Wrapf(err, "failed to remove stale generated file %s", old)
 					}
 				}
 			}
 			if err := g.Cache.UpdatePackage(packageKey, files, generatedFiles, g.ProjectDir); err != nil {
-				return fmt.Errorf("failed to update cache for %s: %w", dir, err)
+				return errors.Wrapf(err, "failed to update cache for %s", dir)
 			}
 		}
 	}
@@ -247,18 +266,21 @@ func (g *Generator) Generate(ctx context.Context) error {
 	// Clean orphaned packages from cache
 	g.Cache.CleanOrphanedPackages(currentPackages)
 
+	// Persist the flags and tool identity used to select this output set.
 	g.Cache.SetProtocFlags(protocArgs, g.ModuleDir)
 	g.Cache.SetToolVersions(toolVersions)
-	// Save cache
-	cacheFile, _ := g.Config.GetCacheFilePath()
+	cacheFile, err := g.Config.GetCacheFilePath()
+	if err != nil {
+		return err
+	}
 	if err := g.Cache.Save(cacheFile); err != nil {
-		return fmt.Errorf("failed to save cache: %w", err)
+		return errors.Wrap(err, "failed to save cache")
 	}
 
 	// Format generated files
 	if len(filesToGenerate) > 0 {
 		if err := g.formatGeneratedFiles(filesToGenerate); err != nil {
-			return fmt.Errorf("failed to format generated files: %w", err)
+			return errors.Wrap(err, "failed to format generated files")
 		}
 	}
 
@@ -303,9 +325,8 @@ func pythonModulePath(modulePath string) string {
 
 // buildProtocArgs builds the protoc command arguments.
 func (g *Generator) buildProtocArgs() []string {
-	var args []string
-
 	// Include paths
+	var args []string
 	args = append(args, "-I", g.OutDir)
 	args = append(args, "--proto_path", g.OutDir)
 
@@ -327,88 +348,27 @@ func (g *Generator) buildProtocArgs() []string {
 
 // runProtoc runs protoc for the given proto files using go-protoc-wasi.
 func (g *Generator) runProtoc(ctx context.Context, protoFiles []string) error {
-	var stdout, stderr bytes.Buffer
-
-	// Create wazero runtime
-	runtime := wazero.NewRuntime(ctx)
-	defer runtime.Close(ctx)
-
-	// Create plugin handler
-	pluginHandler := NewNativePluginHandler(g.Plugins, g.Verbose)
-
-	// Create filesystem config that mounts the vendor directory
-	// This allows protoc to read .proto files and write output files
-	fsConfig := wazero.NewFSConfig().
-		WithDirMount(g.VendorDir, g.VendorDir).
-		WithDirMount(g.ProjectDir, g.ProjectDir)
-
-	// Create protoc config
-	cfg := &protoc.Config{
-		Stdout:        &stdout,
-		Stderr:        &stderr,
-		FSConfig:      fsConfig,
-		PluginHandler: pluginHandler,
-	}
-
-	// Create protoc instance
-	p, err := protoc.NewProtoc(ctx, runtime, cfg)
-	if err != nil {
-		return fmt.Errorf("failed to create protoc: %w", err)
-	}
-	defer p.Close(ctx)
-
-	// Initialize protoc (this instantiates WASI)
-	if err := p.Init(ctx); err != nil {
-		return fmt.Errorf("failed to init protoc: %w", err)
-	}
-
-	// Initialize prost WASM plugin if rust prost is configured
-	// This must be done after protoc.Init since that's when WASI gets instantiated
-	if g.Plugins.RustProst != nil {
-		if err := pluginHandler.InitProstWASM(ctx, runtime); err != nil {
-			return fmt.Errorf("failed to init prost WASM: %w", err)
-		}
-		defer pluginHandler.CloseProstWASM(ctx)
-	}
-
-	// Build arguments
-	args := []string{"protoc"}
-	args = append(args, g.buildProtocArgs()...)
-
-	// Add proto files with vendor prefix
+	// Build arguments with the vendor prefix that names each proto file.
+	args := g.buildProtocArgs()
 	for _, f := range protoFiles {
 		args = append(args, filepath.Join(g.VendorDir, g.ModulePath, f))
 	}
 
-	if g.Verbose {
-		fmt.Fprintf(g.Stdout, "Running: %s\n", strings.Join(args, " "))
+	// The vendor directory supplies imports and receives the output.
+	run := &ProtocRun{
+		Plugins: g.Plugins,
+		Mounts:  []string{g.VendorDir, g.ProjectDir},
+		Args:    args,
+		Verbose: g.Verbose,
+		Stdout:  g.Stdout,
 	}
-
-	// Run protoc
-	exitCode, err := p.Run(ctx, args)
-	if err != nil {
-		return fmt.Errorf("protoc error: %w", err)
-	}
-
-	if exitCode != 0 {
-		if stderr.Len() > 0 {
-			return fmt.Errorf("protoc failed with exit code %d: %s", exitCode, stderr.String())
-		}
-		return fmt.Errorf("protoc failed with exit code %d", exitCode)
-	}
-
-	if g.Verbose && stdout.Len() > 0 {
-		fmt.Fprint(g.Stdout, stdout.String())
-	}
-
-	return nil
+	return run.Run(ctx)
 }
 
 // getToolVersions returns a string with tool versions for cache invalidation.
 func (g *Generator) getToolVersions() string {
-	var versions []string
-
 	// Get protoc version (embedded in go-protoc-wasi)
+	var versions []string
 	versions = append(versions, "protoc=embedded")
 
 	// Get Go tool versions from tools/go.mod
@@ -455,6 +415,7 @@ func (g *Generator) getToolVersions() string {
 		}
 	}
 
+	// Python's lockfile identity invalidates output after environment changes.
 	if g.Plugins != nil && g.Plugins.StarpcPython != nil {
 		if data, err := os.ReadFile(filepath.Join(g.ProjectDir, "uv.lock")); err == nil {
 			digest := sha256.Sum256(data)
@@ -467,17 +428,18 @@ func (g *Generator) getToolVersions() string {
 
 // formatGeneratedFiles formats the generated Go and TypeScript files.
 func (g *Generator) formatGeneratedFiles(protoFiles []string) error {
+	// Select only files produced for the requested schemas and enabled languages.
 	var goFiles, tsFiles []string
-
 	for _, f := range protoFiles {
 		gf, err := FindGeneratedFilesForProto(f, g.ProjectDir, g.VendorDir, g.ModulePath, g.Plugins.Languages, g.Plugins.RPCLibraries)
 		if err != nil {
 			continue
 		}
 		for _, genFile := range gf {
-			if strings.HasSuffix(genFile, ".pb.go") {
+			switch {
+			case strings.HasSuffix(genFile, ".pb.go"):
 				goFiles = append(goFiles, genFile)
-			} else if strings.HasSuffix(genFile, ".pb.ts") {
+			case strings.HasSuffix(genFile, ".pb.ts"):
 				tsFiles = append(tsFiles, genFile)
 			}
 		}
@@ -510,16 +472,19 @@ func (g *Generator) formatGeneratedFiles(protoFiles []string) error {
 				errOutput := stderr.String()
 				if !strings.Contains(errOutput, "changed during reading") {
 					// Different error, output it and fail
-					fmt.Fprint(g.Stderr, errOutput)
-					return fmt.Errorf("gofumpt failed: %w", lastErr)
+					// Preserve the formatter failure if its diagnostic output also fails.
+					_, _ = io.WriteString(g.Stderr, errOutput)
+					return errors.Wrap(lastErr, "gofumpt failed")
 				}
 				// It's the race condition error, retry
 				if g.Verbose {
-					fmt.Fprintf(g.Stdout, "gofumpt race condition detected, retrying (attempt %d/3)...\n", attempt+1)
+					if _, err := io.WriteString(g.Stdout, "gofumpt race condition detected, retrying (attempt "+strconv.Itoa(attempt+1)+"/3)...\n"); err != nil {
+						return err
+					}
 				}
 			}
 			if lastErr != nil {
-				return fmt.Errorf("gofumpt failed after retries: %w", lastErr)
+				return errors.Wrap(lastErr, "gofumpt failed after retries")
 			}
 		}
 	}

@@ -1,0 +1,20 @@
+syntax = "proto3";
+package graph.svc;
+
+import "example.test/graph/core/core.proto";
+import "example.test/graph/ext/ext.proto";
+import "example.test/graph/shared/shared.proto";
+
+// Request refers to messages of every other package and has a nested message.
+message Request {
+  // Options is used directly as a service message.
+  message Options {
+    bool verbose = 1;
+  }
+
+  graph.core.Header header = 1;
+  graph.core.Outer.Inner inner = 2;
+  graph.shared.Token token = 3;
+  graph.ext.Marker marker = 4;
+  Options options = 5;
+}

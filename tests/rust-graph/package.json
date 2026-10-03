@@ -1,0 +1,20 @@
+{
+  "name": "rust-graph",
+  "private": true,
+  "aptre": {
+    "module": "example.test/graph",
+    "languages": ["rust"],
+    "rpc": ["starpc"],
+    "rust": {
+      "prostOptions": [
+        "enable_type_names",
+        "extern_path=.graph.shared.Token=crate::external::Token",
+        "extern_path=.graph.ext=crate::external::ext"
+      ],
+      "exclude": ["ext/*.proto"],
+      "descriptorSet": "descriptors.bin",
+      "moduleFile": "modules.rs",
+      "inventory": "generated-files.txt"
+    }
+  }
+}

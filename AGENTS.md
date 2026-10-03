@@ -46,6 +46,18 @@ Plugins are discovered by `DiscoverPlugins()` which checks:
 - Go plugins: `tools/bin/` directory
 - TypeScript plugins: `node_modules/.bin/` directory
 
+### Whole-Graph Rust Generation
+
+`protogen/rust-generator.go` (`RustGenerator`) runs when `aptre.rust` is set in
+`package.json`. It compiles every schema in one protoc run, renders into a
+scratch directory, then publishes changed outputs and removes files named by the
+previous inventory. `Check` compares without writing and without preparing
+dependencies (`aptre generate --check`). `protogen/rust-modules.go` renders the
+package module tree and `protogen/protoc.go` (`ProtocRun`) is the shared protoc
+invocation. The prost plugin must support the `file_modules` option so each
+schema yields its own file. `tests/rust-graph/check.bash` is the end-to-end
+check.
+
 ### Running Code Generation
 
 From a project using common:

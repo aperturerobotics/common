@@ -9,12 +9,14 @@ import (
 )
 
 func TestDiscoverPluginsStarpcPythonSelected(t *testing.T) {
+	// Install project-local plugins for the requested language selection.
 	projectDir := newPluginTestProject(t, false)
 	cfg := NewConfig()
 	cfg.ProjectDir = projectDir
 	cfg.Languages = []string{"python"}
 	cfg.RPCLibraries = []string{"starpc-python"}
 
+	// Discovery and protoc arguments must agree on the enabled generators.
 	plugins, err := DiscoverPlugins(cfg)
 	if err != nil {
 		t.Fatalf("discover plugins: %v", err)
@@ -25,6 +27,8 @@ func TestDiscoverPluginsStarpcPythonSelected(t *testing.T) {
 	if got := plugins.GetProtocArgs("/out", "/csharp"); !slices.Contains(got, "--starpc-python_out=/out") {
 		t.Fatalf("expected starpc-python arg, got %v", got)
 	}
+
+	// Invocation resolves the same executable selected during discovery.
 	h := NewNativePluginHandler(plugins, false)
 	if got := h.findPluginPath("protoc-gen-starpc-python", false); got != plugins.StarpcPython.Path {
 		t.Fatalf("handler path = %q, want %q", got, plugins.StarpcPython.Path)
@@ -32,16 +36,21 @@ func TestDiscoverPluginsStarpcPythonSelected(t *testing.T) {
 }
 
 func TestDiscoverPluginsStarpcPythonVenvFallback(t *testing.T) {
+	// Install project-local plugins for the requested language selection.
 	projectDir := newPluginTestProject(t, false)
 	if err := os.RemoveAll(filepath.Join(projectDir, ".tools")); err != nil {
 		t.Fatal(err)
 	}
+
+	// A conventional Unix virtual environment supplies the fallback executable.
 	venvPath := filepath.Join(projectDir, ".venv", "bin", "protoc-gen-starpc-python")
 	writeTestFile(t, venvPath)
 	cfg := NewConfig()
 	cfg.ProjectDir = projectDir
 	cfg.Languages = []string{"python"}
 	cfg.RPCLibraries = []string{"starpc-python"}
+
+	// Discovery and protoc arguments must agree on the enabled generators.
 	plugins, err := DiscoverPlugins(cfg)
 	if err != nil {
 		t.Fatalf("discover plugins: %v", err)
@@ -52,16 +61,21 @@ func TestDiscoverPluginsStarpcPythonVenvFallback(t *testing.T) {
 }
 
 func TestDiscoverPluginsStarpcPythonScriptsFallback(t *testing.T) {
+	// Install project-local plugins for the requested language selection.
 	projectDir := newPluginTestProject(t, false)
 	if err := os.RemoveAll(filepath.Join(projectDir, ".tools")); err != nil {
 		t.Fatal(err)
 	}
+
+	// Windows virtual environments expose executables under Scripts.
 	scriptsPath := filepath.Join(projectDir, ".venv", "Scripts", "protoc-gen-starpc-python.exe")
 	writeTestFile(t, scriptsPath)
 	cfg := NewConfig()
 	cfg.ProjectDir = projectDir
 	cfg.Languages = []string{"python"}
 	cfg.RPCLibraries = []string{"starpc-python"}
+
+	// Discovery and protoc arguments must agree on the enabled generators.
 	plugins, err := DiscoverPlugins(cfg)
 	if err != nil {
 		t.Fatalf("discover plugins: %v", err)
@@ -72,6 +86,7 @@ func TestDiscoverPluginsStarpcPythonScriptsFallback(t *testing.T) {
 }
 
 func TestDiscoverPluginsStarpcPythonMissingBinaryFails(t *testing.T) {
+	// Install project-local plugins for the requested language selection.
 	projectDir := newPluginTestProject(t, false)
 	if err := os.Remove(filepath.Join(projectDir, ".tools", "bin", "protoc-gen-starpc-python")); err != nil {
 		t.Fatalf("remove test plugin: %v", err)
@@ -86,11 +101,14 @@ func TestDiscoverPluginsStarpcPythonMissingBinaryFails(t *testing.T) {
 }
 
 func TestDiscoverPluginsStarpcPythonUnselected(t *testing.T) {
+	// Install project-local plugins for the requested language selection.
 	projectDir := newPluginTestProject(t, false)
 	cfg := NewConfig()
 	cfg.ProjectDir = projectDir
 	cfg.Languages = []string{"python"}
 	cfg.RPCLibraries = []string{"none"}
+
+	// Discovery and protoc arguments must agree on the enabled generators.
 	plugins, err := DiscoverPlugins(cfg)
 	if err != nil {
 		t.Fatalf("discover plugins: %v", err)
@@ -104,12 +122,12 @@ func TestDiscoverPluginsStarpcPythonUnselected(t *testing.T) {
 }
 
 func TestDiscoverPluginsDefaultAllLanguages(t *testing.T) {
-	t.Helper()
-
+	// Install project-local plugins for the requested language selection.
 	projectDir := newPluginTestProject(t, true)
 	cfg := NewConfig()
 	cfg.ProjectDir = projectDir
 
+	// Discovery and protoc arguments must agree on the enabled generators.
 	plugins, err := DiscoverPlugins(cfg)
 	if err != nil {
 		t.Fatalf("discover plugins: %v", err)
@@ -126,6 +144,8 @@ func TestDiscoverPluginsDefaultAllLanguages(t *testing.T) {
 	if plugins.ESStarpc == nil {
 		t.Fatal("expected es-starpc plugin")
 	}
+
+	// Native and Rust defaults remain available alongside Go and TypeScript.
 	if plugins.CppStarpc == nil {
 		t.Fatal("expected starpc-cpp plugin")
 	}
@@ -136,6 +156,7 @@ func TestDiscoverPluginsDefaultAllLanguages(t *testing.T) {
 		t.Fatal("expected starpc-rust plugin")
 	}
 
+	// Only selected generators may contribute protoc output arguments.
 	args := plugins.GetProtocArgs("/out", "/csharp")
 	for _, want := range []string{
 		"--cpp_out=/out",
@@ -159,13 +180,13 @@ func TestDiscoverPluginsDefaultAllLanguages(t *testing.T) {
 }
 
 func TestDiscoverPluginsGoLanguageOnly(t *testing.T) {
-	t.Helper()
-
+	// Install project-local plugins for the requested language selection.
 	projectDir := newPluginTestProject(t, true)
 	cfg := NewConfig()
 	cfg.ProjectDir = projectDir
 	cfg.Languages = []string{"go"}
 
+	// Discovery and protoc arguments must agree on the enabled generators.
 	plugins, err := DiscoverPlugins(cfg)
 	if err != nil {
 		t.Fatalf("discover plugins: %v", err)
@@ -186,6 +207,7 @@ func TestDiscoverPluginsGoLanguageOnly(t *testing.T) {
 		t.Fatal("expected no Rust plugins")
 	}
 
+	// Only selected generators may contribute protoc output arguments.
 	args := plugins.GetProtocArgs("/out", "/csharp")
 	for _, arg := range args {
 		if strings.Contains(arg, "cpp") {
@@ -206,14 +228,14 @@ func TestDiscoverPluginsGoLanguageOnly(t *testing.T) {
 }
 
 func TestDiscoverPluginsGoLanguageNoRPC(t *testing.T) {
-	t.Helper()
-
+	// Install project-local plugins for the requested language selection.
 	projectDir := newPluginTestProject(t, true)
 	cfg := NewConfig()
 	cfg.ProjectDir = projectDir
 	cfg.Languages = []string{"go"}
 	cfg.RPCLibraries = []string{"none"}
 
+	// Discovery and protoc arguments must agree on the enabled generators.
 	plugins, err := DiscoverPlugins(cfg)
 	if err != nil {
 		t.Fatalf("discover plugins: %v", err)
@@ -225,6 +247,7 @@ func TestDiscoverPluginsGoLanguageNoRPC(t *testing.T) {
 		t.Fatal("expected no go-starpc plugin")
 	}
 
+	// Only selected generators may contribute protoc output arguments.
 	args := plugins.GetProtocArgs("/out", "/csharp")
 	if !slices.Contains(args, "--go-lite_out=/out") {
 		t.Fatalf("expected go-lite protoc arg in %v", args)
@@ -237,14 +260,14 @@ func TestDiscoverPluginsGoLanguageNoRPC(t *testing.T) {
 }
 
 func TestDiscoverPluginsRustLanguageNoRPC(t *testing.T) {
-	t.Helper()
-
+	// Install project-local plugins for the requested language selection.
 	projectDir := newPluginTestProject(t, true)
 	cfg := NewConfig()
 	cfg.ProjectDir = projectDir
 	cfg.Languages = []string{"rust"}
 	cfg.RPCLibraries = []string{"false"}
 
+	// Discovery and protoc arguments must agree on the enabled generators.
 	plugins, err := DiscoverPlugins(cfg)
 	if err != nil {
 		t.Fatalf("discover plugins: %v", err)
@@ -256,6 +279,7 @@ func TestDiscoverPluginsRustLanguageNoRPC(t *testing.T) {
 		t.Fatal("expected no rust starpc plugin")
 	}
 
+	// Only selected generators may contribute protoc output arguments.
 	args := plugins.GetProtocArgs("/out", "/csharp")
 	if !slices.Contains(args, "--prost_out=/out") {
 		t.Fatalf("expected prost protoc arg in %v", args)
@@ -268,13 +292,13 @@ func TestDiscoverPluginsRustLanguageNoRPC(t *testing.T) {
 }
 
 func TestDiscoverPluginsLanguagePresenceGate(t *testing.T) {
-	t.Helper()
-
+	// Install project-local plugins for the requested language selection.
 	projectDir := newPluginTestProject(t, false)
 	cfg := NewConfig()
 	cfg.ProjectDir = projectDir
 	cfg.Languages = []string{"ts"}
 
+	// Discovery and protoc arguments must agree on the enabled generators.
 	plugins, err := DiscoverPlugins(cfg)
 	if err != nil {
 		t.Fatalf("discover plugins: %v", err)
@@ -297,13 +321,13 @@ func TestDiscoverPluginsLanguagePresenceGate(t *testing.T) {
 }
 
 func TestDiscoverPluginsCSharpAndPython(t *testing.T) {
-	t.Helper()
-
+	// Install project-local plugins for the requested language selection.
 	projectDir := newPluginTestProject(t, false)
 	cfg := NewConfig()
 	cfg.ProjectDir = projectDir
 	cfg.Languages = []string{"csharp", "python"}
 
+	// Discovery and protoc arguments must agree on the enabled generators.
 	plugins, err := DiscoverPlugins(cfg)
 	if err != nil {
 		t.Fatalf("discover plugins: %v", err)
@@ -315,21 +339,24 @@ func TestDiscoverPluginsCSharpAndPython(t *testing.T) {
 }
 
 func TestDiscoverPluginsUnknownLanguage(t *testing.T) {
-	t.Helper()
-
+	// Install project-local plugins for the requested language selection.
 	projectDir := newPluginTestProject(t, true)
 	cfg := NewConfig()
 	cfg.ProjectDir = projectDir
 	cfg.Languages = []string{"go", "kotlin"}
 
+	// Reject unsupported language names before selecting tools.
 	if _, err := DiscoverPlugins(cfg); err == nil {
 		t.Fatal("expected unknown language error")
 	}
 }
 
+// newPluginTestProject installs discoverable executable placeholders in an isolated module.
 func newPluginTestProject(t *testing.T, withPackageJSON bool) string {
+	// Attribute setup failures to the requesting discovery test.
 	t.Helper()
 
+	// Create an isolated module with optional Node package metadata.
 	projectDir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(projectDir, "go.mod"), []byte("module example.com/test\n\ngo 1.25.0\n"), 0o644); err != nil {
 		t.Fatalf("write go.mod: %v", err)
@@ -340,6 +367,7 @@ func newPluginTestProject(t *testing.T, withPackageJSON bool) string {
 		}
 	}
 
+	// Native tool discovery reads executables from the project tools directory.
 	for _, name := range []string{
 		"protoc-gen-go-lite",
 		"protoc-gen-go-starpc",
@@ -360,6 +388,7 @@ func newPluginTestProject(t *testing.T, withPackageJSON bool) string {
 	return projectDir
 }
 
+// writeTestFile creates an executable placeholder for plugin discovery.
 func writeTestFile(t *testing.T, name string) {
 	t.Helper()
 
@@ -372,17 +401,24 @@ func writeTestFile(t *testing.T, name string) {
 }
 
 func TestDiscoverNodePluginPackageBinFallbackAndPrecedence(t *testing.T) {
+	// Create an isolated module with optional Node package metadata.
 	projectDir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(projectDir, "go.mod"), []byte("module example.com/test\n\ngo 1.25.0\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
+
+	// A package-declared executable supplies the fallback before installation.
 	bin := filepath.Join(projectDir, "cmd", "protoc-gen-es-starpc")
 	writeTestFile(t, bin)
-	os.WriteFile(filepath.Join(projectDir, "package.json"), []byte(`{"bin":{"protoc-gen-es-starpc":"./cmd/protoc-gen-es-starpc"}}`), 0o644)
+	if err := os.WriteFile(filepath.Join(projectDir, "package.json"), []byte(`{"bin":{"protoc-gen-es-starpc":"./cmd/protoc-gen-es-starpc"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	cfg := NewConfig()
 	cfg.ProjectDir = projectDir
 	cfg.Languages = []string{"ts"}
 	cfg.RPCLibraries = []string{"starpc"}
+
+	// Discovery and protoc arguments must agree on the enabled generators.
 	plugins, err := DiscoverPlugins(cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -390,6 +426,8 @@ func TestDiscoverNodePluginPackageBinFallbackAndPrecedence(t *testing.T) {
 	if plugins.ESStarpc == nil || plugins.ESStarpc.Path != bin {
 		t.Fatalf("fallback path=%v", plugins.ESStarpc)
 	}
+
+	// An installed Node binary takes precedence over the package fallback.
 	installed := filepath.Join(projectDir, "node_modules", ".bin", "protoc-gen-es-starpc")
 	writeTestFile(t, installed)
 	plugins, err = DiscoverPlugins(cfg)
@@ -398,5 +436,23 @@ func TestDiscoverNodePluginPackageBinFallbackAndPrecedence(t *testing.T) {
 	}
 	if plugins.ESStarpc.Path != installed {
 		t.Fatalf("installed precedence=%q", plugins.ESStarpc.Path)
+	}
+}
+
+func TestGetProtocArgsRustProstFlagsKeepOrder(t *testing.T) {
+	// Repeated plugin options retain their declared order.
+	prost := &Plugin{Name: "prost", OutFlag: "prost_out", Flags: []string{"file_modules", "btree_map=.", "extern_path=.a=::b"}}
+	plugins := &Plugins{Languages: Languages{LanguageRust: {}}, RustProst: prost}
+
+	// Preserve option ordering when constructing the protoc invocation.
+	got := plugins.GetProtocArgs("out", "out")
+	want := []string{
+		"--prost_out=out",
+		"--prost_opt=file_modules",
+		"--prost_opt=btree_map=.",
+		"--prost_opt=extern_path=.a=::b",
+	}
+	if !slices.Equal(got, want) {
+		t.Fatalf("args = %v, want %v", got, want)
 	}
 }

@@ -1,0 +1,15 @@
+syntax = "proto3";
+package graph.svc;
+
+import "example.test/graph/shared/shared.proto";
+import "example.test/graph/svc/request.proto";
+
+// Store shares a package with Graph and has a streaming method of each kind.
+service Store {
+  // Watch streams messages from an exact extern path.
+  rpc Watch(Request) returns (stream graph.shared.Token);
+  // Put consumes a stream of requests.
+  rpc Put(stream Request) returns (graph.shared.Local);
+  // Sync streams in both directions.
+  rpc Sync(stream Request) returns (stream Request);
+}

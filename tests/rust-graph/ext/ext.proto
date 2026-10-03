@@ -1,0 +1,7 @@
+syntax = "proto3";
+package graph.ext;
+
+// Marker is provided by a package-prefix extern path and is not generated.
+message Marker {
+  string id = 1;
+}

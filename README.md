@@ -217,6 +217,53 @@ The CLI flag takes precedence over `package.json`:
 aptre generate --language go
 ```
 
+### `aptre.rust`
+
+Setting `aptre.rust` makes `aptre generate` compile the whole schema graph in a
+single run and write one Rust file per schema, beside the schema, even when a
+protobuf package spans several directories. Every other selected language still
+uses the per-directory generator.
+
+```json
+{
+  "aptre": {
+    "module": "example.com/app",
+    "languages": ["rust"],
+    "rust": {
+      "prostOptions": ["enable_type_names", "btree_map=."],
+      "exclude": [],
+      "descriptorSet": "wire/descriptors.bin",
+      "moduleFile": "wire/messages.rs",
+      "inventory": ".protoc-rust-files.txt"
+    }
+  }
+}
+```
+
+- `module` is the import path that prefixes the project's schemas. It defaults
+  to the `go.mod` module, so a project without `go.mod` must set it. Schemas
+  under `vendor/` keep the import path they have inside that directory.
+- `prostOptions` are passed to the prost plugin in order. Use them for type
+  names, deterministic maps, boxed fields and `extern_path` mappings.
+- `exclude` lists schema patterns to leave out of compilation.
+- `descriptorSet` receives the serialized descriptors of the whole graph,
+  including imports and source information, for runtime reflection.
+- `moduleFile` receives `include!` declarations that nest each generated file
+  under its protobuf package, naming each segment as Prost does (snake case,
+  `r#` for keywords).
+- `inventory` lists every generated path. The next run removes files that the
+  inventory names but the schemas no longer produce.
+
+Select schemas with `--targets`. Outputs are built in memory first and written
+only when their bytes change. `aptre generate --check --language rust` compares
+all outputs without writing, prints each `outdated:` path and exits non-zero.
+The check never prepares dependencies: when `rpc` includes `starpc` and
+`protoc-gen-starpc-rust` is not built, it fails and names the missing plugin;
+run `aptre deps` first.
+
+`tests/rust-graph/check.bash` generates a project with every kind of type path,
+checks it, and runs the Rust tests over exactly that output.
+
 ### `aptre.tsImportBoundaries`
 
 `tsImportBoundaries` configures how generated TypeScript protobuf imports are

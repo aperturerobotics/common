@@ -1,0 +1,10 @@
+syntax = "proto3";
+package graph.core;
+
+import "example.test/graph/core/core.proto";
+
+// Extra shares its package with core.proto from another directory.
+message Extra {
+  Header header = 1;
+  Outer.Inner inner = 2;
+}

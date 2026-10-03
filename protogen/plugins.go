@@ -3,15 +3,16 @@ package protogen
 import (
 	"bytes"
 	"context"
-	"encoding/json"
-	"fmt"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
 
+	"github.com/aperturerobotics/fastjson"
 	prost "github.com/aperturerobotics/go-protoc-gen-prost"
+	"github.com/pkg/errors"
 	"github.com/tetratelabs/wazero"
 )
 
@@ -19,10 +20,15 @@ import (
 type PluginType int
 
 const (
+	// PluginTypeGo generates Go declarations.
 	PluginTypeGo PluginType = iota
+	// PluginTypePython generates Python declarations.
 	PluginTypePython
+	// PluginTypeTypeScript generates TypeScript declarations.
 	PluginTypeTypeScript
+	// PluginTypeCpp generates C++ declarations.
 	PluginTypeCpp
+	// PluginTypeRust generates Rust declarations.
 	PluginTypeRust
 )
 
@@ -40,6 +46,9 @@ type Plugin struct {
 	OutFlag string
 	// Options are the plugin options.
 	Options map[string]string
+	// Flags are plugin options forwarded verbatim in order, for options that
+	// repeat or take no value.
+	Flags []string
 }
 
 // Plugins holds the configured plugins for a project.
@@ -67,36 +76,42 @@ type Plugins struct {
 	RustProst *Plugin
 }
 
+// discoverNodePlugin finds an installed executable or the package's own named binary.
 func discoverNodePlugin(projectDir, binaryName string) string {
+	// Installed package links take precedence over development sources.
 	installed := filepath.Join(projectDir, "node_modules", ".bin", binaryName)
 	if info, err := os.Stat(installed); err == nil && info.Mode().IsRegular() && info.Mode()&0o111 != 0 {
 		return installed
 	}
+
+	// A package can declare one executable or a map of named executables.
 	data, err := os.ReadFile(filepath.Join(projectDir, "package.json"))
 	if err != nil {
 		return ""
 	}
-	var pkg struct {
-		Bin json.RawMessage `json:"bin"`
-	}
-	if json.Unmarshal(data, &pkg) != nil || len(pkg.Bin) == 0 {
+	pkg, err := fastjson.ParseBytes(data)
+	if err != nil {
 		return ""
 	}
-	var bins map[string]string
-	if pkg.Bin[0] == '"' {
-		var path string
-		if json.Unmarshal(pkg.Bin, &path) != nil {
-			return ""
-		}
-		bins = map[string]string{binaryName: path}
-	} else if json.Unmarshal(pkg.Bin, &bins) != nil {
+
+	// Select this plugin from either of package.json's supported bin representations.
+	bin := pkg.Get("bin")
+	if bin == nil {
 		return ""
 	}
-	rel, ok := bins[binaryName]
-	if !ok {
+	if bin.Type() == fastjson.TypeObject {
+		bin = bin.Get(binaryName)
+	}
+	if bin == nil {
 		return ""
 	}
-	path := rel
+	rel, err := bin.StringBytes()
+	if err != nil {
+		return ""
+	}
+
+	// Resolve package-relative paths and require an executable regular file.
+	path := string(rel)
 	if !filepath.IsAbs(path) {
 		path = filepath.Join(projectDir, path)
 	}
@@ -108,27 +123,32 @@ func discoverNodePlugin(projectDir, binaryName string) string {
 
 // DiscoverPlugins finds and configures available plugins.
 func DiscoverPlugins(cfg *Config) (*Plugins, error) {
+	// Resolve the package manifest's location.
 	projectDir, err := cfg.GetProjectDir()
 	if err != nil {
 		return nil, err
 	}
 
+	// Built plugin binaries live in the project's configured tools directory.
 	toolsDir, err := cfg.GetToolsDir()
 	if err != nil {
 		return nil, err
 	}
 	toolsBin := filepath.Join(toolsDir, "bin")
 
+	// Go module presence controls generators whose inputs come from Go dependencies.
 	hasGo, err := cfg.HasGoMod()
 	if err != nil {
 		return nil, err
 	}
 
+	// A package manifest makes Node plugin discovery available.
 	hasTS, err := cfg.HasPackageJSON()
 	if err != nil {
 		return nil, err
 	}
 
+	// Resolve explicit language and service selections before finding their tools.
 	langs, err := cfg.GetLanguages()
 	if err != nil {
 		return nil, err
@@ -138,8 +158,10 @@ func DiscoverPlugins(cfg *Config) (*Plugins, error) {
 		return nil, err
 	}
 
+	// Preserve the selection even when an optional plugin has not been built yet.
 	plugins := &Plugins{Languages: langs, RPCLibraries: rpcs}
 
+	// Go message and service generation use the same module's tools.
 	if hasGo && langs.Has(LanguageGo) {
 		// Go plugins from tools bin
 		goLitePath := filepath.Join(toolsBin, "protoc-gen-go-lite")
@@ -171,6 +193,7 @@ func DiscoverPlugins(cfg *Config) (*Plugins, error) {
 		}
 	}
 
+	// Python's explicitly selected service plugin must exist in tools or the virtual environment.
 	if langs.Has(LanguagePython) && rpcs.Has(RPCLibraryStarpcPython) {
 		binaryName := "protoc-gen-starpc-python"
 		candidates := []string{
@@ -186,11 +209,12 @@ func DiscoverPlugins(cfg *Config) (*Plugins, error) {
 			}
 		}
 		if starpcPythonPath == "" {
-			return nil, fmt.Errorf("starpc-python selected but plugin is unavailable; checked %s; run `uv sync --all-packages`", strings.Join(candidates, ", "))
+			return nil, errors.Errorf("starpc-python selected but plugin is unavailable; checked %s; run `uv sync --all-packages`", strings.Join(candidates, ", "))
 		}
 		plugins.StarpcPython = &Plugin{Name: "starpc-python", BinaryName: binaryName, Path: starpcPythonPath, Type: PluginTypePython, OutFlag: "starpc-python_out", Options: map[string]string{}}
 	}
 
+	// The C++ service generator is supplied by Go tool preparation.
 	if hasGo && langs.Has(LanguageCpp) && rpcs.Has(RPCLibraryStarpc) {
 		cppStarpcPath := filepath.Join(toolsBin, "protoc-gen-starpc-cpp")
 		if _, err := os.Stat(cppStarpcPath); err == nil {
@@ -205,40 +229,12 @@ func DiscoverPlugins(cfg *Config) (*Plugins, error) {
 		}
 	}
 
+	// Per-directory Rust generation retains its existing Go-module selection.
 	if hasGo && langs.Has(LanguageRust) {
-		if rpcs.Has(RPCLibraryStarpc) {
-			rustStarpcPath := filepath.Join(toolsBin, "protoc-gen-starpc-rust")
-			if _, err := os.Stat(rustStarpcPath); err == nil {
-				plugins.RustStarpc = &Plugin{
-					Name:       "starpc-rust",
-					BinaryName: "protoc-gen-starpc-rust",
-					Path:       rustStarpcPath,
-					Type:       PluginTypeRust,
-					OutFlag:    "starpc-rust_out",
-					Options:    map[string]string{},
-				}
-			}
-		}
-
-		// protoc-gen-prost is available as embedded WASM, always enable it.
-		// The WASM module is used by default; native binary path is optional fallback.
-		plugins.RustProst = &Plugin{
-			Name:       "prost",
-			BinaryName: "protoc-gen-prost",
-			Path:       "", // WASM module used by default, no native path needed
-			Type:       PluginTypeRust,
-			OutFlag:    "prost_out",
-			Options:    map[string]string{},
-		}
-		// Check if native binary exists (for potential future fallback)
-		prostPath := filepath.Join(toolsBin, "protoc-gen-prost")
-		if _, err := os.Stat(prostPath); err == nil {
-			plugins.RustProst.Path = prostPath
-		} else if path, err := exec.LookPath("protoc-gen-prost"); err == nil {
-			plugins.RustProst.Path = path
-		}
+		plugins.RustStarpc, plugins.RustProst = discoverRustPlugins(toolsBin, rpcs)
 	}
 
+	// Node package binaries supply TypeScript message and service generators.
 	if hasTS && langs.Has(LanguageTypeScript) {
 		// TypeScript plugins from node_modules
 		esLitePath := discoverNodePlugin(projectDir, "protoc-gen-es-lite")
@@ -277,79 +273,128 @@ func DiscoverPlugins(cfg *Config) (*Plugins, error) {
 	return plugins, nil
 }
 
+// discoverRustPlugins finds the Rust StarPC plugin, when selected and built,
+// and configures the embedded prost plugin.
+func discoverRustPlugins(toolsBin string, rpcs RPCLibraries) (starpc, prost *Plugin) {
+	// Services require the native plugin only when StarPC is selected.
+	if rpcs.Has(RPCLibraryStarpc) {
+		rustStarpcPath := filepath.Join(toolsBin, "protoc-gen-starpc-rust")
+		if _, err := os.Stat(rustStarpcPath); err == nil {
+			starpc = &Plugin{
+				Name:       "starpc-rust",
+				BinaryName: "protoc-gen-starpc-rust",
+				Path:       rustStarpcPath,
+				Type:       PluginTypeRust,
+				OutFlag:    "starpc-rust_out",
+				Options:    map[string]string{},
+			}
+		}
+	}
+
+	// protoc-gen-prost is available as embedded WASM, always enable it.
+	// The WASM module is used by default; native binary path is optional fallback.
+	prost = &Plugin{
+		Name:       "prost",
+		BinaryName: "protoc-gen-prost",
+		Path:       "", // WASM module used by default, no native path needed
+		Type:       PluginTypeRust,
+		OutFlag:    "prost_out",
+		Options:    map[string]string{},
+	}
+
+	// Keep a native path available to callers that invoke the handler without WASM initialization.
+	prostPath := filepath.Join(toolsBin, "protoc-gen-prost")
+	if _, err := os.Stat(prostPath); err == nil {
+		prost.Path = prostPath
+		return starpc, prost
+	}
+	if path, err := exec.LookPath("protoc-gen-prost"); err == nil {
+		prost.Path = path
+	}
+	return starpc, prost
+}
+
 // sortedPluginOpts returns sorted --{name}_opt=k=v args for deterministic output.
 func sortedPluginOpts(p *Plugin) []string {
-	keys := make([]string, 0, len(p.Options))
-	for k := range p.Options {
-		keys = append(keys, k)
-	}
-	slices.Sort(keys)
+	keys := slices.Sorted(maps.Keys(p.Options))
 	args := make([]string, 0, len(keys))
 	for _, k := range keys {
-		args = append(args, fmt.Sprintf("--%s_opt=%s=%s", p.Name, k, p.Options[k]))
+		args = append(args, "--"+p.Name+"_opt="+k+"="+p.Options[k])
+	}
+	return args
+}
+
+// pluginFlagArgs returns the verbatim --{name}_opt=flag args in order.
+func pluginFlagArgs(p *Plugin) []string {
+	args := make([]string, 0, len(p.Flags))
+	for _, flag := range p.Flags {
+		args = append(args, "--"+p.Name+"_opt="+flag)
 	}
 	return args
 }
 
 // GetProtocArgs returns deterministic protoc arguments for configured outputs.
 func (p *Plugins) GetProtocArgs(outDir, csharpOutDir string) []string {
-	var args []string
-
 	// C++ output (built-in to protoc)
+	var args []string
 	if p.Languages.Has(LanguageCpp) {
-		args = append(args, fmt.Sprintf("--cpp_out=%s", outDir))
+		args = append(args, "--cpp_out="+outDir)
 	}
 
 	// C# output (built-in to protoc)
 	if p.Languages.Has(LanguageCSharp) {
-		args = append(args, fmt.Sprintf("--csharp_out=%s", csharpOutDir))
+		args = append(args, "--csharp_out="+csharpOutDir)
 	}
 
 	// Python output (built-in to protoc)
 	if p.Languages.Has(LanguagePython) {
-		args = append(args, fmt.Sprintf("--python_out=%s", outDir))
-		args = append(args, fmt.Sprintf("--pyi_out=%s", outDir))
+		args = append(args, "--python_out="+outDir)
+		args = append(args, "--pyi_out="+outDir)
 	}
 
 	// Python StarPC RPC plugin
 	if p.StarpcPython != nil {
-		args = append(args, fmt.Sprintf("--%s=%s", p.StarpcPython.OutFlag, outDir))
+		args = append(args, "--"+p.StarpcPython.OutFlag+"="+outDir)
 	}
 
 	// Go plugins
 	if p.GoLite != nil {
-		args = append(args, fmt.Sprintf("--%s=%s", p.GoLite.OutFlag, outDir))
+		args = append(args, "--"+p.GoLite.OutFlag+"="+outDir)
 		args = append(args, sortedPluginOpts(p.GoLite)...)
 	}
 
+	// Go service declarations accompany the selected message output.
 	if p.GoStarpc != nil {
-		args = append(args, fmt.Sprintf("--%s=%s", p.GoStarpc.OutFlag, outDir))
+		args = append(args, "--"+p.GoStarpc.OutFlag+"="+outDir)
 	}
 
 	// TypeScript plugins
 	if p.ESLite != nil {
-		args = append(args, fmt.Sprintf("--%s=%s", p.ESLite.OutFlag, outDir))
+		args = append(args, "--"+p.ESLite.OutFlag+"="+outDir)
 		args = append(args, sortedPluginOpts(p.ESLite)...)
 	}
 
+	// TypeScript service declarations retain their own plugin options.
 	if p.ESStarpc != nil {
-		args = append(args, fmt.Sprintf("--%s=%s", p.ESStarpc.OutFlag, outDir))
+		args = append(args, "--"+p.ESStarpc.OutFlag+"="+outDir)
 		args = append(args, sortedPluginOpts(p.ESStarpc)...)
 	}
 
 	// C++ starpc plugin
 	if p.CppStarpc != nil {
-		args = append(args, fmt.Sprintf("--%s=%s", p.CppStarpc.OutFlag, outDir))
+		args = append(args, "--"+p.CppStarpc.OutFlag+"="+outDir)
 	}
 
 	// Rust prost plugin (generates *.pb.rs message types)
 	if p.RustProst != nil {
-		args = append(args, fmt.Sprintf("--%s=%s", p.RustProst.OutFlag, outDir))
+		args = append(args, "--"+p.RustProst.OutFlag+"="+outDir)
+		args = append(args, pluginFlagArgs(p.RustProst)...)
 	}
 
 	// Rust starpc plugin (generates *_srpc.pb.rs service stubs)
 	if p.RustStarpc != nil {
-		args = append(args, fmt.Sprintf("--%s=%s", p.RustStarpc.OutFlag, outDir))
+		args = append(args, "--"+p.RustStarpc.OutFlag+"="+outDir)
+		args = append(args, pluginFlagArgs(p.RustStarpc)...)
 	}
 
 	return args
@@ -389,12 +434,13 @@ func NewNativePluginHandler(plugins *Plugins, verbose bool) *NativePluginHandler
 // The runtime must already have WASI instantiated (e.g., by protoc).
 // This should be called after protoc.Init() and before running protoc.
 func (h *NativePluginHandler) InitProstWASM(ctx context.Context, runtime wazero.Runtime) error {
+	// Reuse an initialized plugin inside the same protoc runtime.
 	if h.prostWASM != nil {
 		return nil // Already initialized
 	}
 	p, err := prost.NewProtocGenProstWithWASI(ctx, runtime)
 	if err != nil {
-		return fmt.Errorf("failed to initialize prost WASM: %w", err)
+		return errors.Wrap(err, "failed to initialize prost WASM")
 	}
 	h.prostWASM = p
 	return nil
@@ -423,21 +469,22 @@ func (h *NativePluginHandler) Communicate(ctx context.Context, program string, s
 	// Find the plugin path
 	pluginPath := h.findPluginPath(program, searchPath)
 	if pluginPath == "" {
-		return nil, fmt.Errorf("plugin not found: %s", program)
+		return nil, errors.Errorf("plugin not found: %s", program)
 	}
 
+	// The native process reads one request and returns one complete plugin response.
 	cmd := exec.CommandContext(ctx, pluginPath)
 	cmd.Stdin = bytes.NewReader(input)
-
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
+	// A failed plugin response is never forwarded to protoc as generated output.
 	if err := cmd.Run(); err != nil {
 		if stderr.Len() > 0 {
-			return nil, fmt.Errorf("plugin %s failed: %v: %s", program, err, stderr.String())
+			return nil, errors.Errorf("plugin %s failed: %v: %s", program, err, stderr.String())
 		}
-		return nil, fmt.Errorf("plugin %s failed: %v", program, err)
+		return nil, errors.Errorf("plugin %s failed: %v", program, err)
 	}
 
 	return stdout.Bytes(), nil

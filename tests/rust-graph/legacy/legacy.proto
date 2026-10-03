@@ -1,0 +1,7 @@
+syntax = "proto3";
+package graph.Legacy.type;
+
+// Item lives in a package that Rust renames to graph::legacy::r#type.
+message Item {
+  string name = 1;
+}

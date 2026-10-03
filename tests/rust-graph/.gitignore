@@ -1,0 +1,7 @@
+/target
+/Cargo.lock
+/.tools
+/descriptors.bin
+/generated-files.txt
+/modules.rs
+*.pb.rs

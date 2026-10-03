@@ -1,0 +1,18 @@
+[package]
+name = "rust-graph"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[workspace]
+
+[dependencies]
+prost = "0.14"
+starpc = "0.52"
+
+[dev-dependencies]
+futures = "0.3"
+tokio = { version = "1", features = ["macros", "rt", "sync"] }
