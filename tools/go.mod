@@ -8,7 +8,7 @@ require (
 	github.com/aperturerobotics/goprotowrap v0.4.1 // latest
 	// github.com/s4wave/goscript v0.0.61 // master
 	github.com/aperturerobotics/protobuf-go-lite v0.18.0 // latest
-	github.com/aperturerobotics/starpc v0.52.1 // latest
+	github.com/aperturerobotics/starpc v0.52.3-0.20261003013036-4cdf88642ec9 // latest
 	github.com/golangci/golangci-lint/v2 v2.13.2 // latest
 	github.com/goreleaser/goreleaser/v2 v2.18.1 // latest
 	github.com/psampaz/go-mod-outdated v0.9.0 // latest

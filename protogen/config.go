@@ -1,11 +1,12 @@
 package protogen
 
 import (
-	"encoding/json"
-	"fmt"
 	"os"
 	"path"
 	"path/filepath"
+
+	"github.com/aperturerobotics/fastjson"
+	"github.com/pkg/errors"
 )
 
 // DefaultCacheFile is the default cache file name.
@@ -52,14 +53,43 @@ type Config struct {
 	TsImportBoundaries []string
 }
 
-type packageJSONConfig struct {
-	Aptre *packageJSONAptreConfig `json:"aptre"`
+// RustConfig configures whole-graph Rust generation.
+//
+// Every path is slash-separated and relative to the project directory, which
+// is also the Rust crate root.
+type RustConfig struct {
+	// ProstOptions are protoc-gen-prost options forwarded verbatim, such as
+	// "btree_map=." or "extern_path=.pkg=::crate::pkg".
+	ProstOptions []string
+	// Exclude lists proto path patterns to skip, in addition to Config.Exclude.
+	Exclude []string
+	// DescriptorSet is where the encoded FileDescriptorSet of the whole graph,
+	// with imports and source info, is written. Empty skips the descriptor set.
+	DescriptorSet string
+	// ModuleFile is where the module declarations are written. Each generated
+	// file is included under the Rust module of its protobuf package. Empty
+	// skips the module file.
+	ModuleFile string
+	// Inventory lists every generated file so that outputs of deleted schemas
+	// can be removed. Default: DefaultRustInventory.
+	Inventory string
 }
 
+// DefaultRustInventory is the default generated-file inventory for Rust output.
+const DefaultRustInventory = ".protoc-rust-files.txt"
+
+// packageJSONAptreConfig is the typed generation configuration read from package.json.
 type packageJSONAptreConfig struct {
-	Languages          []string `json:"languages"`
-	RPCLibraries       []string `json:"rpc"`
-	TsImportBoundaries []string `json:"tsImportBoundaries"`
+	// Module is the canonical protobuf import prefix.
+	Module string
+	// Languages selects the generated languages.
+	Languages []string
+	// RPCLibraries selects the service generators.
+	RPCLibraries []string
+	// TsImportBoundaries selects TypeScript package crossings.
+	TsImportBoundaries []string
+	// Rust enables whole-graph Rust generation when present.
+	Rust *RustConfig
 }
 
 // NewConfig returns a new Config with default values.
@@ -113,7 +143,7 @@ func (c *Config) HasGoMod() (bool, error) {
 	if err == nil {
 		return true, nil
 	}
-	if os.IsNotExist(err) {
+	if errors.Is(err, os.ErrNotExist) {
 		return false, nil
 	}
 	return false, err
@@ -121,6 +151,7 @@ func (c *Config) HasGoMod() (bool, error) {
 
 // HasPackageJSON checks if package.json exists in the project directory.
 func (c *Config) HasPackageJSON() (bool, error) {
+	// Resolve the project before checking its package manifest.
 	projectDir, err := c.GetProjectDir()
 	if err != nil {
 		return false, err
@@ -134,21 +165,25 @@ func (c *Config) HasPackageJSON() (bool, error) {
 
 // GetGoModule returns the effective Go import path for the project directory.
 func (c *Config) GetGoModule() (string, error) {
+	// Resolve the project independently of its containing Go module.
 	projectDir, err := c.GetProjectDir()
 	if err != nil {
 		return "", err
 	}
 
+	// Locate the module that supplies the import prefix.
 	moduleDir, err := c.GetModuleDir()
 	if err != nil {
 		return "", err
 	}
 
+	// Read the declared module identity rather than inferring it from the directory.
 	modulePath, err := GetGoModule(moduleDir)
 	if err != nil {
 		return "", err
 	}
 
+	// Subprojects extend the module identity with their relative directory.
 	projectRel, err := filepath.Rel(moduleDir, projectDir)
 	if err != nil {
 		return "", err
@@ -159,6 +194,41 @@ func (c *Config) GetGoModule() (string, error) {
 	return path.Join(modulePath, filepath.ToSlash(projectRel)), nil
 }
 
+// readAptreConfig reads the aptre section of package.json.
+// It returns an empty section when package.json or the section is absent.
+func (c *Config) readAptreConfig() (*packageJSONAptreConfig, error) {
+	// Select the package manifest of this project, not an ancestor module.
+	projectDir, err := c.GetProjectDir()
+	if err != nil {
+		return nil, err
+	}
+
+	// Absence selects defaults; unreadable manifests remain errors.
+	data, err := os.ReadFile(filepath.Join(projectDir, "package.json"))
+	if os.IsNotExist(err) {
+		return &packageJSONAptreConfig{}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse only the typed aptre section while accepting other package metadata.
+	value, err := fastjson.ParseBytes(data)
+	if err != nil {
+		return nil, err
+	}
+	if value.Type() != fastjson.TypeNull {
+		if _, err := value.Object(); err != nil {
+			return nil, err
+		}
+	}
+	config := &packageJSONAptreConfig{}
+	if err := config.FromJSON(value.Get("aptre")); err != nil {
+		return nil, err
+	}
+	return config, nil
+}
+
 // GetTsImportBoundaries returns configured TypeScript import boundaries.
 // Explicit config takes precedence; otherwise reads package.json aptre config.
 func (c *Config) GetTsImportBoundaries() ([]string, error) {
@@ -166,28 +236,11 @@ func (c *Config) GetTsImportBoundaries() ([]string, error) {
 		return c.TsImportBoundaries, nil
 	}
 
-	projectDir, err := c.GetProjectDir()
+	aptre, err := c.readAptreConfig()
 	if err != nil {
 		return nil, err
 	}
-
-	packageJSONPath := filepath.Join(projectDir, "package.json")
-	data, err := os.ReadFile(packageJSONPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
-		return nil, err
-	}
-
-	var packageJSON packageJSONConfig
-	if err := json.Unmarshal(data, &packageJSON); err != nil {
-		return nil, err
-	}
-	if packageJSON.Aptre == nil {
-		return nil, nil
-	}
-	return packageJSON.Aptre.TsImportBoundaries, nil
+	return aptre.TsImportBoundaries, nil
 }
 
 // GetLanguages returns configured output languages.
@@ -197,28 +250,11 @@ func (c *Config) GetLanguages() (Languages, error) {
 		return NewLanguages(c.Languages)
 	}
 
-	projectDir, err := c.GetProjectDir()
+	aptre, err := c.readAptreConfig()
 	if err != nil {
 		return nil, err
 	}
-
-	packageJSONPath := filepath.Join(projectDir, "package.json")
-	data, err := os.ReadFile(packageJSONPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return NewLanguages(nil)
-		}
-		return nil, err
-	}
-
-	var packageJSON packageJSONConfig
-	if err := json.Unmarshal(data, &packageJSON); err != nil {
-		return nil, err
-	}
-	if packageJSON.Aptre == nil {
-		return NewLanguages(nil)
-	}
-	return NewLanguages(packageJSON.Aptre.Languages)
+	return NewLanguages(aptre.Languages)
 }
 
 // GetRPCLibraries returns configured RPC generators.
@@ -228,28 +264,45 @@ func (c *Config) GetRPCLibraries() (RPCLibraries, error) {
 		return NewRPCLibraries(c.RPCLibraries)
 	}
 
-	projectDir, err := c.GetProjectDir()
+	aptre, err := c.readAptreConfig()
 	if err != nil {
 		return nil, err
 	}
+	return NewRPCLibraries(aptre.RPCLibraries)
+}
 
-	packageJSONPath := filepath.Join(projectDir, "package.json")
-	data, err := os.ReadFile(packageJSONPath)
+// GetRust returns the whole-graph Rust configuration from package.json.
+// It returns nil when the project does not configure aptre.rust.
+func (c *Config) GetRust() (*RustConfig, error) {
+	// Absence leaves the project's existing per-directory generation mode selected.
+	aptre, err := c.readAptreConfig()
 	if err != nil {
-		if os.IsNotExist(err) {
-			return NewRPCLibraries(nil)
-		}
 		return nil, err
+	}
+	if aptre.Rust == nil {
+		return nil, nil
 	}
 
-	var packageJSON packageJSONConfig
-	if err := json.Unmarshal(data, &packageJSON); err != nil {
-		return nil, err
+	// Apply the inventory default without mutating the parsed configuration.
+	rust := *aptre.Rust
+	if rust.Inventory == "" {
+		rust.Inventory = DefaultRustInventory
 	}
-	if packageJSON.Aptre == nil {
-		return NewRPCLibraries(nil)
+	return &rust, nil
+}
+
+// GetSchemaModule returns the import path that prefixes this project's schemas.
+// The aptre.module setting in package.json takes precedence, which lets a
+// project without go.mod name its schemas; otherwise it is the Go module path.
+func (c *Config) GetSchemaModule() (string, error) {
+	aptre, err := c.readAptreConfig()
+	if err != nil {
+		return "", err
 	}
-	return NewRPCLibraries(packageJSON.Aptre.RPCLibraries)
+	if aptre.Module != "" {
+		return aptre.Module, nil
+	}
+	return c.GetGoModule()
 }
 
 // FindModuleDir finds the nearest ancestor directory containing go.mod.
@@ -266,7 +319,7 @@ func FindModuleDir(projectDir string) (string, error) {
 
 		parent := filepath.Dir(dir)
 		if parent == dir {
-			return "", fmt.Errorf("go.mod not found in %s or ancestors: %w", projectDir, os.ErrNotExist)
+			return "", errors.Wrapf(os.ErrNotExist, "go.mod not found in %s or ancestors", projectDir)
 		}
 		dir = parent
 	}

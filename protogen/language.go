@@ -1,6 +1,10 @@
 package protogen
 
-import "github.com/pkg/errors"
+import (
+	"slices"
+
+	"github.com/pkg/errors"
+)
 
 // Language identifies a protobuf output language.
 type Language string
@@ -55,4 +59,25 @@ func (l Languages) Has(lang Language) bool {
 	}
 	_, ok := l[lang]
 	return ok
+}
+
+// Without returns the languages with lang removed.
+func (l Languages) Without(lang Language) Languages {
+	rest := make(Languages, len(l))
+	for have := range l {
+		if have != lang {
+			rest[have] = struct{}{}
+		}
+	}
+	return rest
+}
+
+// Names returns the enabled language names in sorted order.
+func (l Languages) Names() []string {
+	names := make([]string, 0, len(l))
+	for lang := range l {
+		names = append(names, string(lang))
+	}
+	slices.Sort(names)
+	return names
 }

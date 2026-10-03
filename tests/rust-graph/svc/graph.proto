@@ -1,0 +1,21 @@
+syntax = "proto3";
+package graph.svc;
+
+import "example.test/graph/core/core.proto";
+import "example.test/graph/core/extra/extra.proto";
+import "example.test/graph/ext/ext.proto";
+import "example.test/graph/legacy/legacy.proto";
+import "example.test/graph/shared/shared.proto";
+import "example.test/graph/svc/request.proto";
+
+// Graph has only unary methods whose messages come from every kind of path.
+service Graph {
+  // Get returns a message of a package spread over two directories.
+  rpc Get(Request) returns (graph.core.Extra);
+  // GetInner takes a nested message of another package.
+  rpc GetInner(graph.core.Outer.Inner) returns (graph.Legacy.type.Item);
+  // GetHTTPUrl takes a message from a prefix extern package.
+  rpc GetHTTPUrl(graph.ext.Marker) returns (graph.shared.Local);
+  // Configure takes and returns a message nested in this package.
+  rpc Configure(Request.Options) returns (Request.Options);
+}

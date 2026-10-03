@@ -1,0 +1,12 @@
+syntax = "proto3";
+package graph.shared;
+
+// Token is provided by an exact extern path.
+message Token {
+  string value = 1;
+}
+
+// Local is generated normally beside the extern Token.
+message Local {
+  string value = 1;
+}

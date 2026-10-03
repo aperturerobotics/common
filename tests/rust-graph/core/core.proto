@@ -1,0 +1,18 @@
+syntax = "proto3";
+package graph.core;
+
+// Header identifies a record.
+message Header {
+  string id = 1;
+}
+
+// Outer holds a nested message.
+message Outer {
+  // Inner is addressed from other packages as Outer.Inner.
+  message Inner {
+    int32 count = 1;
+  }
+
+  Inner inner = 1;
+  Header header = 2;
+}

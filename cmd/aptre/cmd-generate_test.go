@@ -16,8 +16,7 @@ import (
 )
 
 func TestGenerateLanguageFlagAliasSharesConfigField(t *testing.T) {
-	t.Helper()
-
+	// All documented language aliases resolve through the same flag.
 	var languageFlag *cli.StringSliceFlag
 	for _, flag := range generateCmd.Flags {
 		if candidate, ok := flag.(*cli.StringSliceFlag); ok && candidate.Name == "language" {
@@ -111,8 +110,7 @@ func appendBytes(dst []byte, field int, payload []byte) []byte {
 `
 
 func TestGenerateStarpcPythonServiceOutputsAndStaleRemoval(t *testing.T) {
-	t.Helper()
-
+	// Keep schemas, generated output and tool installation inside an isolated project.
 	projectDir := t.TempDir()
 	fakeSrc := t.TempDir()
 	if err := os.WriteFile(filepath.Join(fakeSrc, "main.go"), []byte(fakeStarpcPythonSource), 0o644); err != nil {
@@ -125,6 +123,7 @@ func TestGenerateStarpcPythonServiceOutputsAndStaleRemoval(t *testing.T) {
 	rootDir := repoRoot(t)
 	runTestCommand(t, rootDir, "go", "build", "-o", filepath.Join(toolsBin, "protoc-gen-starpc-python"), filepath.Join(fakeSrc, "main.go"))
 
+	// Supply module identity and dependencies through the normal project files.
 	goMod := []byte("module example.com/scratch\n\ngo 1.25.0\n")
 	if err := os.WriteFile(filepath.Join(projectDir, "go.mod"), goMod, 0o644); err != nil {
 		t.Fatalf("write go.mod: %v", err)
@@ -132,6 +131,8 @@ func TestGenerateStarpcPythonServiceOutputsAndStaleRemoval(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(projectDir, "go.sum"), []byte("github.com/aperturerobotics/protobuf-go-lite v0.16.0 h1:McGR0jrc15ZkH8HUpAARDOtazjwqr+uYXVHrrR59K28=\ngithub.com/aperturerobotics/protobuf-go-lite v0.16.0/go.mod h1:3Ay/E7iaw2KWLirK3+dDdNJZHK0hu8Y1/kKeYeUa+8s=\n"), 0o644); err != nil {
 		t.Fatalf("write go.sum: %v", err)
 	}
+
+	// Track a real schema so discovery follows the production Git path.
 	protoFile := []byte(`syntax = "proto3";
 package scratch;
 
@@ -149,11 +150,13 @@ service ScratchService {
 	runTestCommand(t, projectDir, "git", "init")
 	runTestCommand(t, projectDir, "git", "add", "scratch.proto")
 
+	// Select generation through the public project configuration.
 	cfg := protogen.NewConfig()
 	cfg.ProjectDir = projectDir
 	cfg.Languages = []string{"python"}
 	cfg.RPCLibraries = []string{"starpc-python"}
 
+	// Execute the embedded protoc pipeline with the selected generators.
 	gen, err := protogen.NewGenerator(cfg)
 	if err != nil {
 		t.Fatalf("new generator: %v", err)
@@ -171,6 +174,7 @@ service ScratchService {
 		t.Fatalf("read service stub: %v", err)
 	}
 
+	// A second run must reuse unchanged output from the generation cache.
 	var stdout bytes.Buffer
 	gen, err = protogen.NewGenerator(cfg)
 	if err != nil {
@@ -188,6 +192,7 @@ service ScratchService {
 		t.Fatalf("service stub second-run changed: %v", err)
 	}
 
+	// Disabling services removes their obsolete files while retaining messages.
 	cfg.RPCLibraries = []string{"none"}
 	gen, err = protogen.NewGenerator(cfg)
 	if err != nil {
@@ -209,11 +214,11 @@ service ScratchService {
 }
 
 func TestGenerateGoOnly(t *testing.T) {
-	t.Helper()
-
+	// Keep schemas, generated output and tool installation inside an isolated project.
 	projectDir := t.TempDir()
 	rootDir := repoRoot(t)
 
+	// Supply module identity and dependencies through the normal project files.
 	goMod := []byte("module example.com/scratch\n\ngo 1.25.0\n\nrequire github.com/aperturerobotics/common v0.0.0\n\nreplace github.com/aperturerobotics/common => " + filepath.ToSlash(rootDir) + "\n")
 	if err := os.WriteFile(filepath.Join(projectDir, "go.mod"), goMod, 0o644); err != nil {
 		t.Fatalf("write go.mod: %v", err)
@@ -222,6 +227,7 @@ func TestGenerateGoOnly(t *testing.T) {
 		t.Fatalf("write go.sum: %v", err)
 	}
 
+	// Track a real schema so discovery follows the production Git path.
 	protoFile := []byte(`syntax = "proto3";
 package scratch;
 
@@ -237,16 +243,19 @@ message Scratch {
 	runTestCommand(t, projectDir, "git", "init")
 	runTestCommand(t, projectDir, "git", "add", "scratch.proto")
 
+	// Select generation through the public project configuration.
 	cfg := protogen.NewConfig()
 	cfg.ProjectDir = projectDir
 	cfg.Force = true
 	cfg.Languages = []string{"go"}
 
+	// Prepare the normal project tools before invoking the generator.
 	runTestCommand(t, projectDir, "go", "mod", "download")
 	if err := ensureDeps(cfg.ProjectDir, cfg.ToolsDir, false); err != nil {
 		t.Fatalf("ensure deps: %v", err)
 	}
 
+	// Execute the embedded protoc pipeline with the selected generators.
 	gen, err := protogen.NewGenerator(cfg)
 	if err != nil {
 		t.Fatalf("new generator: %v", err)
@@ -255,11 +264,13 @@ message Scratch {
 		t.Fatalf("generate: %v", err)
 	}
 
+	// Inspect the actual files produced beside the schema.
 	matches, err := filepath.Glob(filepath.Join(projectDir, "scratch*"))
 	if err != nil {
 		t.Fatalf("glob generated files: %v", err)
 	}
 
+	// The output set contains only the requested message and service languages.
 	expected := map[string]struct{}{
 		"scratch.pb.go":      {},
 		"scratch.proto":      {},
@@ -278,11 +289,11 @@ message Scratch {
 }
 
 func TestGenerateGoOnlyNoRPC(t *testing.T) {
-	t.Helper()
-
+	// Keep schemas, generated output and tool installation inside an isolated project.
 	projectDir := t.TempDir()
 	rootDir := repoRoot(t)
 
+	// Supply module identity and dependencies through the normal project files.
 	goMod := []byte("module example.com/scratch\n\ngo 1.25.0\n\nrequire github.com/aperturerobotics/common v0.0.0\n\nreplace github.com/aperturerobotics/common => " + filepath.ToSlash(rootDir) + "\n")
 	if err := os.WriteFile(filepath.Join(projectDir, "go.mod"), goMod, 0o644); err != nil {
 		t.Fatalf("write go.mod: %v", err)
@@ -291,6 +302,7 @@ func TestGenerateGoOnlyNoRPC(t *testing.T) {
 		t.Fatalf("write go.sum: %v", err)
 	}
 
+	// Track a real schema so discovery follows the production Git path.
 	protoFile := []byte(`syntax = "proto3";
 package scratch;
 
@@ -306,17 +318,20 @@ message Scratch {
 	runTestCommand(t, projectDir, "git", "init")
 	runTestCommand(t, projectDir, "git", "add", "scratch.proto")
 
+	// Select generation through the public project configuration.
 	cfg := protogen.NewConfig()
 	cfg.ProjectDir = projectDir
 	cfg.Force = true
 	cfg.Languages = []string{"go"}
 	cfg.RPCLibraries = []string{"none"}
 
+	// Prepare the normal project tools before invoking the generator.
 	runTestCommand(t, projectDir, "go", "mod", "download")
 	if err := ensureDeps(cfg.ProjectDir, cfg.ToolsDir, false); err != nil {
 		t.Fatalf("ensure deps: %v", err)
 	}
 
+	// Execute the embedded protoc pipeline with the selected generators.
 	gen, err := protogen.NewGenerator(cfg)
 	if err != nil {
 		t.Fatalf("new generator: %v", err)
@@ -325,11 +340,13 @@ message Scratch {
 		t.Fatalf("generate: %v", err)
 	}
 
+	// Inspect the actual files produced beside the schema.
 	matches, err := filepath.Glob(filepath.Join(projectDir, "scratch*"))
 	if err != nil {
 		t.Fatalf("glob generated files: %v", err)
 	}
 
+	// The output set contains only the requested message and service languages.
 	expected := map[string]struct{}{
 		"scratch.pb.go": {},
 		"scratch.proto": {},
@@ -347,9 +364,10 @@ message Scratch {
 }
 
 func TestGenerateCSharpAndPython(t *testing.T) {
-	t.Helper()
-
+	// Keep schemas, generated output and tool installation inside an isolated project.
 	projectDir := t.TempDir()
+
+	// Supply module identity and dependencies through the normal project files.
 	goMod := []byte("module example.com/play-scratch\n\ngo 1.25.0\n")
 	if err := os.WriteFile(filepath.Join(projectDir, "go.mod"), goMod, 0o644); err != nil {
 		t.Fatalf("write go.mod: %v", err)
@@ -357,6 +375,8 @@ func TestGenerateCSharpAndPython(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(projectDir, "go.sum"), []byte("github.com/aperturerobotics/protobuf-go-lite v0.16.0 h1:McGR0jrc15ZkH8HUpAARDOtazjwqr+uYXVHrrR59K28=\ngithub.com/aperturerobotics/protobuf-go-lite v0.16.0/go.mod h1:3Ay/E7iaw2KWLirK3+dDdNJZHK0hu8Y1/kKeYeUa+8s=\n"), 0o644); err != nil {
 		t.Fatalf("write go.sum: %v", err)
 	}
+
+	// Track a real schema so discovery follows the production Git path.
 	protoFile := []byte(`syntax = "proto3";
 package scratch;
 
@@ -370,10 +390,12 @@ message Scratch {
 	runTestCommand(t, projectDir, "git", "init")
 	runTestCommand(t, projectDir, "git", "add", "scratch.proto")
 
+	// Select generation through the public project configuration.
 	cfg := protogen.NewConfig()
 	cfg.ProjectDir = projectDir
 	cfg.Languages = []string{"csharp", "python"}
 
+	// Execute the embedded protoc pipeline with the selected generators.
 	gen, err := protogen.NewGenerator(cfg)
 	if err != nil {
 		t.Fatalf("new generator: %v", err)
@@ -382,6 +404,7 @@ message Scratch {
 		t.Fatalf("generate: %v", err)
 	}
 
+	// Both message languages must expose the schema type in their output.
 	csharpPath := filepath.Join(projectDir, "Scratch.cs")
 	pythonPath := filepath.Join(projectDir, "scratch_pb2.py")
 	pythonStubPath := filepath.Join(projectDir, "scratch_pb2.pyi")
@@ -389,6 +412,8 @@ message Scratch {
 	if err != nil {
 		t.Fatalf("read C# output: %v", err)
 	}
+
+	// Python generation must use its canonical module filename.
 	python, err := os.ReadFile(pythonPath)
 	if err != nil {
 		var files []string
@@ -400,6 +425,8 @@ message Scratch {
 		})
 		t.Fatalf("read Python output: %v; files: %v", err, files)
 	}
+
+	// Type stubs and runtime output must both retain the generated message.
 	pythonStub, err := os.ReadFile(pythonStubPath)
 	if err != nil {
 		t.Fatalf("read Python stub output: %v", err)
@@ -414,6 +441,7 @@ message Scratch {
 		t.Fatal("Python output does not contain Scratch")
 	}
 
+	// A second run must reuse unchanged output from the generation cache.
 	var stdout bytes.Buffer
 	gen, err = protogen.NewGenerator(cfg)
 	if err != nil {
@@ -427,6 +455,8 @@ message Scratch {
 	if !strings.Contains(stdout.String(), "Skipping . (up to date)") {
 		t.Fatalf("expected second-run cache reuse, got %q", stdout.String())
 	}
+
+	// Reusing the cache leaves every generated language byte-for-byte unchanged.
 	if got, err := os.ReadFile(csharpPath); err != nil || !bytes.Equal(got, csharp) {
 		t.Fatalf("C# second-run output changed: %v", err)
 	}
@@ -437,6 +467,7 @@ message Scratch {
 		t.Fatalf("Python stub second-run output changed: %v", err)
 	}
 
+	// Removing a language deletes only that language's stale outputs.
 	cfg.Languages = []string{"csharp"}
 	gen, err = protogen.NewGenerator(cfg)
 	if err != nil {
@@ -456,9 +487,11 @@ message Scratch {
 	}
 }
 
+// repoRoot locates the source checkout that contains the test fixtures.
 func repoRoot(t *testing.T) string {
 	t.Helper()
 
+	// Locate fixture assets relative to this source, independent of the working directory.
 	_, filename, _, ok := runtime.Caller(0)
 	if !ok {
 		t.Fatal("get caller")
@@ -466,9 +499,12 @@ func repoRoot(t *testing.T) string {
 	return filepath.Clean(filepath.Join(filepath.Dir(filename), "..", ".."))
 }
 
+// runTestCommand completes fixture setup or fails with the command output.
 func runTestCommand(t *testing.T, dir, name string, args ...string) {
+	// Attribute preparation failures to the requesting integration test.
 	t.Helper()
 
+	// Run fixture preparation in its project and retain failure diagnostics.
 	cmd := exec.Command(name, args...)
 	cmd.Dir = dir
 	output, err := cmd.CombinedOutput()
@@ -478,7 +514,7 @@ func runTestCommand(t *testing.T, dir, name string, args ...string) {
 }
 
 func TestGeneratePythonRewritesCanonicalLocalImports(t *testing.T) {
-	t.Helper()
+	// Keep schemas, generated output and tool installation inside an isolated project.
 	projectDir := t.TempDir()
 	rootDir := repoRoot(t)
 	for rel, body := range map[string]string{
@@ -501,6 +537,8 @@ message Dependency { string value = 1; }
 			t.Fatal(err)
 		}
 	}
+
+	// Use the real vendored well-known schema for the external import.
 	wktDir := filepath.Join(projectDir, "vendor", "github.com", "aperturerobotics", "protobuf", "src", "google", "protobuf")
 	if err := os.MkdirAll(wktDir, 0o755); err != nil {
 		t.Fatal(err)
@@ -512,18 +550,24 @@ message Dependency { string value = 1; }
 	if err := os.WriteFile(filepath.Join(wktDir, "timestamp.proto"), wkt, 0o644); err != nil { //nolint:gosec // wktDir is inside t.TempDir.
 		t.Fatal(err)
 	}
+
+	// Supply module identity and dependencies through the normal project files.
 	goMod := []byte("module github.com/example/project\n\ngo 1.25.0\n")
 	if err := os.WriteFile(filepath.Join(projectDir, "go.mod"), goMod, 0o644); err != nil {
 		t.Fatal(err)
 	}
 	runTestCommand(t, projectDir, "git", "init")
 	runTestCommand(t, projectDir, "git", "add", "app/app.proto", "dep/dep.proto")
+
+	// Select generation through the public project configuration.
 	cfg := protogen.NewConfig()
 	cfg.ProjectDir = projectDir
 	cfg.Targets = []string{"./app/*.proto", "./dep/*.proto"}
 	cfg.Languages = []string{"python"}
 	cfg.RPCLibraries = []string{"none"}
 	cfg.Force = true
+
+	// Execute the embedded protoc pipeline with the selected generators.
 	gen, err := protogen.NewGenerator(cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -531,6 +575,8 @@ message Dependency { string value = 1; }
 	if err := gen.Generate(t.Context()); err != nil {
 		t.Fatal(err)
 	}
+
+	// Both schemas must produce runtime modules and type stubs.
 	for _, rel := range []string{"app/app_pb2.py", "app/app_pb2.pyi", "dep/dep_pb2.py", "dep/dep_pb2.pyi"} {
 		if _, err := os.Stat(filepath.Join(projectDir, rel)); err != nil {
 			t.Fatalf("missing %s: %v", rel, err)
@@ -549,9 +595,27 @@ message Dependency { string value = 1; }
 			t.Fatalf("%s rewrote WKT import", rel)
 		}
 	}
+
+	// Import the generated module with its actual Python runtime dependencies.
 	cmd := exec.Command("uv", "run", "--directory", filepath.Join(rootDir, "tests", "python"), "python", "-c", "import sys; sys.path.insert(0, sys.argv[1]); import app.app_pb2", projectDir) //nolint:gosec // arguments are fixed or test-owned paths.
 	cmd.Env = append(os.Environ(), "UV_PROJECT_ENVIRONMENT="+filepath.Join(t.TempDir(), ".venv"))
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("generated Python import: %v\\n%s", err, out)
+	}
+}
+
+func TestGenerateCheckRequiresWholeGraphRust(t *testing.T) {
+	// Keep schemas, generated output and tool installation inside an isolated project.
+	projectDir := t.TempDir()
+	packageJSON := []byte(`{"aptre": {"module": "example.com/scratch", "languages": ["rust", "ts"], "rust": {}}}`)
+	if err := os.WriteFile(filepath.Join(projectDir, "package.json"), packageJSON, 0o644); err != nil {
+		t.Fatalf("write package.json: %v", err)
+	}
+
+	// Read-only checking rejects mixed generation modes before writing outputs.
+	app := &cli.App{Commands: []*cli.Command{generateCmd}}
+	err := app.Run([]string{"aptre", "generate", "--check", "--deps=false", "-C", projectDir})
+	if err == nil || !strings.Contains(err.Error(), "--check requires aptre.rust") {
+		t.Fatalf("expected the check guard to reject mixed languages, got %v", err)
 	}
 }
