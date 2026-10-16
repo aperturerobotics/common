@@ -7,7 +7,7 @@ require (
 	github.com/aperturerobotics/common v0.35.4-0.20260907221801-94b9f6461eae // latest
 	github.com/aperturerobotics/goprotowrap v0.4.1 // latest
 	// github.com/s4wave/goscript v0.0.61 // master
-	github.com/aperturerobotics/protobuf-go-lite v0.18.0 // latest
+	github.com/aperturerobotics/protobuf-go-lite v0.19.1-0.20261016221735-380ab5fa526b // latest
 	github.com/aperturerobotics/starpc v0.52.3-0.20261003013036-4cdf88642ec9 // latest
 	github.com/golangci/golangci-lint/v2 v2.13.2 // latest
 	github.com/goreleaser/goreleaser/v2 v2.18.1 // latest
