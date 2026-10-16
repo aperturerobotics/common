@@ -59,3 +59,26 @@ export const EchoMsg: MessageType<EchoMsg> = /* @__PURE__ */ createMessageType({
   ] satisfies readonly PartialFieldInfo[],
   packedByDefault: true,
 })
+
+/**
+ * TypedMsg is an example message with a stable type ID.
+ *
+ * @generated from message example.TypedMsg
+ */
+export interface TypedMsg {
+  /**
+   * Body is an example field.
+   *
+   * @generated from field: string body = 1;
+   */
+  body?: string
+}
+
+export const TypedMsg: MessageType<TypedMsg> =
+  /* @__PURE__ */ createMessageType({
+    typeName: 'example.TypedMsg',
+    fields: [
+      { no: 1, name: 'body', kind: 'scalar', T: ScalarType.STRING },
+    ] satisfies readonly PartialFieldInfo[],
+    packedByDefault: true,
+  })

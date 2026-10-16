@@ -22,6 +22,7 @@ add_subdirectory(vendor/github.com/aperturerobotics/starpc/srpc)
 add_library(example_proto STATIC
     example/example.pb.cc
     example/other/other.pb.cc
+    typeid/typeid.pb.cc
     example/example_srpc.pb.cpp
 )
 

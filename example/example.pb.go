@@ -10,6 +10,7 @@ import (
 	slices "slices"
 
 	other "github.com/aperturerobotics/common/example/other"
+	_ "github.com/aperturerobotics/common/typeid"
 	protobuf_go_lite "github.com/aperturerobotics/protobuf-go-lite"
 	json "github.com/aperturerobotics/protobuf-go-lite/json"
 )
@@ -62,6 +63,26 @@ func (x *EchoMsg) GetBody() string {
 	return ""
 }
 
+// TypedMsg is an example message with a stable type ID.
+type TypedMsg struct {
+	unknownFields []byte
+	// Body is an example field.
+	Body string `protobuf:"bytes,1,opt,name=body,proto3" json:"body,omitempty"`
+}
+
+func (x *TypedMsg) Reset() {
+	*x = TypedMsg{}
+}
+
+func (*TypedMsg) ProtoMessage() {}
+
+func (x *TypedMsg) GetBody() string {
+	if x != nil {
+		return x.Body
+	}
+	return ""
+}
+
 func (m *ExampleMsg) CloneVT() *ExampleMsg {
 	if m == nil {
 		return (*ExampleMsg)(nil)
@@ -92,6 +113,22 @@ func (m *EchoMsg) CloneVT() *EchoMsg {
 }
 
 func (m *EchoMsg) CloneMessageVT() protobuf_go_lite.CloneMessage {
+	return m.CloneVT()
+}
+
+func (m *TypedMsg) CloneVT() *TypedMsg {
+	if m == nil {
+		return (*TypedMsg)(nil)
+	}
+	r := new(TypedMsg)
+	r.Body = m.Body
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = slices.Clone(m.unknownFields)
+	}
+	return r
+}
+
+func (m *TypedMsg) CloneMessageVT() protobuf_go_lite.CloneMessage {
 	return m.CloneVT()
 }
 
@@ -132,6 +169,26 @@ func (this *EchoMsg) EqualVT(that *EchoMsg) bool {
 
 func (this *EchoMsg) EqualMessageVT(thatMsg any) bool {
 	that, ok := thatMsg.(*EchoMsg)
+	if !ok {
+		return false
+	}
+	return this.EqualVT(that)
+}
+
+func (this *TypedMsg) EqualVT(that *TypedMsg) bool {
+	if this == that {
+		return true
+	} else if this == nil || that == nil {
+		return false
+	}
+	if this.Body != that.Body {
+		return false
+	}
+	return string(this.unknownFields) == string(that.unknownFields)
+}
+
+func (this *TypedMsg) EqualMessageVT(thatMsg any) bool {
+	that, ok := thatMsg.(*TypedMsg)
 	if !ok {
 		return false
 	}
@@ -234,6 +291,48 @@ func (x *EchoMsg) UnmarshalJSON(b []byte) error {
 	return json.DefaultUnmarshalerConfig.Unmarshal(b, x)
 }
 
+// MarshalProtoJSON marshals the TypedMsg message to JSON.
+func (x *TypedMsg) MarshalProtoJSON(s *json.MarshalState) {
+	if x == nil {
+		s.WriteNil()
+		return
+	}
+	s.WriteObjectStart()
+	var wroteField bool
+	if x.Body != "" || s.HasField("body") {
+		s.WriteMoreIf(&wroteField)
+		s.WriteObjectField("body")
+		s.WriteString(x.Body)
+	}
+	s.WriteObjectEnd()
+}
+
+// MarshalJSON marshals the TypedMsg to JSON.
+func (x *TypedMsg) MarshalJSON() ([]byte, error) {
+	return json.DefaultMarshalerConfig.Marshal(x)
+}
+
+// UnmarshalProtoJSON unmarshals the TypedMsg message from JSON.
+func (x *TypedMsg) UnmarshalProtoJSON(s *json.UnmarshalState) {
+	if s.ReadNil() {
+		return
+	}
+	s.ReadObject(func(key string) {
+		switch key {
+		default:
+			s.Skip() // ignore unknown field
+		case "body":
+			s.AddField("body")
+			x.Body = s.ReadString()
+		}
+	})
+}
+
+// UnmarshalJSON unmarshals the TypedMsg from JSON.
+func (x *TypedMsg) UnmarshalJSON(b []byte) error {
+	return json.DefaultUnmarshalerConfig.Unmarshal(b, x)
+}
+
 func (m *ExampleMsg) MarshalVT() (dAtA []byte, err error) {
 	if m == nil {
 		return nil, nil
@@ -318,6 +417,43 @@ func (m *EchoMsg) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
+func (m *TypedMsg) MarshalVT() (dAtA []byte, err error) {
+	if m == nil {
+		return nil, nil
+	}
+	size := m.SizeVT()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBufferVT(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *TypedMsg) MarshalToVT(dAtA []byte) (int, error) {
+	size := m.SizeVT()
+	return m.MarshalToSizedBufferVT(dAtA[:size])
+}
+
+func (m *TypedMsg) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
+	if m == nil {
+		return 0, nil
+	}
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.unknownFields != nil {
+		i = protobuf_go_lite.EncodeRawBytes(dAtA, i, m.unknownFields)
+	}
+	if len(m.Body) > 0 {
+		i = protobuf_go_lite.EncodeString(dAtA, i, m.Body)
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
 func (m *ExampleMsg) SizeVT() (n int) {
 	if m == nil {
 		return 0
@@ -334,6 +470,17 @@ func (m *ExampleMsg) SizeVT() (n int) {
 }
 
 func (m *EchoMsg) SizeVT() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	n += protobuf_go_lite.SizeStringNonEmpty(1, m.Body)
+	n += len(m.unknownFields)
+	return n
+}
+
+func (m *TypedMsg) SizeVT() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -373,6 +520,20 @@ func (x *EchoMsg) MarshalProtoText() string {
 }
 
 func (x *EchoMsg) String() string {
+	return x.MarshalProtoText()
+}
+
+func (x *TypedMsg) MarshalProtoText() string {
+	var sb protobuf_go_lite.TextBuilder
+	initialLen := protobuf_go_lite.TextStartMessage(&sb, "TypedMsg")
+	if x.Body != "" {
+		protobuf_go_lite.TextWriteFieldPrefix(&sb, initialLen, "body")
+		protobuf_go_lite.TextWriteString(&sb, x.Body)
+	}
+	return protobuf_go_lite.TextFinishMessage(&sb)
+}
+
+func (x *TypedMsg) String() string {
 	return x.MarshalProtoText()
 }
 
@@ -462,6 +623,59 @@ func (m *EchoMsg) UnmarshalVT(dAtA []byte) error {
 		}
 		if fieldNum <= 0 {
 			return fmt.Errorf("proto: EchoMsg: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Body", wireType)
+			}
+			var v string
+			v, iNdEx, err = protobuf_go_lite.DecodeString(dAtA, iNdEx)
+			if err != nil {
+				return err
+			}
+			m.Body = v
+		default:
+			iNdEx = preIndex
+			skippy, err := protobuf_go_lite.Skip(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return protobuf_go_lite.ErrInvalidLength
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.unknownFields = append(m.unknownFields, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+
+func (m *TypedMsg) UnmarshalVT(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	var err error
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		wire, iNdEx, err = protobuf_go_lite.DecodeVarint(dAtA, iNdEx)
+		if err != nil {
+			return err
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: TypedMsg: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: TypedMsg: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:

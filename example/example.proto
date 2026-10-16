@@ -2,6 +2,7 @@ syntax = "proto3";
 package example;
 
 import "github.com/aperturerobotics/common/example/other/other.proto";
+import "github.com/aperturerobotics/common/typeid/typeid.proto";
 
 // ExampleMsg is an example message.
 message ExampleMsg {
@@ -19,5 +20,13 @@ service Echoer {
 
 // EchoMsg is the message body for Echo.
 message EchoMsg {
+  string body = 1;
+}
+
+// TypedMsg is an example message with a stable type ID.
+message TypedMsg {
+  option (typeid.id) = "example/typed";
+
+  // Body is an example field.
   string body = 1;
 }
