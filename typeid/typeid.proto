@@ -1,0 +1,11 @@
+syntax = "proto3";
+package typeid;
+
+import "google/protobuf/descriptor.proto";
+
+extend google.protobuf.MessageOptions {
+  // id is the stable type identifier of the message.
+  //
+  // The aptre generator emits a TypeID method returning it.
+  string id = 51700;
+}
