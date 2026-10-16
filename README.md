@@ -36,6 +36,31 @@ This repository provides the `aptre` CLI — a single tool that generates protob
 [starpc]: https://github.com/aperturerobotics/starpc
 [prost]: https://github.com/tokio-rs/prost
 
+## Stable Type IDs
+
+A message can declare a stable type identifier with the `(typeid.id)` option:
+
+```protobuf
+import "github.com/aperturerobotics/common/typeid/typeid.proto";
+
+message CreateFile {
+  option (typeid.id) = "fs/create-file";
+
+  string path = 1;
+}
+```
+
+For each proto file with such messages, `aptre generate` writes
+`*_typeid.pb.go` holding a `CreateFileTypeID` constant, a `TypeID()` method,
+and the file's `[]typeid.Type` list (`OpsTypes` for `ops.proto`) pairing each
+identifier with a constructor. The generator runs inside aptre, so it needs no
+plugin binary. The generator rejects two messages in one file with the same
+identifier; an application that builds a registry from several lists checks
+the rest.
+
+C++ builds that import the option also compile `typeid/typeid.pb.cc`; other
+languages ignore it.
+
 ## Rust Support via WASI
 
 The Rust code generation uses an embedded [WASI] build of `protoc-gen-prost`, meaning **you don't need Cargo, rustc, or any Rust toolchain installed** to generate `.pb.rs` files. The prost plugin runs entirely within the wazero WebAssembly runtime alongside protoc itself.

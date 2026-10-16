@@ -1,8 +1,6 @@
 package protogen
 
 import (
-	"bytes"
-	"context"
 	"maps"
 	"os"
 	"os/exec"
@@ -11,9 +9,7 @@ import (
 	"strings"
 
 	"github.com/aperturerobotics/fastjson"
-	prost "github.com/aperturerobotics/go-protoc-gen-prost"
 	"github.com/pkg/errors"
-	"github.com/tetratelabs/wazero"
 )
 
 // PluginType represents the type of protoc plugin.
@@ -61,6 +57,9 @@ type Plugins struct {
 	GoLite *Plugin
 	// GoStarpc is the protoc-gen-go-starpc plugin.
 	GoStarpc *Plugin
+	// GoTypeID is the protoc-gen-go-typeid plugin, served in process by
+	// GenerateTypeIDs.
+	GoTypeID *Plugin
 	// ESLite is the protoc-gen-es-lite plugin.
 	ESLite *Plugin
 	// ESStarpc is the protoc-gen-es-starpc plugin.
@@ -175,6 +174,15 @@ func DiscoverPlugins(cfg *Config) (*Plugins, error) {
 				Options: map[string]string{
 					"features": cfg.GoLiteFeatures,
 				},
+			}
+
+			// Type IDs extend the generated messages, so they follow go-lite.
+			plugins.GoTypeID = &Plugin{
+				Name:       "go-typeid",
+				BinaryName: TypeIDPluginName,
+				Type:       PluginTypeGo,
+				OutFlag:    "go-typeid_out",
+				Options:    map[string]string{},
 			}
 		}
 
@@ -368,6 +376,11 @@ func (p *Plugins) GetProtocArgs(outDir, csharpOutDir string) []string {
 		args = append(args, "--"+p.GoStarpc.OutFlag+"="+outDir)
 	}
 
+	// Go type IDs accompany the selected message output.
+	if p.GoTypeID != nil {
+		args = append(args, "--"+p.GoTypeID.OutFlag+"="+outDir)
+	}
+
 	// TypeScript plugins
 	if p.ESLite != nil {
 		args = append(args, "--"+p.ESLite.OutFlag+"="+outDir)
@@ -398,144 +411,4 @@ func (p *Plugins) GetProtocArgs(outDir, csharpOutDir string) []string {
 	}
 
 	return args
-}
-
-// HasGoPlugins returns true if Go plugins are configured.
-func (p *Plugins) HasGoPlugins() bool {
-	return p.GoLite != nil || p.GoStarpc != nil
-}
-
-// HasTSPlugins returns true if TypeScript plugins are configured.
-func (p *Plugins) HasTSPlugins() bool {
-	return p.ESLite != nil || p.ESStarpc != nil
-}
-
-// NativePluginHandler implements go-protoc-wasi's PluginHandler interface.
-// It spawns native plugin processes and handles IPC.
-// For protoc-gen-prost, it uses the embedded WASM module instead of a native binary.
-type NativePluginHandler struct {
-	// Plugins is the configured plugins.
-	Plugins *Plugins
-	// Verbose enables verbose output.
-	Verbose bool
-	// prostWASM is the prost WASM plugin instance (lazily initialized).
-	prostWASM *prost.ProtocGenProst
-}
-
-// NewNativePluginHandler creates a new NativePluginHandler.
-func NewNativePluginHandler(plugins *Plugins, verbose bool) *NativePluginHandler {
-	return &NativePluginHandler{
-		Plugins: plugins,
-		Verbose: verbose,
-	}
-}
-
-// InitProstWASM initializes the prost WASM plugin with the given wazero runtime.
-// The runtime must already have WASI instantiated (e.g., by protoc).
-// This should be called after protoc.Init() and before running protoc.
-func (h *NativePluginHandler) InitProstWASM(ctx context.Context, runtime wazero.Runtime) error {
-	// Reuse an initialized plugin inside the same protoc runtime.
-	if h.prostWASM != nil {
-		return nil // Already initialized
-	}
-	p, err := prost.NewProtocGenProstWithWASI(ctx, runtime)
-	if err != nil {
-		return errors.Wrap(err, "failed to initialize prost WASM")
-	}
-	h.prostWASM = p
-	return nil
-}
-
-// CloseProstWASM closes the prost WASM plugin if initialized.
-func (h *NativePluginHandler) CloseProstWASM(ctx context.Context) error {
-	if h.prostWASM != nil {
-		err := h.prostWASM.Close(ctx)
-		h.prostWASM = nil
-		return err
-	}
-	return nil
-}
-
-// Communicate implements the PluginHandler interface.
-// It spawns a plugin process, sends the CodeGeneratorRequest via stdin,
-// and returns the CodeGeneratorResponse from stdout.
-// For protoc-gen-prost, it uses the embedded WASM module if initialized.
-func (h *NativePluginHandler) Communicate(ctx context.Context, program string, searchPath bool, input []byte) ([]byte, error) {
-	// Use WASM prost plugin if available
-	if program == "protoc-gen-prost" && h.prostWASM != nil {
-		return h.prostWASM.Execute(ctx, input)
-	}
-
-	// Find the plugin path
-	pluginPath := h.findPluginPath(program, searchPath)
-	if pluginPath == "" {
-		return nil, errors.Errorf("plugin not found: %s", program)
-	}
-
-	// The native process reads one request and returns one complete plugin response.
-	cmd := exec.CommandContext(ctx, pluginPath)
-	cmd.Stdin = bytes.NewReader(input)
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-
-	// A failed plugin response is never forwarded to protoc as generated output.
-	if err := cmd.Run(); err != nil {
-		if stderr.Len() > 0 {
-			return nil, errors.Errorf("plugin %s failed: %v: %s", program, err, stderr.String())
-		}
-		return nil, errors.Errorf("plugin %s failed: %v", program, err)
-	}
-
-	return stdout.Bytes(), nil
-}
-
-// findPluginPath finds the plugin binary path.
-func (h *NativePluginHandler) findPluginPath(program string, searchPath bool) string {
-	// Check our configured plugins first
-	if h.Plugins != nil {
-		switch program {
-		case "protoc-gen-starpc-python":
-			if h.Plugins.StarpcPython != nil {
-				return h.Plugins.StarpcPython.Path
-			}
-		case "protoc-gen-go-lite":
-			if h.Plugins.GoLite != nil {
-				return h.Plugins.GoLite.Path
-			}
-		case "protoc-gen-go-starpc":
-			if h.Plugins.GoStarpc != nil {
-				return h.Plugins.GoStarpc.Path
-			}
-		case "protoc-gen-es-lite":
-			if h.Plugins.ESLite != nil {
-				return h.Plugins.ESLite.Path
-			}
-		case "protoc-gen-es-starpc":
-			if h.Plugins.ESStarpc != nil {
-				return h.Plugins.ESStarpc.Path
-			}
-		case "protoc-gen-starpc-cpp":
-			if h.Plugins.CppStarpc != nil {
-				return h.Plugins.CppStarpc.Path
-			}
-		case "protoc-gen-starpc-rust":
-			if h.Plugins.RustStarpc != nil {
-				return h.Plugins.RustStarpc.Path
-			}
-		case "protoc-gen-prost":
-			if h.Plugins.RustProst != nil {
-				return h.Plugins.RustProst.Path
-			}
-		}
-	}
-
-	// Fall back to PATH search if allowed
-	if searchPath {
-		if path, err := exec.LookPath(program); err == nil {
-			return path
-		}
-	}
-
-	return ""
 }
