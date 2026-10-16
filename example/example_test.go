@@ -37,6 +37,19 @@ func TestExampleMsg(t *testing.T) {
 	})
 }
 
+func TestTypedMsg(t *testing.T) {
+	// The (typeid.id) option yields a TypeID method and a listed constructor.
+	if got := (&example.TypedMsg{}).TypeID(); got != "example/typed" {
+		t.Fatalf("TypeID() = %q", got)
+	}
+	if len(example.ExampleTypes) != 1 || example.ExampleTypes[0].ID != example.TypedMsgTypeID {
+		t.Fatalf("unexpected ExampleTypes %v", example.ExampleTypes)
+	}
+	if _, ok := example.ExampleTypes[0].New().(*example.TypedMsg); !ok {
+		t.Fatal("ExampleTypes constructor does not build a TypedMsg")
+	}
+}
+
 // TestRustGeneratedCode validates that the generated Rust protobuf code compiles and passes tests.
 func TestRustGeneratedCode(t *testing.T) {
 	// Check if cargo is available
