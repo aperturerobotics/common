@@ -6,6 +6,7 @@ import { OtherMsg } from "./other/other.pb.js";
 import type { MessageType } from "@aptre/protobuf-es-lite/message";
 import { createMessageType } from "@aptre/protobuf-es-lite/message";
 
+
 /**
  * ExampleMsg is an example message.
  *
@@ -22,11 +23,10 @@ export interface ExampleMsg {
   otherMsg?: OtherMsg;
 }
 
-export const ExampleMsg: MessageType<ExampleMsg> =
-  /* @__PURE__ */ createMessageType<ExampleMsg>("example.ExampleMsg", () => [
-    [1, "example_field", 9],
-    [2, "other_msg", 11, 0, OtherMsg.codec],
-  ]);
+export const ExampleMsg: MessageType<ExampleMsg> = /* @__PURE__ */ createMessageType<ExampleMsg>("example.ExampleMsg", () => [
+  [1, "example_field", 9],
+  [2, "other_msg", 11, 0, OtherMsg.codec],
+]);
 
 /**
  * EchoMsg is the message body for Echo.
@@ -37,10 +37,9 @@ export interface EchoMsg {
   body?: string;
 }
 
-export const EchoMsg: MessageType<EchoMsg> =
-  /* @__PURE__ */ createMessageType<EchoMsg>("example.EchoMsg", () => [
-    [1, "body", 9],
-  ]);
+export const EchoMsg: MessageType<EchoMsg> = /* @__PURE__ */ createMessageType<EchoMsg>("example.EchoMsg", () => [
+  [1, "body", 9],
+]);
 
 /**
  * TypedMsg is an example message with a stable type ID.
@@ -54,7 +53,7 @@ export interface TypedMsg {
   body?: string;
 }
 
-export const TypedMsg: MessageType<TypedMsg> =
-  /* @__PURE__ */ createMessageType<TypedMsg>("example.TypedMsg", () => [
-    [1, "body", 9],
-  ]);
+export const TypedMsg: MessageType<TypedMsg> = /* @__PURE__ */ createMessageType<TypedMsg>("example.TypedMsg", () => [
+  [1, "body", 9],
+]);
+

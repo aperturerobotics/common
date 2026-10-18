@@ -2,4 +2,4 @@
 // @generated from file github.com/aperturerobotics/common/typeid/typeid.proto (package typeid, syntax proto3)
 /* eslint-disable */
 
-export const protobufPackage = 'typeid'
+

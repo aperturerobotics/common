@@ -156,4 +156,4 @@ func bindings(node ast.Node) (lhs, rhs []ast.Expr) {
 }
 
 // _ is a type assertion
-var _ register.LinterPlugin = ((*Plugin)(nil))
+var _ register.LinterPlugin = (*Plugin)(nil)

@@ -4,7 +4,7 @@
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct OtherMsg {
     /// FooField is an example field.
-    #[prost(uint32, tag="1")]
+    #[prost(uint32, tag = "1")]
     pub foo_field: u32,
 }
 // @@protoc_insertion_point(module)
