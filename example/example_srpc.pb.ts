@@ -2,9 +2,9 @@
 // @generated from file github.com/aperturerobotics/common/example/example.proto (package example, syntax proto3)
 /* eslint-disable */
 
-import { EchoMsg } from './example.pb.js'
-import { MethodKind } from '@aptre/protobuf-es-lite'
-import { ProtoRpc } from 'starpc'
+import { EchoMsg } from "./example.pb.js";
+import { MethodKind } from "@aptre/protobuf-es-lite";
+import { ProtoRpc, ServerContext } from "starpc";
 
 /**
  * Echoer service returns the given message.
@@ -12,7 +12,7 @@ import { ProtoRpc } from 'starpc'
  * @generated from service example.Echoer
  */
 export const EchoerDefinition = {
-  typeName: 'example.Echoer',
+  typeName: "example.Echoer",
   methods: {
     /**
      * Echo returns the given message.
@@ -20,13 +20,13 @@ export const EchoerDefinition = {
      * @generated from rpc example.Echoer.Echo
      */
     Echo: {
-      name: 'Echo',
+      name: "Echo",
       I: EchoMsg,
       O: EchoMsg,
       kind: MethodKind.Unary,
     },
   },
-} as const
+} as const;
 
 /**
  * Echoer service returns the given message.
@@ -39,18 +39,36 @@ export interface Echoer {
    *
    * @generated from rpc example.Echoer.Echo
    */
-  Echo(request: EchoMsg, abortSignal?: AbortSignal): Promise<EchoMsg>
+  Echo(request: EchoMsg, abortSignal?: AbortSignal): Promise<EchoMsg>;
 }
 
-export const EchoerServiceName = EchoerDefinition.typeName
+/**
+ * Echoer service returns the given message.
+ *
+ * @generated from service example.Echoer
+ */
+export interface EchoerHandler {
+  /**
+   * Echo returns the given message.
+   *
+   * @generated from rpc example.Echoer.Echo
+   */
+  Echo(
+    request: EchoMsg,
+    abortSignal: AbortSignal,
+    context: ServerContext,
+  ): Promise<EchoMsg>;
+}
+
+export const EchoerServiceName = EchoerDefinition.typeName;
 
 export class EchoerClient implements Echoer {
-  private readonly rpc: ProtoRpc
-  private readonly service: string
+  private readonly rpc: ProtoRpc;
+  private readonly service: string;
   constructor(rpc: ProtoRpc, opts?: { service?: string }) {
-    this.service = opts?.service || EchoerServiceName
-    this.rpc = rpc
-    this.Echo = this.Echo.bind(this)
+    this.service = opts?.service || EchoerServiceName;
+    this.rpc = rpc;
+    this.Echo = this.Echo.bind(this);
   }
   /**
    * Echo returns the given message.
@@ -58,13 +76,13 @@ export class EchoerClient implements Echoer {
    * @generated from rpc example.Echoer.Echo
    */
   async Echo(request: EchoMsg, abortSignal?: AbortSignal): Promise<EchoMsg> {
-    const requestMsg = EchoMsg.create(request)
+    const requestMsg = EchoMsg.create(request);
     const result = await this.rpc.request(
       this.service,
       EchoerDefinition.methods.Echo.name,
       EchoMsg.toBinary(requestMsg),
       abortSignal || undefined,
-    )
-    return EchoMsg.fromBinary(result)
+    );
+    return EchoMsg.fromBinary(result);
   }
 }

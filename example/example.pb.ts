@@ -2,13 +2,9 @@
 // @generated from file github.com/aperturerobotics/common/example/example.proto (package example, syntax proto3)
 /* eslint-disable */
 
-import { OtherMsg } from './other/other.pb.js'
-import type { MessageType } from '@aptre/protobuf-es-lite/message'
-import { createMessageType } from '@aptre/protobuf-es-lite/message'
-import { ScalarType } from '@aptre/protobuf-es-lite/scalar'
-import type { PartialFieldInfo } from '@aptre/protobuf-es-lite/field'
-
-export const protobufPackage = 'example'
+import { OtherMsg } from "./other/other.pb.js";
+import type { MessageType } from "@aptre/protobuf-es-lite/message";
+import { createMessageType } from "@aptre/protobuf-es-lite/message";
 
 /**
  * ExampleMsg is an example message.
@@ -18,27 +14,19 @@ export const protobufPackage = 'example'
 export interface ExampleMsg {
   /**
    * ExampleField is an example field.
-   *
-   * @generated from field: string example_field = 1;
    */
-  exampleField?: string
+  exampleField?: string;
   /**
    * OtherMsg is an example of an imported message field.
-   *
-   * @generated from field: example.other.OtherMsg other_msg = 2;
    */
-  otherMsg?: OtherMsg
+  otherMsg?: OtherMsg;
 }
 
 export const ExampleMsg: MessageType<ExampleMsg> =
-  /* @__PURE__ */ createMessageType({
-    typeName: 'example.ExampleMsg',
-    fields: [
-      { no: 1, name: 'example_field', kind: 'scalar', T: ScalarType.STRING },
-      { no: 2, name: 'other_msg', kind: 'message', T: () => OtherMsg },
-    ] satisfies readonly PartialFieldInfo[],
-    packedByDefault: true,
-  })
+  /* @__PURE__ */ createMessageType<ExampleMsg>("example.ExampleMsg", () => [
+    [1, "example_field", 9],
+    [2, "other_msg", 11, 0, OtherMsg.codec],
+  ]);
 
 /**
  * EchoMsg is the message body for Echo.
@@ -46,19 +34,13 @@ export const ExampleMsg: MessageType<ExampleMsg> =
  * @generated from message example.EchoMsg
  */
 export interface EchoMsg {
-  /**
-   * @generated from field: string body = 1;
-   */
-  body?: string
+  body?: string;
 }
 
-export const EchoMsg: MessageType<EchoMsg> = /* @__PURE__ */ createMessageType({
-  typeName: 'example.EchoMsg',
-  fields: [
-    { no: 1, name: 'body', kind: 'scalar', T: ScalarType.STRING },
-  ] satisfies readonly PartialFieldInfo[],
-  packedByDefault: true,
-})
+export const EchoMsg: MessageType<EchoMsg> =
+  /* @__PURE__ */ createMessageType<EchoMsg>("example.EchoMsg", () => [
+    [1, "body", 9],
+  ]);
 
 /**
  * TypedMsg is an example message with a stable type ID.
@@ -68,17 +50,11 @@ export const EchoMsg: MessageType<EchoMsg> = /* @__PURE__ */ createMessageType({
 export interface TypedMsg {
   /**
    * Body is an example field.
-   *
-   * @generated from field: string body = 1;
    */
-  body?: string
+  body?: string;
 }
 
 export const TypedMsg: MessageType<TypedMsg> =
-  /* @__PURE__ */ createMessageType({
-    typeName: 'example.TypedMsg',
-    fields: [
-      { no: 1, name: 'body', kind: 'scalar', T: ScalarType.STRING },
-    ] satisfies readonly PartialFieldInfo[],
-    packedByDefault: true,
-  })
+  /* @__PURE__ */ createMessageType<TypedMsg>("example.TypedMsg", () => [
+    [1, "body", 9],
+  ]);
