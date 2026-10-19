@@ -416,3 +416,20 @@ func TestTargetedGenerateDropsStaleOnIdentityChange(t *testing.T) {
 		t.Fatalf("untargeted package %q survived identity change", keyB)
 	}
 }
+
+func TestFindOxfmt(t *testing.T) {
+	dir := t.TempDir()
+	if got := findOxfmt(dir); got != "oxfmt" {
+		t.Fatalf("without node_modules got %q, want PATH lookup", got)
+	}
+	local := filepath.Join(dir, "node_modules", ".bin", "oxfmt")
+	if err := os.MkdirAll(filepath.Dir(local), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(local, nil, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if got := findOxfmt(dir); got != local {
+		t.Fatalf("got %q, want %q", got, local)
+	}
+}

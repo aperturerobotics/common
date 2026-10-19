@@ -2,9 +2,8 @@
 // @generated from file github.com/aperturerobotics/common/example/other/other.proto (package example.other, syntax proto3)
 /* eslint-disable */
 
-import type { MessageType } from "@aptre/protobuf-es-lite/message";
-import { createMessageType } from "@aptre/protobuf-es-lite/message";
-
+import type { MessageType } from '@aptre/protobuf-es-lite/message'
+import { createMessageType } from '@aptre/protobuf-es-lite/message'
 
 /**
  * OtherMsg is a different message from ExampleMsg.
@@ -15,10 +14,10 @@ export interface OtherMsg {
   /**
    * FooField is an example field.
    */
-  fooField?: number;
+  fooField?: number
 }
 
-export const OtherMsg: MessageType<OtherMsg> = /* @__PURE__ */ createMessageType<OtherMsg>("example.other.OtherMsg", () => [
-  [1, "foo_field", 13],
-]);
-
+export const OtherMsg: MessageType<OtherMsg> =
+  /* @__PURE__ */ createMessageType<OtherMsg>('example.other.OtherMsg', () => [
+    [1, 'foo_field', 13],
+  ])

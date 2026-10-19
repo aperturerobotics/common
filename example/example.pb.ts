@@ -2,10 +2,9 @@
 // @generated from file github.com/aperturerobotics/common/example/example.proto (package example, syntax proto3)
 /* eslint-disable */
 
-import { OtherMsg } from "./other/other.pb.js";
-import type { MessageType } from "@aptre/protobuf-es-lite/message";
-import { createMessageType } from "@aptre/protobuf-es-lite/message";
-
+import { OtherMsg } from './other/other.pb.js'
+import type { MessageType } from '@aptre/protobuf-es-lite/message'
+import { createMessageType } from '@aptre/protobuf-es-lite/message'
 
 /**
  * ExampleMsg is an example message.
@@ -16,17 +15,18 @@ export interface ExampleMsg {
   /**
    * ExampleField is an example field.
    */
-  exampleField?: string;
+  exampleField?: string
   /**
    * OtherMsg is an example of an imported message field.
    */
-  otherMsg?: OtherMsg;
+  otherMsg?: OtherMsg
 }
 
-export const ExampleMsg: MessageType<ExampleMsg> = /* @__PURE__ */ createMessageType<ExampleMsg>("example.ExampleMsg", () => [
-  [1, "example_field", 9],
-  [2, "other_msg", 11, 0, OtherMsg.codec],
-]);
+export const ExampleMsg: MessageType<ExampleMsg> =
+  /* @__PURE__ */ createMessageType<ExampleMsg>('example.ExampleMsg', () => [
+    [1, 'example_field', 9],
+    [2, 'other_msg', 11, 0, OtherMsg.codec],
+  ])
 
 /**
  * EchoMsg is the message body for Echo.
@@ -34,12 +34,13 @@ export const ExampleMsg: MessageType<ExampleMsg> = /* @__PURE__ */ createMessage
  * @generated from message example.EchoMsg
  */
 export interface EchoMsg {
-  body?: string;
+  body?: string
 }
 
-export const EchoMsg: MessageType<EchoMsg> = /* @__PURE__ */ createMessageType<EchoMsg>("example.EchoMsg", () => [
-  [1, "body", 9],
-]);
+export const EchoMsg: MessageType<EchoMsg> =
+  /* @__PURE__ */ createMessageType<EchoMsg>('example.EchoMsg', () => [
+    [1, 'body', 9],
+  ])
 
 /**
  * TypedMsg is an example message with a stable type ID.
@@ -50,10 +51,10 @@ export interface TypedMsg {
   /**
    * Body is an example field.
    */
-  body?: string;
+  body?: string
 }
 
-export const TypedMsg: MessageType<TypedMsg> = /* @__PURE__ */ createMessageType<TypedMsg>("example.TypedMsg", () => [
-  [1, "body", 9],
-]);
-
+export const TypedMsg: MessageType<TypedMsg> =
+  /* @__PURE__ */ createMessageType<TypedMsg>('example.TypedMsg', () => [
+    [1, 'body', 9],
+  ])

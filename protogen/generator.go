@@ -502,7 +502,7 @@ func (g *Generator) formatGeneratedFiles(protoFiles []string) error {
 		if _, err := os.Stat(oxfmtConfig); err == nil {
 			args := []string{"-c", oxfmtConfig}
 			args = append(args, tsFiles...)
-			cmd := exec.Command("oxfmt", args...)
+			cmd := exec.Command(findOxfmt(g.ProjectDir), args...)
 			cmd.Dir = g.ProjectDir
 			cmd.Stdout = g.Stdout
 			cmd.Stderr = g.Stderr
@@ -511,6 +511,17 @@ func (g *Generator) formatGeneratedFiles(protoFiles []string) error {
 	}
 
 	return nil
+}
+
+// findOxfmt returns the oxfmt binary to run: the project's node_modules copy
+// when present, otherwise oxfmt resolved from PATH. This formats generated
+// TypeScript the same whether or not the caller put node_modules/.bin on PATH.
+func findOxfmt(projectDir string) string {
+	local := filepath.Join(projectDir, "node_modules", ".bin", "oxfmt")
+	if _, err := os.Stat(local); err == nil {
+		return local
+	}
+	return "oxfmt"
 }
 
 // Clean removes all generated files and the cache.

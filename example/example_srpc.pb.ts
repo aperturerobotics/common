@@ -2,9 +2,9 @@
 // @generated from file github.com/aperturerobotics/common/example/example.proto (package example, syntax proto3)
 /* eslint-disable */
 
-import { EchoMsg } from "./example.pb.js";
-import { MethodKind } from "@aptre/protobuf-es-lite";
-import { ProtoRpc, ServerContext } from "starpc";
+import { EchoMsg } from './example.pb.js'
+import { MethodKind } from '@aptre/protobuf-es-lite'
+import { ProtoRpc, ServerContext } from 'starpc'
 
 /**
  * Echoer service returns the given message.
@@ -12,7 +12,7 @@ import { ProtoRpc, ServerContext } from "starpc";
  * @generated from service example.Echoer
  */
 export const EchoerDefinition = {
-  typeName: "example.Echoer",
+  typeName: 'example.Echoer',
   methods: {
     /**
      * Echo returns the given message.
@@ -20,13 +20,13 @@ export const EchoerDefinition = {
      * @generated from rpc example.Echoer.Echo
      */
     Echo: {
-      name: "Echo",
+      name: 'Echo',
       I: EchoMsg,
       O: EchoMsg,
       kind: MethodKind.Unary,
     },
-  }
-} as const;
+  },
+} as const
 
 /**
  * Echoer service returns the given message.
@@ -39,7 +39,7 @@ export interface Echoer {
    *
    * @generated from rpc example.Echoer.Echo
    */
-  Echo(request: EchoMsg, abortSignal?: AbortSignal): Promise<EchoMsg>;
+  Echo(request: EchoMsg, abortSignal?: AbortSignal): Promise<EchoMsg>
 }
 
 /**
@@ -53,7 +53,11 @@ export interface EchoerHandler {
    *
    * @generated from rpc example.Echoer.Echo
    */
-  Echo(request: EchoMsg, abortSignal: AbortSignal, context: ServerContext): Promise<EchoMsg>;
+  Echo(
+    request: EchoMsg,
+    abortSignal: AbortSignal,
+    context: ServerContext,
+  ): Promise<EchoMsg>
 }
 
 export const EchoerServiceName = EchoerDefinition.typeName
