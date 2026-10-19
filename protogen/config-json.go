@@ -38,6 +38,13 @@ func (c *packageJSONAptreConfig) FromJSON(value *fastjson.Value) error {
 		*field.dest = list
 	}
 
+	// The TypeScript decoder choice defaults to the shared field walker.
+	typedDecode, err := configBool(value, "tsTypedDecode")
+	if err != nil {
+		return err
+	}
+	c.TsTypedDecode = typedDecode
+
 	// Presence enables the Rust graph even when the object contains only defaults.
 	rust := value.Get("rust")
 	if rust == nil || rust.Type() == fastjson.TypeNull {
@@ -98,6 +105,17 @@ func configString(value *fastjson.Value, key string) (string, error) {
 	// Copy the parsed text so configuration lifetime does not retain parser storage.
 	text, err := field.StringBytes()
 	return string(text), errors.Wrap(err, key)
+}
+
+// configBool reads an optional boolean, treating null as absent.
+func configBool(value *fastjson.Value, key string) (bool, error) {
+	// Missing values preserve the configuration's zero-value defaults.
+	field := value.Get(key)
+	if field == nil || field.Type() == fastjson.TypeNull {
+		return false, nil
+	}
+	enabled, err := field.Bool()
+	return enabled, errors.Wrap(err, key)
 }
 
 // configStrings reads an optional string array, rejecting incorrectly typed entries.

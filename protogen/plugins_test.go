@@ -456,3 +456,40 @@ func TestGetProtocArgsRustProstFlagsKeepOrder(t *testing.T) {
 		t.Fatalf("args = %v, want %v", got, want)
 	}
 }
+
+func TestDiscoverPluginsTsTypedDecode(t *testing.T) {
+	// Ask for typed decoders in the project's package manifest.
+	projectDir := newPluginTestProject(t, true)
+	packageJSON := []byte(`{"name":"test","aptre":{"tsTypedDecode":true}}`)
+	if err := os.WriteFile(filepath.Join(projectDir, "package.json"), packageJSON, 0o644); err != nil {
+		t.Fatalf("write package.json: %v", err)
+	}
+	cfg := NewConfig()
+	cfg.ProjectDir = projectDir
+
+	// The es-lite invocation carries the option beside its defaults.
+	plugins, err := DiscoverPlugins(cfg)
+	if err != nil {
+		t.Fatalf("discover plugins: %v", err)
+	}
+	if plugins.ESLite == nil {
+		t.Fatal("expected es-lite plugin")
+	}
+	if !slices.Contains(plugins.GetProtocArgs("/out", "/csharp"), "--es-lite_opt=typed_decode=true") {
+		t.Fatalf("missing typed_decode option: %v", plugins.GetProtocArgs("/out", "/csharp"))
+	}
+}
+
+func TestDiscoverPluginsTsTypedDecodeDefault(t *testing.T) {
+	// A manifest without the setting keeps the shared field walker.
+	projectDir := newPluginTestProject(t, true)
+	cfg := NewConfig()
+	cfg.ProjectDir = projectDir
+	plugins, err := DiscoverPlugins(cfg)
+	if err != nil {
+		t.Fatalf("discover plugins: %v", err)
+	}
+	if _, ok := plugins.ESLite.Options["typed_decode"]; ok {
+		t.Fatal("unexpected typed_decode option")
+	}
+}

@@ -289,6 +289,25 @@ run `aptre deps` first.
 `tests/rust-graph/check.bash` generates a project with every kind of type path,
 checks it, and runs the Rust tests over exactly that output.
 
+### `aptre.tsTypedDecode`
+
+`tsTypedDecode` makes `protoc-gen-es-lite` generate a typed decoder for every
+message, a `switch` on the field number that reads straight into the message,
+in place of the shared field walker:
+
+```json
+{
+  "aptre": {
+    "tsTypedDecode": true
+  }
+}
+```
+
+Turn it on for code that runs in a JavaScript interpreter such as QuickJS or
+that an ahead-of-time compiler builds, where the typed decoder is faster. It
+makes the generated files larger, and under a JIT the walker is as fast, so it
+is off by default.
+
 ### `aptre.tsImportBoundaries`
 
 `tsImportBoundaries` configures how generated TypeScript protobuf imports are

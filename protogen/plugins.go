@@ -258,6 +258,13 @@ func DiscoverPlugins(cfg *Config) (*Plugins, error) {
 					"ts_nocheck": "false",
 				},
 			}
+			typedDecode, err := cfg.GetTsTypedDecode()
+			if err != nil {
+				return nil, err
+			}
+			if typedDecode {
+				plugins.ESLite.Options["typed_decode"] = "true"
+			}
 		}
 
 		if rpcs.Has(RPCLibraryStarpc) {

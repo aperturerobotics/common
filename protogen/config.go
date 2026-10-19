@@ -88,6 +88,8 @@ type packageJSONAptreConfig struct {
 	RPCLibraries []string
 	// TsImportBoundaries selects TypeScript package crossings.
 	TsImportBoundaries []string
+	// TsTypedDecode generates a typed decoder for every TypeScript message.
+	TsTypedDecode bool
 	// Rust enables whole-graph Rust generation when present.
 	Rust *RustConfig
 }
@@ -269,6 +271,17 @@ func (c *Config) GetRPCLibraries() (RPCLibraries, error) {
 		return nil, err
 	}
 	return NewRPCLibraries(aptre.RPCLibraries)
+}
+
+// GetTsTypedDecode reports whether package.json asks protoc-gen-es-lite for a
+// typed decoder per message, which runs faster than the shared field walker
+// in interpreters and ahead-of-time compilers at the cost of larger output.
+func (c *Config) GetTsTypedDecode() (bool, error) {
+	aptre, err := c.readAptreConfig()
+	if err != nil {
+		return false, err
+	}
+	return aptre.TsTypedDecode, nil
 }
 
 // GetRust returns the whole-graph Rust configuration from package.json.
