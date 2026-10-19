@@ -228,11 +228,39 @@ func stringsEqual(a, b []string) bool {
 	return true
 }
 
-// CleanOrphanedPackages removes packages from the cache that no longer have proto files.
-func (c *Cache) CleanOrphanedPackages(currentPackages map[string]struct{}) {
+// CleanOrphanedPackages removes packages from the cache that are not in
+// currentPackages and no longer have any proto file on disk. Packages outside
+// currentPackages whose sources still exist are kept, so a run targeting a
+// subset of the tree does not discard the entries of the rest.
+func (c *Cache) CleanOrphanedPackages(currentPackages map[string]struct{}, projectDir string) {
+	for key, info := range c.Packages {
+		if _, ok := currentPackages[key]; ok {
+			continue
+		}
+		if info != nil && protoFilesExist(info.ProtoFiles, projectDir) {
+			continue
+		}
+		delete(c.Packages, key)
+	}
+}
+
+// DropOutsidePackages removes every package not in currentPackages. It is used
+// when the protoc flags or tool versions changed: the outputs of packages that
+// were not regenerated no longer match the new identity recorded in the cache.
+func (c *Cache) DropOutsidePackages(currentPackages map[string]struct{}) {
 	for key := range c.Packages {
 		if _, ok := currentPackages[key]; !ok {
 			delete(c.Packages, key)
 		}
 	}
+}
+
+// protoFilesExist reports whether any of the project-relative proto files exist.
+func protoFilesExist(protoFiles []string, projectDir string) bool {
+	for _, f := range protoFiles {
+		if _, err := os.Stat(filepath.Join(projectDir, f)); err == nil {
+			return true
+		}
+	}
+	return false
 }

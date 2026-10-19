@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -309,5 +310,109 @@ func TestGenerateFailureDoesNotPersistToolVersions(t *testing.T) {
 	}
 	if cache.ToolVersions != "accepted" {
 		t.Fatalf("failed generation persisted tool state %q", cache.ToolVersions)
+	}
+}
+
+// newTargetedGenerator builds a generator over a two-package tree whose cache
+// holds up-to-date entries for both packages, so a run regenerates nothing and
+// needs no protoc.
+func newTargetedGenerator(t *testing.T) (*Generator, string, string) {
+	t.Helper()
+	dir, _ := writeProtoTree(t, map[string]string{
+		"a/a.proto": "syntax = \"proto3\";\npackage a;\nmessage A {}\n",
+		"b/b.proto": "syntax = \"proto3\";\npackage b;\nmessage B {}\n",
+	})
+	// Discovery lists tracked files, so the tree must be a git repository.
+	for _, args := range [][]string{{"init", "-q"}, {"add", "."}} {
+		cmd := exec.Command("git", args...)
+		cmd.Dir = dir
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v: %s", args, err, out)
+		}
+	}
+	vendorDir := filepath.Join(dir, "vendor")
+	if err := os.MkdirAll(vendorDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	config := NewConfig()
+	config.ProjectDir = dir
+	config.Targets = []string{"a/a.proto"}
+	g := &Generator{
+		Config:     config,
+		Plugins:    &Plugins{},
+		Cache:      NewCache(),
+		ProjectDir: dir,
+		ModuleDir:  dir,
+		ModulePath: "example.com/project",
+		VendorDir:  vendorDir,
+		OutDir:     vendorDir,
+		Stdout:     io.Discard,
+		Stderr:     io.Discard,
+	}
+	keyA := GetPackageKey(g.ModulePath, "a/a.proto")
+	keyB := GetPackageKey(g.ModulePath, "b/b.proto")
+	for key, file := range map[string]string{keyA: "a/a.proto", keyB: "b/b.proto"} {
+		if err := g.Cache.UpdatePackage(key, []string{file}, nil, dir); err != nil {
+			t.Fatal(err)
+		}
+	}
+	g.Cache.SetProtocFlags(g.buildProtocArgs(), g.ModuleDir)
+	g.Cache.SetToolVersions(g.getToolVersions())
+	return g, keyA, keyB
+}
+
+// TestTargetedGenerateKeepsOtherPackages proves a run targeting one of two
+// packages updates the manifest without discarding the other package's entry.
+func TestTargetedGenerateKeepsOtherPackages(t *testing.T) {
+	g, keyA, keyB := newTargetedGenerator(t)
+	if err := g.Generate(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	cacheFile, err := g.Config.GetCacheFilePath()
+	if err != nil {
+		t.Fatal(err)
+	}
+	saved, err := LoadCache(cacheFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range []string{keyA, keyB} {
+		if saved.Packages[key] == nil {
+			t.Fatalf("targeted run dropped manifest entry %q", key)
+		}
+	}
+}
+
+// TestTargetedGeneratePrunesDeletedPackages proves a package outside the
+// targets is still pruned once its proto files are gone from disk.
+func TestTargetedGeneratePrunesDeletedPackages(t *testing.T) {
+	g, keyA, keyB := newTargetedGenerator(t)
+	if err := os.Remove(filepath.Join(g.ProjectDir, "b/b.proto")); err != nil {
+		t.Fatal(err)
+	}
+	if err := g.Generate(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if g.Cache.Packages[keyA] == nil {
+		t.Fatalf("targeted package %q missing from manifest", keyA)
+	}
+	if g.Cache.Packages[keyB] != nil {
+		t.Fatalf("deleted package %q still in manifest", keyB)
+	}
+}
+
+// TestTargetedGenerateDropsStaleOnIdentityChange proves that when the tool
+// identity changed, untargeted entries are dropped rather than being marked
+// current under the new identity.
+func TestTargetedGenerateDropsStaleOnIdentityChange(t *testing.T) {
+	g, _, keyB := newTargetedGenerator(t)
+	g.Cache.SetToolVersions("old")
+	g.Config.Targets = []string{"a/a.proto"}
+	// The targeted package needs protoc under the new identity, so only check
+	// pruning directly.
+	current := map[string]struct{}{GetPackageKey(g.ModulePath, "a/a.proto"): {}}
+	g.Cache.DropOutsidePackages(current)
+	if g.Cache.Packages[keyB] != nil {
+		t.Fatalf("untargeted package %q survived identity change", keyB)
 	}
 }

@@ -263,8 +263,15 @@ func (g *Generator) Generate(ctx context.Context) error {
 		}
 	}
 
-	// Clean orphaned packages from cache
-	g.Cache.CleanOrphanedPackages(currentPackages)
+	// Prune cache entries. A targeted run only covers part of the tree, so
+	// packages outside it are kept while their proto files still exist. If the
+	// flags or tool versions changed, the untargeted outputs are stale under the
+	// new identity recorded below, so their entries are dropped to regenerate.
+	if g.Cache.ProtocFlagsHash != flagsHash || g.Cache.ToolVersions != toolVersions {
+		g.Cache.DropOutsidePackages(currentPackages)
+	} else {
+		g.Cache.CleanOrphanedPackages(currentPackages, g.ProjectDir)
+	}
 
 	// Persist the flags and tool identity used to select this output set.
 	g.Cache.SetProtocFlags(protocArgs, g.ModuleDir)
