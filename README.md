@@ -308,6 +308,14 @@ that an ahead-of-time compiler builds, where the typed decoder is faster. It
 makes the generated files larger, and under a JIT the walker is as fast, so it
 is off by default.
 
+### `aptre.tsTypedEncode`
+
+`tsTypedEncode` does the same for encoding: `protoc-gen-es-lite` generates an
+encoder for every message that writes its fields in number order, with the
+same bytes as the shared field walker. It needs `@aptre/protobuf-es-lite`
+1.2.4 or later. The same reasoning applies: turn it on for interpreters and
+ahead-of-time compilers, and leave it off under a JIT.
+
 ### `aptre.tsImportBoundaries`
 
 `tsImportBoundaries` configures how generated TypeScript protobuf imports are

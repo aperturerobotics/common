@@ -265,6 +265,13 @@ func DiscoverPlugins(cfg *Config) (*Plugins, error) {
 			if typedDecode {
 				plugins.ESLite.Options["typed_decode"] = "true"
 			}
+			typedEncode, err := cfg.GetTsTypedEncode()
+			if err != nil {
+				return nil, err
+			}
+			if typedEncode {
+				plugins.ESLite.Options["typed_encode"] = "true"
+			}
 		}
 
 		if rpcs.Has(RPCLibraryStarpc) {

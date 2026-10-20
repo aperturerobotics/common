@@ -45,6 +45,13 @@ func (c *packageJSONAptreConfig) FromJSON(value *fastjson.Value) error {
 	}
 	c.TsTypedDecode = typedDecode
 
+	// The TypeScript encoder choice also defaults to the shared field walker.
+	typedEncode, err := configBool(value, "tsTypedEncode")
+	if err != nil {
+		return err
+	}
+	c.TsTypedEncode = typedEncode
+
 	// Presence enables the Rust graph even when the object contains only defaults.
 	rust := value.Get("rust")
 	if rust == nil || rust.Type() == fastjson.TypeNull {

@@ -90,6 +90,8 @@ type packageJSONAptreConfig struct {
 	TsImportBoundaries []string
 	// TsTypedDecode generates a typed decoder for every TypeScript message.
 	TsTypedDecode bool
+	// TsTypedEncode generates a typed encoder for every TypeScript message.
+	TsTypedEncode bool
 	// Rust enables whole-graph Rust generation when present.
 	Rust *RustConfig
 }
@@ -282,6 +284,17 @@ func (c *Config) GetTsTypedDecode() (bool, error) {
 		return false, err
 	}
 	return aptre.TsTypedDecode, nil
+}
+
+// GetTsTypedEncode reports whether package.json asks protoc-gen-es-lite for a
+// typed encoder per message, which, like the typed decoder, runs faster than
+// the shared field walker in interpreters at the cost of larger output.
+func (c *Config) GetTsTypedEncode() (bool, error) {
+	aptre, err := c.readAptreConfig()
+	if err != nil {
+		return false, err
+	}
+	return aptre.TsTypedEncode, nil
 }
 
 // GetRust returns the whole-graph Rust configuration from package.json.
