@@ -195,7 +195,7 @@ func (g *RustGenerator) render(ctx context.Context) (map[string][]byte, error) {
 		}
 
 		// Retain complete bytes so comparison finishes before publication begins.
-		data, err := os.ReadFile(file)
+		data, err := os.ReadFile(file) //nolint:gosec // file comes from walking our own generator output directory.
 		if err != nil {
 			return err
 		}

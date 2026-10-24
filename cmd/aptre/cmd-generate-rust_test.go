@@ -37,11 +37,11 @@ func copyRustGraphProject(t *testing.T) string {
 		if entry.IsDir() {
 			return os.MkdirAll(target, 0o755)
 		}
-		data, err := os.ReadFile(file)
+		data, err := os.ReadFile(file) //nolint:gosec // file comes from walking the test fixture tree.
 		if err != nil {
 			return err
 		}
-		return os.WriteFile(target, data, 0o644)
+		return os.WriteFile(target, data, 0o644) //nolint:gosec // target is inside the test project directory.
 	})
 	if err != nil {
 		t.Fatalf("copy project: %v", err)
