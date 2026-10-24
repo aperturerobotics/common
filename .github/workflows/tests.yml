@@ -30,7 +30,7 @@ jobs:
       - run: bun run build
       - run: bun run test:js
       - name: Install protobuf library
-        run: sudo apt-get install -y libprotobuf-dev
+        run: sudo apt-get update && sudo apt-get install -y libprotobuf-dev
       - run: bun run test:go
       - name: Test linter modules
         run: |
