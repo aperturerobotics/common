@@ -502,7 +502,7 @@ func (g *Generator) formatGeneratedFiles(protoFiles []string) error {
 		if _, err := os.Stat(oxfmtConfig); err == nil {
 			args := []string{"-c", oxfmtConfig}
 			args = append(args, tsFiles...)
-			cmd := exec.Command(findOxfmt(g.ProjectDir), args...)
+			cmd := exec.Command(findOxfmt(g.ProjectDir), args...) //nolint:gosec // oxfmt and its arguments come from the project being generated.
 			cmd.Dir = g.ProjectDir
 			cmd.Stdout = g.Stdout
 			cmd.Stderr = g.Stderr

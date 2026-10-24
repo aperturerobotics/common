@@ -114,7 +114,7 @@ func discoverNodePlugin(projectDir, binaryName string) string {
 	if !filepath.IsAbs(path) {
 		path = filepath.Join(projectDir, path)
 	}
-	if info, err := os.Stat(path); err == nil && info.Mode().IsRegular() && info.Mode()&0o111 != 0 {
+	if info, err := os.Stat(path); err == nil && info.Mode().IsRegular() && info.Mode()&0o111 != 0 { //nolint:gosec // the plugin path is named by the project manifest.
 		return path
 	}
 	return ""
