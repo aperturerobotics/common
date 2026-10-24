@@ -28,6 +28,11 @@ func typedMessageProto(name, id string, nested ...*descriptorpb.DescriptorProto)
 
 // runTypeIDGenerator runs GenerateTypeIDs over one file holding msgs.
 func runTypeIDGenerator(t *testing.T, msgs ...*descriptorpb.DescriptorProto) *pluginpb.CodeGeneratorResponse {
+	return runGenerator(t, GenerateTypeIDs, msgs...)
+}
+
+// runGenerator runs generate over one file holding msgs.
+func runGenerator(t *testing.T, generate func([]byte) ([]byte, error), msgs ...*descriptorpb.DescriptorProto) *pluginpb.CodeGeneratorResponse {
 	// Build the request protoc sends for one proto3 file.
 	file := &descriptorpb.FileDescriptorProto{
 		Name:        proto.String("a/b-ops.proto"),
@@ -46,7 +51,7 @@ func runTypeIDGenerator(t *testing.T, msgs ...*descriptorpb.DescriptorProto) *pl
 	}
 
 	// Decode the generator's response.
-	output, err := GenerateTypeIDs(input)
+	output, err := generate(input)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,6 +87,37 @@ func TestGenerateTypeIDs(t *testing.T) {
 		"func (*Outer) TypeID() string {",
 		"var BOpsTypes = []typeid.Type{",
 		"{ID: Outer_InnerTypeID, New: func() any { return new(Outer_Inner) }},",
+	} {
+		if !strings.Contains(content, want) {
+			t.Errorf("missing %q in:\n%s", want, content)
+		}
+	}
+	if strings.Contains(content, "Plain") {
+		t.Errorf("untyped message generated:\n%s", content)
+	}
+
+	// The TypeScript file beside es-lite's output imports the same messages,
+	// escapes a reserved name as es-lite does, and lists them.
+	resp = runGenerator(t, GenerateESTypeIDs,
+		typedMessageProto("Outer", "a/outer", typedMessageProto("Inner", "a/inner")),
+		typedMessageProto("Plain", ""),
+		typedMessageProto("Object", "a/object"),
+	)
+	if resp.GetError() != "" || len(resp.GetFile()) != 1 {
+		t.Fatalf("expected one file, got error %q and %d files", resp.GetError(), len(resp.GetFile()))
+	}
+	out = resp.GetFile()[0]
+	if out.GetName() != "a/b-ops_typeid.pb.ts" {
+		t.Fatalf("unexpected file name %q", out.GetName())
+	}
+	content = out.GetContent()
+	for _, want := range []string{
+		"} from './b-ops.pb.js'",
+		`export const Outer_InnerTypeID = "a/inner"`,
+		`export const Object$TypeID = "a/object"`,
+		"export const BOpsTypes = [",
+		"  { id: Outer_InnerTypeID, message: Outer_Inner },",
+		"] as const",
 	} {
 		if !strings.Contains(content, want) {
 			t.Errorf("missing %q in:\n%s", want, content)

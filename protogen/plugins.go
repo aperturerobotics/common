@@ -62,6 +62,9 @@ type Plugins struct {
 	GoTypeID *Plugin
 	// ESLite is the protoc-gen-es-lite plugin.
 	ESLite *Plugin
+	// ESTypeID is the protoc-gen-es-typeid plugin, served in process by
+	// GenerateESTypeIDs.
+	ESTypeID *Plugin
 	// ESStarpc is the protoc-gen-es-starpc plugin.
 	ESStarpc *Plugin
 	// CppStarpc is the protoc-gen-starpc-cpp plugin.
@@ -272,6 +275,15 @@ func DiscoverPlugins(cfg *Config) (*Plugins, error) {
 			if typedEncode {
 				plugins.ESLite.Options["typed_encode"] = "true"
 			}
+
+			// Type IDs import the generated messages, so they follow es-lite.
+			plugins.ESTypeID = &Plugin{
+				Name:       "es-typeid",
+				BinaryName: ESTypeIDPluginName,
+				Type:       PluginTypeTypeScript,
+				OutFlag:    "es-typeid_out",
+				Options:    map[string]string{},
+			}
 		}
 
 		if rpcs.Has(RPCLibraryStarpc) {
@@ -399,6 +411,11 @@ func (p *Plugins) GetProtocArgs(outDir, csharpOutDir string) []string {
 	if p.ESLite != nil {
 		args = append(args, "--"+p.ESLite.OutFlag+"="+outDir)
 		args = append(args, sortedPluginOpts(p.ESLite)...)
+	}
+
+	// TypeScript type IDs accompany the selected message output.
+	if p.ESTypeID != nil {
+		args = append(args, "--"+p.ESTypeID.OutFlag+"="+outDir)
 	}
 
 	// TypeScript service declarations retain their own plugin options.

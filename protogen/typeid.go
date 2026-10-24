@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/encoding/protowire"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/descriptorpb"
 	"google.golang.org/protobuf/types/pluginpb"
 )
@@ -92,7 +93,7 @@ func fileTypedMessages(file *liteprotogen.File) ([]typedMessage, error) {
 func appendTypedMessages(types []typedMessage, msgs []*liteprotogen.Message) ([]typedMessage, error) {
 	for _, msg := range msgs {
 		// Read the message's own option before its nested messages.
-		id, ok, err := messageTypeID(msg)
+		id, ok, err := messageTypeID(msg.Desc)
 		if err != nil {
 			return nil, errors.Wrap(err, string(msg.Desc.FullName()))
 		}
@@ -114,9 +115,9 @@ func appendTypedMessages(types []typedMessage, msgs []*liteprotogen.Message) ([]
 // The option is read from the encoded MessageOptions, so the generator needs
 // no registered extension and reads it whether protoc's descriptor resolved
 // the extension or left it as an unknown field.
-func messageTypeID(msg *liteprotogen.Message) (string, bool, error) {
+func messageTypeID(desc protoreflect.MessageDescriptor) (string, bool, error) {
 	// Encode the options as they appear on the wire.
-	b, err := proto.Marshal(msg.Desc.Options())
+	b, err := proto.Marshal(desc.Options())
 	if err != nil {
 		return "", false, err
 	}
