@@ -6,10 +6,16 @@
 // config is a helper module and is checked only through the specs that
 // INSTANCE it. Module names resolve from the spec's own directory, then from
 // the shared modules this package ships in tla/, such as Surface.tla.
+//
+// A spec with a view beside it, Foo.view.ts for Foo.tla, also has a state
+// chart per config, Foo.chart.mmd for Foo.cfg, that aptre-tla chart writes and
+// the check keeps current: a committed chart that differs from a fresh one
+// fails the model.
 
+import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { check, formatValue, type TraceStep } from 'tla-ts'
 
 // Directories never walked for specs. A testdata directory holds fixtures,
@@ -40,6 +46,53 @@ export interface ModelResult extends Model {
   trace?: string[]
   // error is the message of a model that could not be checked.
   error?: string
+}
+
+// viewOf returns the view beside spec, Foo.view.ts for Foo.tla, or undefined
+// when the spec has none and so draws no chart.
+export function viewOf(spec: string): string | undefined {
+  const view = spec.slice(0, -'.tla'.length) + '.view.ts'
+  return fs.existsSync(view) ? view : undefined
+}
+
+// chartOf names the chart a model draws: Foo.chart.mmd for Foo.cfg.
+export const chartOf = (model: Model) =>
+  model.config.slice(0, -'.cfg'.length) + '.chart.mmd'
+
+// drawChart compiles model's state chart with the view module at view. The
+// chart compiler loads only for a spec with a view.
+export async function drawChart(model: Model, view: string): Promise<string> {
+  const [{ chartModel }, exports] = await Promise.all([
+    import('./chart/run.js'),
+    // Modules cache by URL; the content hash loads an edited view afresh.
+    import(
+      `${pathToFileURL(path.resolve(view)).href}?${createHash('sha256').update(fs.readFileSync(view)).digest('hex')}`
+    ) as Promise<object>,
+  ])
+  const { chart, report } = await chartModel(model, { ...exports })
+  if (chart === undefined) throw new Error(`no chart to draw:\n${report}`)
+  return chart
+}
+
+// staleChart compares model's committed chart with a fresh one and describes
+// the difference, or returns undefined when the chart is current or the spec
+// has no view.
+async function staleChart(model: Model): Promise<string | undefined> {
+  const view = viewOf(model.spec)
+  if (view === undefined) return undefined
+  const file = chartOf(model)
+  const rewrite = `run: aptre-tla chart ${path.relative('.', model.config)}`
+  let fresh: string
+  try {
+    fresh = await drawChart(model, view)
+  } catch (err) {
+    return `${path.relative('.', view)} could not draw the chart: ${err instanceof Error ? err.message : String(err)}`
+  }
+  if (!fs.existsSync(file))
+    return `${path.relative('.', file)} is missing; ${rewrite}`
+  if (fs.readFileSync(file, 'utf8') !== fresh)
+    return `${path.relative('.', file)} is stale; ${rewrite}`
+  return undefined
 }
 
 // sharedModulesDir returns this package's tla/ directory, from the source tree
@@ -172,13 +225,27 @@ export function moduleLoader(spec: string, shared = sharedModulesDir()) {
   }
 }
 
-// checkModel checks one Model. A model tla-ts cannot check, such as one whose
-// config names a rule that depends on no variable, is reported as failed with
-// its error rather than thrown.
+// checkModel checks one Model and, when its spec has a view, that its committed
+// chart is current. A model tla-ts cannot check, such as one whose config names
+// a rule that depends on no variable, is reported as failed with its error
+// rather than thrown.
 export async function checkModel(
   model: Model,
   shared = sharedModulesDir(),
 ): Promise<ModelResult> {
+  const r = await checkSpec(model, shared)
+  const stale = await staleChart(model)
+  if (stale === undefined) return r
+  return {
+    ...r,
+    ok: false,
+    rule: r.rule ?? 'chart',
+    error: r.error ? `${r.error}\n${stale}` : stale,
+  }
+}
+
+// checkSpec checks one Model's rules.
+async function checkSpec(model: Model, shared: string): Promise<ModelResult> {
   const loadModule = moduleLoader(model.spec, shared)
   const start = performance.now()
   try {
@@ -216,10 +283,16 @@ export async function checkModel(
 async function main(args: string[]): Promise<number> {
   if (args[0] === '-h' || args[0] === '--help') {
     console.log(
-      'usage: aptre-tla [path...]\nChecks every TLA+ spec with a .cfg beside it.',
+      [
+        'usage: aptre-tla [path...]',
+        '       aptre-tla chart [path...]',
+        'Checks every TLA+ spec with a .cfg beside it, and that the chart of each',
+        'spec with a Foo.view.ts is current. chart writes those charts.',
+      ].join('\n'),
     )
     return 0
   }
+  if (args[0] === 'chart') return writeCharts(args.slice(1))
   const shared = sharedModulesDir()
   let failed = 0
   let count = 0
@@ -233,11 +306,41 @@ async function main(args: string[]): Promise<number> {
       )
       if (r.ok) continue
       failed++
-      if (r.error) console.log(`      ${r.error}`)
+      for (const line of r.error?.split('\n') ?? [])
+        console.log(`      ${line}`)
       for (const line of r.trace ?? []) console.log(`      ${line}`)
     }
   }
   console.log(`${count} model(s), ${failed} failed`)
+  return failed ? 1 : 0
+}
+
+// writeCharts writes the chart of every Model under the given paths whose spec
+// has a view, and exits 1 when one could not be drawn.
+async function writeCharts(args: string[]): Promise<number> {
+  let failed = 0
+  for (const target of args.length ? args : ['.']) {
+    for (const model of findModels(target)) {
+      const view = viewOf(model.spec)
+      if (view === undefined) continue
+      const file = chartOf(model)
+      try {
+        const chart = await drawChart(model, view)
+        const same =
+          fs.existsSync(file) && fs.readFileSync(file, 'utf8') === chart
+        if (!same) fs.writeFileSync(file, chart)
+        console.log(
+          `${same ? 'current' : 'wrote  '}  ${path.relative('.', file)}`,
+        )
+      } catch (err) {
+        failed++
+        console.log(`FAIL     ${path.relative('.', file)}`)
+        console.log(
+          `         ${err instanceof Error ? err.message : String(err)}`,
+        )
+      }
+    }
+  }
   return failed ? 1 : 0
 }
 

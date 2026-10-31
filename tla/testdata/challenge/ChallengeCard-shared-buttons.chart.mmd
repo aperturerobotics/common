@@ -1,0 +1,33 @@
+---
+title: "Discord challenge: Mira challenges Jun"
+---
+stateDiagram-v2
+  state "Legend" as legend {
+    lg0: Breaks EveryButtonWorks
+    lg1: Path to the EveryButtonWorks bug
+  }
+  class lg0 breaks
+  class lg1 bugPath
+  s0: Open: waiting for Jun
+  s1: Accepted
+  s2: Declined
+  s3: Expired
+  s4: Open: waiting for Jun#59; a press was refused
+  s5: Accepted#59; a press was refused
+  s6: Declined#59; a press was refused
+  s7: Expired#59; a press was refused
+  [*] --> s0
+  s0 --> s1: Jun presses Accept
+  s0 --> s2: Jun presses Decline
+  s0 --> s3: ten minutes pass
+  s0 --> s4: Mira presses Accept, which only Jun may answer or Mira presses Decline, which only Jun may answer or Pax presses Accept, which only Jun may answer or Pax presses Decline, which only Jun may answer
+  s4 --> s5: Jun presses Accept
+  s4 --> s6: Jun presses Decline
+  s4 --> s7: ten minutes pass
+  classDef breaks fill:#ffecee,stroke:#e72e3b,stroke-width:2.5px,color:#cd2834
+  class s0 bugPath
+  class s4 breaks
+  class s4 bugPath
+  class s5 breaks
+  class s6 breaks
+  class s7 breaks

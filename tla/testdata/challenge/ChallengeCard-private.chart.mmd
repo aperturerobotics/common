@@ -1,0 +1,14 @@
+---
+title: "Discord challenge: Mira challenges Jun"
+---
+stateDiagram-v2
+  s0: Open: waiting for Jun
+  s1: Accepted
+  s2: Declined
+  s3: Expired
+  s4: Withdrawn
+  [*] --> s0
+  s0 --> s1: Jun presses Accept
+  s0 --> s2: Jun presses Decline
+  s0 --> s3: ten minutes pass
+  s0 --> s4: Mira presses Withdraw

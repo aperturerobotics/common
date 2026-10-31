@@ -1,7 +1,9 @@
+import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { checkModel, findModels } from './check.js'
+import { chartOf, checkModel, drawChart, findModels } from './check.js'
 
 const testdata = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -60,5 +62,31 @@ describe('aptre-tla', () => {
       'MapPicker-all.cfg',
       'MapPicker-rule.cfg',
     ])
+  })
+
+  it('fails a stale chart until it is redrawn', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'aptre-tla-'))
+    try {
+      fs.cpSync(path.join(testdata, 'challenge'), dir, { recursive: true })
+      const model = {
+        spec: path.join(dir, 'ChallengeCard.tla'),
+        config: path.join(dir, 'ChallengeCard-private.cfg'),
+      }
+      expect((await checkModel(model)).ok).toBe(true)
+      const view = path.join(dir, 'ChallengeCard.view.ts')
+      fs.writeFileSync(
+        view,
+        fs
+          .readFileSync(view, 'utf8')
+          .replace("'ten minutes pass'", "'the challenge expires'"),
+      )
+      const stale = await checkModel(model)
+      expect(stale).toMatchObject({ ok: false, rule: 'chart' })
+      expect(stale.error).toMatch(/is stale; run: aptre-tla chart /)
+      fs.writeFileSync(chartOf(model), await drawChart(model, view))
+      expect((await checkModel(model)).ok).toBe(true)
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true })
+    }
   })
 })
