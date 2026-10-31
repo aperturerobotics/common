@@ -162,6 +162,30 @@ go run github.com/aperturerobotics/common/cmd/aptre@latest generate --verbose
 | `format`           | Format Go code with gofumpt                        |
 | `outdated`         | Show outdated dependencies                         |
 
+## TLA+ Specs
+
+`aptre-tla` checks TLA+ specs with [tla-ts](https://github.com/aidenybai/tla-ts),
+in Node or Bun with no Java. A spec `Foo.tla` is checked once per model config
+beside it: `Foo.cfg` and each `Foo-<variant>.cfg`. A `.tla` with no config is a
+helper module. Module names resolve from the spec's directory, then from the
+shared modules in `tla/`:
+
+- `Surface.tla`: rules every screen keeps for every person who can reach it.
+  `EveryShownActionWorks` holds when every action a person sees succeeds for
+  them; `NobodyIsStuck` holds when every person has something to do.
+
+```bash
+# Check every spec under the current directory
+bunx aptre-tla
+# Check one spec or one directory
+bunx aptre-tla pkg/foo/Foo.tla
+```
+
+A failure prints the broken rule and the shortest path to it, one state per
+line, and the command exits 1. Projects add it to their check script as
+`"check:tla": "aptre-tla"`. The `@aptre/common/tla` export offers `findModels`
+and `checkModel` for tools such as commit hooks.
+
 ## How It Works
 
 The `aptre` tool orchestrates code generation using embedded WebAssembly:

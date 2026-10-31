@@ -7,6 +7,7 @@
       "dependencies": {
         "@aptre/protobuf-es-lite": "1.2.4",
         "starpc": "^0.52.3",
+        "tla-ts": "0.0.3",
         "vitest": "^5.0.0",
       },
       "devDependencies": {
@@ -611,6 +612,8 @@
     "tinyglobby": ["tinyglobby@0.2.17", "", { "dependencies": { "fdir": "^6.5.0", "picomatch": "^4.0.4" } }, "sha512-wXR/dYpcqKmfWpEdZjiKJOwCNFndD0DMnrW/cYjVGttEkBfVgcLFHoNrlj47mjOVic9yyNu65alsgF4NQyTa2g=="],
 
     "tinypool": ["tinypool@2.2.0", "", {}, "sha512-jBrmx4lYmaC9k/mgPbylxs7kBUxHtD8256up+HjLaDFfXScKJQyil+SWXSvhAtT7XHo+yTVlpB81PGmHP8oLSQ=="],
+
+    "tla-ts": ["tla-ts@0.0.3", "", { "bin": { "tla-ts": "dist/cli.js" } }, "sha512-y5wQZRGMqjc+47BHRZ3I+Re7O1bFSWlNX+835pZkdPzVRPkgQeTlKERPsPcuI1fMGf2Av4Gx8K3n3NnPAAUUBg=="],
 
     "to-regex-range": ["to-regex-range@5.0.1", "", { "dependencies": { "is-number": "^7.0.0" } }, "sha512-65P7iz6X5yEr1cwcgvQxbbIw7Uk3gOy5dIdtZ4rDveLqhrdJP+Li/Hx6tyK0NEb+2GCyneCMJiGqrADCSNk8sQ=="],
 

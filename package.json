@@ -24,6 +24,10 @@
       "import": "./dist/common.js",
       "require": "./dist/common.js",
       "types": "./dist/common.d.ts"
+    },
+    "./tla": {
+      "import": "./dist/tla/check.js",
+      "types": "./dist/tla/check.d.ts"
     }
   },
   "files": [
@@ -32,6 +36,7 @@
     ".oxfmtrc.json",
     ".gitignore",
     "dist",
+    "tla/*.tla",
     "go.mod",
     "go.sum",
     "go.mod.tools",
@@ -81,6 +86,7 @@
   "dependencies": {
     "@aptre/protobuf-es-lite": "1.2.4",
     "starpc": "^0.52.3",
+    "tla-ts": "0.0.3",
     "vitest": "^5.0.0"
   },
   "resolutions": {
@@ -88,5 +94,8 @@
   },
   "overrides": {
     "@aptre/protobuf-es-lite": "1.2.4"
+  },
+  "bin": {
+    "aptre-tla": "./dist/tla/check.js"
   }
 }
