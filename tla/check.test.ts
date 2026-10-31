@@ -12,7 +12,7 @@ describe('aptre-tla', () => {
   it('passes the working designs and fails the broken ones with their rule', async () => {
     const results: Record<
       string,
-      { ok: boolean; rule?: string; trace?: string[] }
+      { ok: boolean; rule?: string; trace?: string[]; error?: string }
     > = {}
     for (const model of findModels(testdata)) {
       const r = await checkModel(model)
@@ -23,6 +23,7 @@ describe('aptre-tla', () => {
       'ChallengeCard-private.cfg',
       'ChallengeCard-shared-buttons.cfg',
       'ChallengeCard-shared.cfg',
+      'Counter.cfg',
       'MapPicker-all.cfg',
       'MapPicker-rule.cfg',
     ])
@@ -47,6 +48,8 @@ describe('aptre-tla', () => {
       ok: false,
       rule: 'EveryShownActionWorks',
     })
+    // A spec that uses < without EXTENDS Naturals is told which module to add.
+    expect(results['Counter.cfg'].error).toMatch(/\(add EXTENDS Naturals\)$/)
   })
 
   it('selects one spec when given its file', () => {

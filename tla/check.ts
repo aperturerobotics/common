@@ -97,6 +97,44 @@ const sourceRange = / line \d+, col \d+ to line \d+, col \d+ of module \w+$/
 // variable and is false, which TLC reports as a violation.
 const constantRule = /^The invariant of (\w+) is equal to FALSE$/
 
+// missingSymbol matches the error tla-ts throws for an operator no module in
+// scope defines.
+const missingSymbol =
+  /Could not find declaration or definition of symbol '([^']+)'/
+
+// standardModule names the standard module that defines each operator a spec
+// most often uses without extending it.
+const standardModule: Record<string, string> = {
+  '+': 'Naturals',
+  '-': 'Naturals',
+  '*': 'Naturals',
+  '<': 'Naturals',
+  '>': 'Naturals',
+  '<=': 'Naturals',
+  '>=': 'Naturals',
+  '\\leq': 'Naturals',
+  '\\geq': 'Naturals',
+  '..': 'Naturals',
+  '%': 'Naturals',
+  '\\div': 'Naturals',
+  Nat: 'Naturals',
+  Int: 'Integers',
+  Cardinality: 'FiniteSets',
+  IsFiniteSet: 'FiniteSets',
+  Seq: 'Sequences',
+  Len: 'Sequences',
+  Append: 'Sequences',
+  Head: 'Sequences',
+  Tail: 'Sequences',
+  SubSeq: 'Sequences',
+}
+
+// explain adds the fix to an error whose cause is a missing EXTENDS.
+function explain(error: string): string {
+  const module = standardModule[missingSymbol.exec(error)?.[1] ?? '']
+  return module ? `${error} (add EXTENDS ${module})` : error
+}
+
 // describeTrace renders each state of a trace: its step label, then the
 // variables that changed from the state before.
 function describeTrace(trace: TraceStep[]): string[] {
@@ -148,7 +186,7 @@ export async function checkModel(
       error: result.violation?.message ?? result.failure?.message,
     }
   } catch (err) {
-    const error = err instanceof Error ? err.message : String(err)
+    const error = explain(err instanceof Error ? err.message : String(err))
     return {
       ...model,
       ok: false,
