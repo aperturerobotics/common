@@ -5,11 +5,11 @@ go 1.27.0
 require (
 	github.com/aperturerobotics/abseil-cpp v0.0.0-20260131110040-4bb56e2f9017 // aperture-2
 	github.com/aperturerobotics/cli v1.1.0
-	github.com/aperturerobotics/fastjson v0.1.2-0.20261021211904-de4eaec00660
-	github.com/aperturerobotics/go-protoc-gen-prost v0.0.0-20261003014807-d46d22154f35 // master
-	github.com/aperturerobotics/go-protoc-wasi v0.0.0-20260808023521-7b1595380c3f // master
+	github.com/aperturerobotics/fastjson v0.1.2-0.20261024220211-b654d1d5b5aa
+	github.com/aperturerobotics/go-protoc-gen-prost v0.0.0-20261024221648-a1c7ae9a2bb8 // master
+	github.com/aperturerobotics/go-protoc-wasi v0.0.0-20261024220153-869f5fcfca4f // master
 	github.com/aperturerobotics/protobuf v0.0.0-20260203024654-8201686529c4 // wasi
-	github.com/aperturerobotics/protobuf-go-lite v0.19.1-0.20261024022728-f0dcc8ef200f // latest
+	github.com/aperturerobotics/protobuf-go-lite v0.19.1-0.20261028131920-f644656fc4a7 // latest
 	github.com/aperturerobotics/starpc v0.52.3 // latest
 	github.com/pkg/errors v0.9.1
 	github.com/tetratelabs/wazero v1.12.0
