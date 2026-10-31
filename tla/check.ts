@@ -81,17 +81,16 @@ async function staleChart(model: Model): Promise<string | undefined> {
   const view = viewOf(model.spec)
   if (view === undefined) return undefined
   const file = chartOf(model)
-  const rewrite = `run: aptre-tla chart ${path.relative('.', model.config)}`
+  const rewrite = `run: aptre-tla chart ${model.config}`
   let fresh: string
   try {
     fresh = await drawChart(model, view)
   } catch (err) {
-    return `${path.relative('.', view)} could not draw the chart: ${err instanceof Error ? err.message : String(err)}`
+    return `${view} could not draw the chart: ${err instanceof Error ? err.message : String(err)}`
   }
-  if (!fs.existsSync(file))
-    return `${path.relative('.', file)} is missing; ${rewrite}`
+  if (!fs.existsSync(file)) return `${file} is missing; ${rewrite}`
   if (fs.readFileSync(file, 'utf8') !== fresh)
-    return `${path.relative('.', file)} is stale; ${rewrite}`
+    return `${file} is stale; ${rewrite}`
   return undefined
 }
 
