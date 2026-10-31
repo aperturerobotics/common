@@ -12,8 +12,15 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { check, formatValue, type TraceStep } from 'tla-ts'
 
-// Directories never walked for specs.
-const skipDirs = new Set(['node_modules', 'vendor', 'dist', 'build'])
+// Directories never walked for specs. A testdata directory holds fixtures,
+// such as deliberately broken specs, that its own tests check by path.
+const skipDirs = new Set([
+  'node_modules',
+  'vendor',
+  'dist',
+  'build',
+  'testdata',
+])
 
 // Model is one spec checked under one config.
 export interface Model {
@@ -152,6 +159,19 @@ function describeTrace(trace: TraceStep[]): string[] {
   })
 }
 
+// moduleLoader resolves a module name for spec: from the spec's own directory,
+// then from the shared modules.
+export function moduleLoader(spec: string, shared = sharedModulesDir()) {
+  const dirs = [path.dirname(spec), shared]
+  return (name: string) => {
+    for (const dir of dirs) {
+      const file = path.join(dir, `${name}.tla`)
+      if (fs.existsSync(file)) return fs.readFileSync(file, 'utf8')
+    }
+    return undefined
+  }
+}
+
 // checkModel checks one Model. A model tla-ts cannot check, such as one whose
 // config names a rule that depends on no variable, is reported as failed with
 // its error rather than thrown.
@@ -159,14 +179,7 @@ export async function checkModel(
   model: Model,
   shared = sharedModulesDir(),
 ): Promise<ModelResult> {
-  const dirs = [path.dirname(model.spec), shared]
-  const loadModule = (name: string) => {
-    for (const dir of dirs) {
-      const file = path.join(dir, `${name}.tla`)
-      if (fs.existsSync(file)) return fs.readFileSync(file, 'utf8')
-    }
-    return undefined
-  }
+  const loadModule = moduleLoader(model.spec, shared)
   const start = performance.now()
   try {
     const result = await check({
