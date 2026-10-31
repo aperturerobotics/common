@@ -30,7 +30,7 @@ import {
   type Value as TlaValue,
   type Violation,
 } from 'tla-ts'
-import { type Model, moduleLoader } from '../check.js'
+import { type Model, moduleLoader } from '../models.js'
 import { readConfig } from './frontends/config.js'
 import { parseValue } from './frontends/value.js'
 import { checkView } from './frontends/view.js'
