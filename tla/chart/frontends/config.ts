@@ -5,6 +5,7 @@ type ListField =
   | 'properties'
   | 'constraints'
   | 'actionConstraints'
+  | 'possible'
 type Section = {
   key: string
   plural?: string
@@ -24,7 +25,8 @@ const isListField = (field: Section['field']): field is ListField =>
   field === 'invariants' ||
   field === 'properties' ||
   field === 'constraints' ||
-  field === 'actionConstraints'
+  field === 'actionConstraints' ||
+  field === 'possible'
 
 const SECTIONS = new Map<string, Section>()
 for (const section of [
@@ -61,6 +63,7 @@ for (const section of [
     field: 'actionConstraints',
     undefinedNoun: 'action constraint',
   },
+  { key: '_POSSIBLE', field: 'possible', undefinedNoun: 'possible condition' },
 ] satisfies Section[]) {
   SECTIONS.set(section.key, section)
   if (section.plural) SECTIONS.set(section.plural, section)
@@ -294,6 +297,7 @@ export function readConfig({
     properties: [],
     constraints: [],
     actionConstraints: [],
+    possible: [],
   }
   for (let t = next(); t !== eof;) {
     const keyword = t

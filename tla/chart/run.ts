@@ -130,9 +130,14 @@ function readChecks(file: string, config: Config) {
     throw refuse(
       'The configuration file did not specify the initial state predicate.',
     )
+  // The chart's runs judge rules one group at a time and explore the graph
+  // under constraints of their own, so a _POSSIBLE goal would fail them; the
+  // plain check judges it.
   const written: ConfigSection[] = []
   for (const s of config.sections)
-    if (!['INVARIANT', 'PROPERTY', 'CHECK_DEADLOCK'].includes(s.key))
+    if (
+      !['INVARIANT', 'PROPERTY', 'CHECK_DEADLOCK', '_POSSIBLE'].includes(s.key)
+    )
       written.push(s)
   return {
     invariants: config.invariants,

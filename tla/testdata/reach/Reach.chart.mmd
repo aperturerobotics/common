@@ -1,0 +1,7 @@
+stateDiagram-v2
+  s0: 2 iterations left
+  s1: 1 iteration left
+  s2: Shipped
+  [*] --> s0
+  s0 --> s1: an iteration finishes
+  s1 --> s2: an iteration finishes

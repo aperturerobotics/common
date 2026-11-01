@@ -70,6 +70,9 @@ export type Config = {
   properties: string[]
   constraints: string[]
   actionConstraints: string[]
+  // possible names the _POSSIBLE conditions: each must hold in some reachable
+  // state. The check judges them; the chart draws without them.
+  possible: string[]
   checkDeadlock?: boolean
   init?: string
   next?: string

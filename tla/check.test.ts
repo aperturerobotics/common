@@ -28,8 +28,18 @@ describe('aptre-tla', () => {
       'Counter.cfg',
       'MapPicker-all.cfg',
       'MapPicker-rule.cfg',
+      'Reach-stalled.cfg',
+      'Reach.cfg',
     ])
     expect(results['ChallengeCard-private.cfg'].ok).toBe(true)
+    // A _POSSIBLE goal passes when some state reaches it and fails when none
+    // does; both charts draw every reachable state.
+    expect(results['Reach.cfg'].ok).toBe(true)
+    expect(results['Reach-stalled.cfg']).toMatchObject({
+      ok: false,
+      rule: 'Shipped',
+    })
+    expect(results['Reach-stalled.cfg'].error).not.toMatch(/could not draw/)
     expect(results['MapPicker-rule.cfg'].ok).toBe(true)
     // The shipped card: Mira, the challenger, presses Accept and is refused.
     expect(results['ChallengeCard-shared-buttons.cfg']).toMatchObject({
