@@ -254,7 +254,14 @@ function traceOf({ trace, loopStart, loopLabel }: Violation) {
   return { seq, loop: loopStart }
 }
 
-const brokenRule = (group: Rule[], r: TlaResult) => {
+// brokenRule finds the rule in group that r broke. tla-ts checks a property
+// defined as []P as the invariant P and names P, where TLC names the
+// property; boxed maps each such property to its P.
+const brokenRule = (
+  group: Rule[],
+  r: TlaResult,
+  boxed: Map<string, string>,
+) => {
   const name = r.violation?.name
   const kinds: Rule['kind'][] =
     r.status === 'deadlock'
@@ -264,7 +271,14 @@ const brokenRule = (group: Rule[], r: TlaResult) => {
         : ['property']
   for (const kind of kinds)
     for (const rule of group)
-      if (rule.kind === kind && (kind === 'deadlock' || rule.name === name))
+      if (
+        rule.kind === kind &&
+        (kind === 'deadlock' ||
+          rule.name === name ||
+          (kind === 'property' &&
+            name !== undefined &&
+            boxed.get(rule.name) === name))
+      )
         return rule
   return undefined
 }
@@ -332,9 +346,14 @@ function actionTests(load: Load, actions: Value[]) {
     const src = load(field(g.location, 'module') as string)
     if (src === undefined)
       throw new Error(`tla-ts names an action in a module it cannot load.`)
-    // An action from an INSTANCE is located at the INSTANCE; its name is the
-    // expression that tests it.
-    const body = g.name.includes('!') ? g.name : sliceOf(src, g.location)
+    // An action from an INSTANCE is located at its use, such as
+    // M!Jump(x, x'), which is the expression that tests it. When the location
+    // is the INSTANCE itself, the action's name is that expression.
+    const text = sliceOf(src, g.location)
+    const body =
+      g.name.includes('!') && !text.trimStart().startsWith(g.name)
+        ? g.name
+        : text
     if (g.context.length) {
       defs.push(
         `ChartG${i} == {chartAction \\in ChartTLC!TLCGet("spec").actions : chartAction.name = ${JSON.stringify(g.name)} /\\ chartAction.location = ${recordText(g.location)}}`,
@@ -599,6 +618,14 @@ export async function checkSpec(
       `ChartBound == ChartNaturals!<(ChartTLC!TLCGet("distinct"), ${RERUN_STATES})`,
     ]),
   )
+  const boxed = new Map<string, string>()
+  for (const name of spec.properties) {
+    const inner = new RegExp(
+      `^${name}\\s*==\\s*\\[\\]\\s*(\\w+)\\s*$`,
+      'm',
+    ).exec(source)?.[1]
+    if (inner) boxed.set(name, inner)
+  }
   const rules = stateRules(spec)
   const all = [...rules]
   for (const name of spec.properties) all.push({ kind: 'property', name })
@@ -638,7 +665,7 @@ export async function checkSpec(
       break
     }
     states.distinct = Math.max(states.distinct, r.distinctStates)
-    const rule = brokenRule(group, r)
+    const rule = brokenRule(group, r, boxed)
     const cut = bounded && r.distinctStates >= RERUN_STATES
     const liveness = r.status === 'liveness-violation'
     if (cut && (r.status === 'success' || liveness)) {

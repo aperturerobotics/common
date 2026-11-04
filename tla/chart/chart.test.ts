@@ -34,8 +34,6 @@ const differences: Record<string, Difference> = {
     rewrite: [[/exit 76/g, 'exit 75']],
     until: '## Rules not checked',
   },
-  // tla-ts names an action defined as an instanced operator by its own name.
-  CounterRules: { rewrite: [[/M!Jump/g, 'Jump']] },
   HiddenClock: {
     rewrite: [[/x=(\d) clock=(\d)/g, 'clock=$2 x=$1']],
   },
@@ -66,14 +64,6 @@ describe('chartModel', () => {
         spec: path.join(dir, `${name}.tla`),
         config: path.join(dir, `${name}.cfg`),
       }
-      // A CONSTANT listed as a PROPERTY: TLC checks it, and tla-ts, like
-      // check:tla, refuses the config.
-      if (name === 'Shadow') {
-        await expect(chartModel(model, view)).rejects.toThrow(
-          /property Hold\s[^]*\snot defined/,
-        )
-        continue
-      }
       const t0 = performance.now()
       const { chart, report } = await chartModel(model, view)
       expect(performance.now() - t0, name).toBeLessThan(2000)
@@ -90,6 +80,6 @@ describe('chartModel', () => {
       )
       drawn.push(name)
     }
-    expect(drawn).toHaveLength(32)
+    expect(drawn).toHaveLength(33)
   })
 })
