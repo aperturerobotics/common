@@ -1,0 +1,50 @@
+[
+  {
+    "name": "take checks the queue and stops in two lock sections",
+    "replace": [
+      [
+        "       ELSE LET p == IF phase = \"draining\" THEN \"stopped\" ELSE phase\n            IN /\\ phase' = p\n               /\\ lpc' = IF p = \"stopped\" THEN \"close\" ELSE \"wait\"\n               /\\ UNCHANGED <<cur, queue>>",
+        "       ELSE /\\ lpc' = \"check\"\n            /\\ UNCHANGED <<phase, cur, queue>>"
+      ],
+      [
+        "Loop == Take \\/",
+        "CheckStop ==\n  /\\ lpc = \"check\"\n  /\\ LET p == IF phase = \"draining\" THEN \"stopped\" ELSE phase\n     IN /\\ phase' = p\n        /\\ lpc' = IF p = \"stopped\" THEN \"close\" ELSE \"wait\"\n  /\\ UNCHANGED <<queue, wake, done, cur, ran, sub, spc>>\n\nLoop == CheckStop \\/ Take \\/"
+      ],
+      [
+        "/\\ lpc \\in {\"take\",",
+        "/\\ lpc \\in {\"check\", \"take\","
+      ]
+    ],
+    "expect": "WorkerApi"
+  },
+  {
+    "name": "Submit accepts after Stop",
+    "replace": [
+      [
+        "  /\\ IF phase = \"running\"\n       THEN /\\ queue'",
+        "  /\\ IF TRUE\n       THEN /\\ queue'"
+      ]
+    ],
+    "expect": "WorkerApi"
+  },
+  {
+    "name": "Submit does not signal",
+    "replace": [
+      [
+        "  /\\ sub[j] = \"signal\"\n  /\\ wake' = TRUE",
+        "  /\\ sub[j] = \"signal\"\n  /\\ UNCHANGED wake"
+      ]
+    ],
+    "expect": "AcceptedRuns"
+  },
+  {
+    "name": "Stop does not signal",
+    "replace": [
+      [
+        "  /\\ spc = \"signal\"\n  /\\ wake' = TRUE",
+        "  /\\ spc = \"signal\"\n  /\\ UNCHANGED wake"
+      ]
+    ],
+    "expect": "deadlock"
+  }
+]

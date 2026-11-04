@@ -41,7 +41,7 @@ function* modelsInDir(dir: string, names: string[]): Generator<Model> {
     .filter((n) => n.endsWith('.tla'))
     .map((n) => n.slice(0, -4))
     .sort((a, b) => b.length - a.length)
-  for (const name of names) {
+  for (const name of [...names].sort()) {
     if (!name.endsWith('.cfg')) continue
     const cfg = name.slice(0, -4)
     const stem = stems.find((s) => cfg === s || cfg.startsWith(s + '-'))

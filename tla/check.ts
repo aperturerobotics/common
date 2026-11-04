@@ -11,6 +11,15 @@
 // chart per config, Foo.chart.mmd for Foo.cfg, that aptre-tla chart writes and
 // the check keeps current: a committed chart that differs from a fresh one
 // fails the model.
+//
+// A spec with Foo.mutants.json beside it also checks each mutant listed there:
+// the spec's source with exact text replacements, checked in memory. Each
+// mutant removes a guard the code relies on, so each must break its expected
+// rule; a mutant that still passes means the spec does not model what the
+// guard protects, or the guard is dead code, and fails the run.
+//
+// Every result carries its state counts, so a baseline and a simpler design
+// can be compared over the same bounds; -json prints one object per result.
 
 import { createHash } from 'node:crypto'
 import fs from 'node:fs'
@@ -32,7 +41,16 @@ export interface ModelResult extends Model {
   // model could not be checked.
   ok: boolean
   ms: number
-  // rule names the broken invariant or property, or the tla-ts status.
+  // status is the tla-ts status, or error when the model could not be
+  // checked; a rule false on constants alone counts as invariant-violation.
+  status: string
+  // states, generated and depth count the distinct states, the generated
+  // states and the longest shortest path of the search.
+  states: number
+  generated: number
+  depth: number
+  // rule names the broken invariant or property, or the tla-ts status. A
+  // broken temporal formula shows its text and module.
   rule?: string
   // trace is the shortest path to the broken rule, one line per state.
   trace?: string[]
@@ -93,6 +111,31 @@ const sourceRange = / line \d+, col \d+ to line \d+, col \d+ of module \w+$/
 // variable and is false, which TLC reports as a violation.
 const constantRule = /^The invariant of (\w+) is equal to FALSE$/
 
+// location matches the name tla-ts gives a broken temporal formula, such as a
+// refinement's [][Next]_vars: only its source range.
+const location =
+  /^line (\d+), col (\d+) to line (\d+), col (\d+) of module (\w+)$/
+
+// ruleName names a broken rule. A rule tla-ts names by its source range shows
+// the formula's text and its module instead.
+function ruleName(
+  name: string,
+  source: string,
+  loadModule: (name: string) => string | undefined,
+): string {
+  const m = location.exec(name)
+  if (!m) return name
+  const [l1, c1, l2, c2] = m.slice(1, 5).map(Number)
+  const module = m[5]
+  const text =
+    /MODULE\s+(\w+)/.exec(source)?.[1] === module ? source : loadModule(module)
+  const lines = text?.split('\n').slice(l1 - 1, l2) ?? []
+  if (!lines.length) return name
+  lines[lines.length - 1] = lines[lines.length - 1].slice(0, c2)
+  lines[0] = lines[0].slice(c1 - 1)
+  return `${lines.join(' ').replace(/\s+/g, ' ')} (${module} line ${l1})`
+}
+
 // missingSymbol matches the error tla-ts throws for an operator no module in
 // scope defines.
 const missingSymbol =
@@ -132,8 +175,9 @@ function explain(error: string): string {
 }
 
 // describeTrace renders each state of a trace: its step label, then the
-// variables that changed from the state before.
-function describeTrace(trace: TraceStep[]): string[] {
+// variables that changed from the state before. loopStart marks where the
+// cycle of a liveness counterexample begins.
+function describeTrace(trace: TraceStep[], loopStart?: number): string[] {
   let prev: Record<string, string> = {}
   return trace.map((step, i) => {
     const cur: Record<string, string> = {}
@@ -144,7 +188,8 @@ function describeTrace(trace: TraceStep[]): string[] {
       i === 0
         ? 'Init'
         : (step.label ?? step.action ?? 'Next').replace(sourceRange, '')
-    return `${i + 1}. ${label}: ${changed.map((k) => `${k} = ${cur[k]}`).join(', ')}`
+    const loop = i === loopStart ? '  <- loop starts here' : ''
+    return `${i + 1}. ${label}: ${changed.map((k) => `${k} = ${cur[k]}`).join(', ')}${loop}`
   })
 }
 
@@ -155,8 +200,14 @@ function describeTrace(trace: TraceStep[]): string[] {
 export async function checkModel(
   model: Model,
   shared = sharedModulesDir(),
+  workers = 1,
 ): Promise<ModelResult> {
-  const r = await checkSpec(model, shared)
+  const r = await checkSource(
+    model,
+    fs.readFileSync(model.spec, 'utf8'),
+    shared,
+    workers,
+  )
   const stale = await staleChart(model)
   if (stale === undefined) return r
   return {
@@ -167,74 +218,239 @@ export async function checkModel(
   }
 }
 
-// checkSpec checks one Model's rules.
-async function checkSpec(model: Model, shared: string): Promise<ModelResult> {
+// checkSource checks one Model's rules over source, the spec's text or a
+// mutant of it.
+async function checkSource(
+  model: Model,
+  source: string,
+  shared: string,
+  workers: number,
+): Promise<ModelResult> {
   const loadModule = moduleLoader(model.spec, shared)
   const start = performance.now()
+  const empty = { states: 0, generated: 0, depth: 0 }
   try {
     const result = await check({
-      source: fs.readFileSync(model.spec, 'utf8'),
+      source,
       config: fs.readFileSync(model.config, 'utf8'),
       loadModule,
+      workers,
     })
-    const ms = performance.now() - start
-    if (result.status === 'success') return { ...model, ok: true, ms }
-    const trace = result.violation?.trace ?? result.failure?.trace ?? []
-    return {
+    const r = {
       ...model,
+      ms: performance.now() - start,
+      status: result.status,
+      states: result.distinctStates,
+      generated: result.generatedStates,
+      depth: result.depth,
+    }
+    if (result.status === 'success') return { ...r, ok: true }
+    const v = result.violation
+    return {
+      ...r,
       ok: false,
-      ms,
-      rule: result.violation?.name ?? result.status,
-      trace: describeTrace(trace),
-      error: result.violation?.message ?? result.failure?.message,
+      rule: v ? ruleName(v.name, source, loadModule) : result.status,
+      trace: describeTrace(
+        v?.trace ?? result.failure?.trace ?? [],
+        v?.loopStart,
+      ),
+      error: v?.message ?? result.failure?.message,
     }
   } catch (err) {
     const error = explain(err instanceof Error ? err.message : String(err))
+    const rule = constantRule.exec(error)?.[1]
     return {
       ...model,
+      ...empty,
       ok: false,
       ms: performance.now() - start,
-      rule: constantRule.exec(error)?.[1] ?? 'error',
+      status: rule ? 'invariant-violation' : 'error',
+      rule: rule ?? 'error',
       error,
     }
   }
 }
 
-// main checks every Model under the given paths, the working directory when
-// none are given, prints one line per Model and the trace of each failure, and
-// exits 1 when any failed.
-async function main(args: string[]): Promise<number> {
-  if (args[0] === '-h' || args[0] === '--help') {
-    console.log(
-      [
-        'usage: aptre-tla [path...]',
-        '       aptre-tla chart [path...]',
-        'Checks every TLA+ spec with a .cfg beside it, and that the chart of each',
-        'spec with a Foo.view.ts is current. chart writes those charts.',
-      ].join('\n'),
-    )
-    return 0
+// Mutant is one entry of Foo.mutants.json: the spec with a guard removed.
+export interface Mutant {
+  name: string
+  // replace lists [from, to] pairs applied to the spec's source in order. Each
+  // from must occur exactly once, so a mutant cannot go stale silently.
+  replace: [string, string][]
+  // expect, when set, is text the broken rule's name must contain, such as an
+  // invariant name, deadlock, or a module name for a refinement.
+  expect?: string
+  // config names the config to check, relative to the spec; the default is
+  // Foo.cfg.
+  config?: string
+}
+
+// MutantVerdict is kill when the mutant broke its expected rule, LIVE when it
+// still passed, MISS when it broke another rule, and stale when its text no
+// longer matches the spec. Only kill passes the run.
+export type MutantVerdict = 'kill' | 'LIVE' | 'MISS' | 'stale'
+
+// MutantResult is the outcome of checking one Mutant.
+export interface MutantResult extends ModelResult {
+  mutant: Mutant
+  verdict: MutantVerdict
+}
+
+// mutantsOf returns the mutants listed beside spec, Foo.mutants.json for
+// Foo.tla, or none.
+export function mutantsOf(spec: string): Mutant[] {
+  const file = spec.slice(0, -'.tla'.length) + '.mutants.json'
+  return fs.existsSync(file)
+    ? (JSON.parse(fs.readFileSync(file, 'utf8')) as Mutant[])
+    : []
+}
+
+// applyMutant returns source with each of mutant's replacements applied, and
+// throws when a from text does not occur exactly once.
+function applyMutant(source: string, mutant: Mutant): string {
+  let out = source
+  for (const [from, to] of mutant.replace) {
+    const n = out.split(from).length - 1
+    if (n !== 1)
+      throw new Error(`text occurs ${n} times, want 1: ${JSON.stringify(from)}`)
+    out = out.replace(from, () => to)
   }
+  return out
+}
+
+// checkMutant checks one mutant of spec. A parse or evaluation error checks
+// nothing, so it never counts as a kill.
+export async function checkMutant(
+  spec: string,
+  mutant: Mutant,
+  shared = sharedModulesDir(),
+  workers = 1,
+): Promise<MutantResult> {
+  const dir = path.dirname(spec)
+  const config = path.join(
+    dir,
+    mutant.config ?? path.basename(spec).slice(0, -'.tla'.length) + '.cfg',
+  )
+  const model = { spec, config }
+  let source: string
+  try {
+    source = applyMutant(fs.readFileSync(spec, 'utf8'), mutant)
+  } catch (err) {
+    return {
+      ...model,
+      ok: false,
+      ms: 0,
+      status: 'error',
+      states: 0,
+      generated: 0,
+      depth: 0,
+      rule: 'stale',
+      error: err instanceof Error ? err.message : String(err),
+      mutant,
+      verdict: 'stale',
+    }
+  }
+  const r = await checkSource(model, source, shared, workers)
+  const killed = !r.ok && r.status !== 'error'
+  const verdict: MutantVerdict = !killed
+    ? 'LIVE'
+    : !mutant.expect || r.rule?.includes(mutant.expect)
+      ? 'kill'
+      : 'MISS'
+  return { ...r, mutant, verdict }
+}
+
+const usage = `usage: aptre-tla [-json] [-workers N] [path...]
+       aptre-tla chart [path...]
+
+Checks every TLA+ spec with a .cfg beside it under each path (default: the
+working directory), that the chart of each spec with a Foo.view.ts is current,
+and that each mutant in Foo.mutants.json breaks its expected rule. Prints the
+state counts of every result and the shortest trace to each broken rule;
+TLA_MUTANT_TRACES=1 also prints each killing trace. chart writes the charts.
+Exits 1 when a model fails or a mutant survives, and 2 when no model is found
+or the arguments are wrong.`
+
+// usageError prints message and the usage, and returns the exit code for a
+// usage error.
+function usageError(message: string): number {
+  console.error(`aptre-tla: ${message}\n\n${usage}`)
+  return 2
+}
+
+// printResult prints one result as a line, followed by its error and trace
+// when it failed, or as one JSON object.
+function printResult(
+  json: boolean,
+  r: ModelResult | MutantResult,
+  name: string,
+): void {
+  const mutant = 'verdict' in r
+  if (json) {
+    console.log(
+      JSON.stringify({ kind: mutant ? 'mutant' : 'model', name, ...r }),
+    )
+    return
+  }
+  const verdict = mutant ? r.verdict : r.ok ? 'pass' : 'FAIL'
+  const stats = `${String(r.states).padStart(7)} states ${String(r.depth).padStart(3)} deep ${r.ms.toFixed(0).padStart(6)} ms`
+  console.log(
+    `${verdict.padEnd(5)} ${stats}  ${name}${r.rule ? `  ${r.rule}` : ''}`,
+  )
+  const passed = mutant ? r.verdict === 'kill' : r.ok
+  if (passed && !(mutant && process.env.TLA_MUTANT_TRACES)) return
+  for (const line of r.error?.split('\n') ?? []) console.log(`      ${line}`)
+  for (const line of r.trace ?? []) console.log(`      ${line}`)
+}
+
+// main checks every Model and mutant under the given paths, the working
+// directory when none are given, and prints one line per result.
+async function main(args: string[]): Promise<number> {
   if (args[0] === 'chart') return writeCharts(args.slice(1))
+  let json = false
+  let workers = 1
+  const targets: string[] = []
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i]
+    if (a === '-h' || a === '-help' || a === '--help') {
+      console.log(usage)
+      return 0
+    }
+    if (a === '-json') json = true
+    else if (a === '-workers') workers = Number(args[++i])
+    else if (a.startsWith('-')) return usageError(`unknown flag ${a}`)
+    else if (!fs.existsSync(a)) return usageError(`no such path: ${a}`)
+    else targets.push(a)
+  }
+  if (!Number.isInteger(workers) || workers < 1)
+    return usageError('-workers takes a positive integer')
   const shared = sharedModulesDir()
   let failed = 0
   let count = 0
-  for (const target of args.length ? args : ['.']) {
+  const specs = new Set<string>()
+  for (const target of targets.length ? targets : ['.']) {
     for (const model of findModels(target)) {
       count++
-      const r = await checkModel(model, shared)
-      const name = path.relative('.', r.config)
-      console.log(
-        `${r.ok ? 'pass' : 'FAIL'}  ${r.ms.toFixed(0).padStart(5)} ms  ${name}${r.rule ? `  ${r.rule}` : ''}`,
-      )
-      if (r.ok) continue
-      failed++
-      for (const line of r.error?.split('\n') ?? [])
-        console.log(`      ${line}`)
-      for (const line of r.trace ?? []) console.log(`      ${line}`)
+      specs.add(model.spec)
+      const r = await checkModel(model, shared, workers)
+      printResult(json, r, path.relative('.', r.config))
+      if (!r.ok) failed++
     }
   }
-  console.log(`${count} model(s), ${failed} failed`)
+  for (const spec of specs) {
+    for (const mutant of mutantsOf(spec)) {
+      const r = await checkMutant(spec, mutant, shared, workers)
+      printResult(
+        json,
+        r,
+        `${path.relative('.', spec)} mutant "${mutant.name}"`,
+      )
+      if (r.verdict !== 'kill') failed++
+    }
+  }
+  if (count === 0)
+    return usageError('no models found: a model is a Foo.cfg beside a Foo.tla')
+  if (!json) console.log(`${count} model(s), ${failed} failed`)
   return failed ? 1 : 0
 }
 

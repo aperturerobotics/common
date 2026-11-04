@@ -3,7 +3,14 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { chartOf, checkModel, drawChart, findModels } from './check.js'
+import {
+  chartOf,
+  checkModel,
+  checkMutant,
+  drawChart,
+  findModels,
+  mutantsOf,
+} from './check.js'
 
 const testdata = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -30,7 +37,14 @@ describe('aptre-tla', () => {
       'MapPicker-rule.cfg',
       'Reach-stalled.cfg',
       'Reach.cfg',
+      'Worker.cfg',
     ])
+    // A passing model reports the size of its search.
+    expect(results['Worker.cfg']).toMatchObject({
+      ok: true,
+      states: 580,
+      depth: 16,
+    })
     expect(results['ChallengeCard-private.cfg'].ok).toBe(true)
     // A _POSSIBLE goal passes when some state reaches it and fails when none
     // does; both charts draw every reachable state.
@@ -62,6 +76,39 @@ describe('aptre-tla', () => {
     })
     // A spec that uses < without EXTENDS Naturals is told which module to add.
     expect(results['Counter.cfg'].error).toMatch(/\(add EXTENDS Naturals\)$/)
+  })
+
+  it('kills each listed mutant and fails one that survives or goes stale', async () => {
+    const spec = path.join(testdata, 'worker', 'Worker.tla')
+    const verdicts: Record<string, string> = {}
+    for (const mutant of mutantsOf(spec)) {
+      const r = await checkMutant(spec, mutant)
+      verdicts[mutant.name] = `${r.verdict} ${r.rule}`
+    }
+    // A refinement failure shows the formula and the interface it broke,
+    // rather than only its source range.
+    expect(verdicts).toEqual({
+      'take checks the queue and stops in two lock sections':
+        'kill [][Next]_vars (WorkerApi line 52)',
+      'Submit accepts after Stop': 'kill [][Next]_vars (WorkerApi line 52)',
+      'Submit does not signal': 'kill AcceptedRuns',
+      'Stop does not signal': 'kill deadlock',
+    })
+    const live = await checkMutant(spec, {
+      name: 'no change',
+      replace: [['EXTENDS Sequences', 'EXTENDS Sequences']],
+    })
+    expect(live.verdict).toBe('LIVE')
+    const miss = await checkMutant(spec, {
+      ...mutantsOf(spec)[3],
+      expect: 'AcceptedRuns',
+    })
+    expect(miss.verdict).toBe('MISS')
+    const stale = await checkMutant(spec, {
+      name: 'gone',
+      replace: [['no such text', '']],
+    })
+    expect(stale).toMatchObject({ verdict: 'stale', rule: 'stale' })
   })
 
   it('selects one spec when given its file', () => {
