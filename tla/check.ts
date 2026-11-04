@@ -368,8 +368,9 @@ working directory), that the chart of each spec with a Foo.view.ts is current,
 and that each mutant in Foo.mutants.json breaks its expected rule. Prints the
 state counts of every result and the shortest trace to each broken rule;
 TLA_MUTANT_TRACES=1 also prints each killing trace. chart writes the charts.
-Exits 1 when a model fails or a mutant survives, and 2 when no model is found
-or the arguments are wrong.`
+Exits 1 when a model fails or a mutant survives, and 2 when the arguments are
+wrong, such as a missing path or a spec file with no config beside it. A
+directory with no models passes.`
 
 // usageError prints message and the usage, and returns the exit code for a
 // usage error.
@@ -429,13 +430,17 @@ async function main(args: string[]): Promise<number> {
   let count = 0
   const specs = new Set<string>()
   for (const target of targets.length ? targets : ['.']) {
+    let found = 0
     for (const model of findModels(target)) {
+      found++
       count++
       specs.add(model.spec)
       const r = await checkModel(model, shared, workers)
       printResult(json, r, path.relative('.', r.config))
       if (!r.ok) failed++
     }
+    if (found === 0 && fs.statSync(target).isFile())
+      return usageError(`${target} has no Foo.cfg beside its Foo.tla`)
   }
   for (const spec of specs) {
     for (const mutant of mutantsOf(spec)) {
@@ -448,8 +453,6 @@ async function main(args: string[]): Promise<number> {
       if (r.verdict !== 'kill') failed++
     }
   }
-  if (count === 0)
-    return usageError('no models found: a model is a Foo.cfg beside a Foo.tla')
   if (!json) console.log(`${count} model(s), ${failed} failed`)
   return failed ? 1 : 0
 }
