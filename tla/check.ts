@@ -49,6 +49,9 @@ export interface ModelResult extends Model {
   states: number
   generated: number
   depth: number
+  // collision estimates the chance that two distinct states shared a 64-bit
+  // fingerprint, so that the search skipped one, as TLC estimates it.
+  collision: Collision
   // rule names the broken invariant or property, or the tla-ts status. A
   // broken temporal formula shows its text and module.
   rule?: string
@@ -56,6 +59,27 @@ export interface ModelResult extends Model {
   trace?: string[]
   // error is the message of a model that could not be checked.
   error?: string
+}
+
+// Collision holds TLC's two estimates of a fingerprint collision: calculated
+// from the state counts, and observed from the closest pair of stored
+// fingerprints. The checker measures the observed one only on a pass whose
+// calculated estimate is at least 1e-10.
+export interface Collision {
+  calculated: number
+  observed?: number
+}
+
+// collisionOf returns the estimates for a search that found states distinct
+// states among generated, with the closest stored fingerprints distance apart.
+export function collisionOf(
+  states: number,
+  generated: number,
+  distance?: bigint,
+): Collision {
+  const calculated = states * ((generated - states) / 2 ** 64)
+  if (distance === undefined || distance === 0n) return { calculated }
+  return { calculated, observed: 1 / Number(distance) }
 }
 
 // viewOf returns the view beside spec, Foo.view.ts for Foo.tla, or undefined
@@ -228,7 +252,12 @@ async function checkSource(
 ): Promise<ModelResult> {
   const loadModule = moduleLoader(model.spec, shared)
   const start = performance.now()
-  const empty = { states: 0, generated: 0, depth: 0 }
+  const empty = {
+    states: 0,
+    generated: 0,
+    depth: 0,
+    collision: { calculated: 0 },
+  }
   try {
     const result = await check({
       source,
@@ -243,6 +272,11 @@ async function checkSource(
       states: result.distinctStates,
       generated: result.generatedStates,
       depth: result.depth,
+      collision: collisionOf(
+        result.distinctStates,
+        result.generatedStates,
+        result.fingerprintDistance,
+      ),
     }
     if (result.status === 'success') return { ...r, ok: true }
     const v = result.violation
@@ -344,6 +378,7 @@ export async function checkMutant(
       states: 0,
       generated: 0,
       depth: 0,
+      collision: { calculated: 0 },
       rule: 'stale',
       error: err instanceof Error ? err.message : String(err),
       mutant,
@@ -366,7 +401,8 @@ const usage = `usage: aptre-tla [-json] [-workers N] [path...]
 Checks every TLA+ spec with a .cfg beside it under each path (default: the
 working directory), that the chart of each spec with a Foo.view.ts is current,
 and that each mutant in Foo.mutants.json breaks its expected rule. Prints the
-state counts of every result and the shortest trace to each broken rule;
+state counts of every result, its calculated and observed chance of a
+fingerprint collision, and the shortest trace to each broken rule;
 TLA_MUTANT_TRACES=1 also prints each killing trace. chart writes the charts.
 Exits 1 when a model fails or a mutant survives, and 2 when the arguments are
 wrong, such as a missing path or a spec file with no config beside it. A
@@ -377,6 +413,15 @@ directory with no models passes.`
 function usageError(message: string): number {
   console.error(`aptre-tla: ${message}\n\n${usage}`)
   return 2
+}
+
+// formatCollision shows the calculated estimate, then the observed one when
+// the checker measured it.
+function formatCollision(c: Collision): string {
+  const e = (p: number) => p.toExponential(1)
+  return c.observed === undefined
+    ? e(c.calculated)
+    : `${e(c.calculated)}/${e(c.observed)}`
 }
 
 // printResult prints one result as a line, followed by its error and trace
@@ -394,7 +439,7 @@ function printResult(
     return
   }
   const verdict = mutant ? r.verdict : r.ok ? 'pass' : 'FAIL'
-  const stats = `${String(r.states).padStart(7)} states ${String(r.depth).padStart(3)} deep ${r.ms.toFixed(0).padStart(6)} ms`
+  const stats = `${String(r.states).padStart(7)} states ${String(r.depth).padStart(3)} deep ${r.ms.toFixed(0).padStart(6)} ms  collision ${formatCollision(r.collision)}`
   console.log(
     `${verdict.padEnd(5)} ${stats}  ${name}${r.rule ? `  ${r.rule}` : ''}`,
   )
