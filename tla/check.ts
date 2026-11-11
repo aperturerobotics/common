@@ -33,7 +33,7 @@ import {
   moduleLoader,
   sharedModulesDir,
 } from './models.js'
-import type { Runner } from './runner.js'
+import { startRunner, type Runner } from './runner.js'
 
 export { findModels, type Model, moduleLoader, sharedModulesDir }
 
@@ -502,7 +502,6 @@ async function main(args: string[]): Promise<number> {
   const limit = Number(process.env.TLA_LIMIT_MIB ?? Infinity)
   if (!(limit > 0)) return usageError('TLA_LIMIT_MIB takes a positive number')
   const shared = sharedModulesDir()
-  const { startRunner } = await import('./runner.js')
   const runner = startRunner(shared, workers, limit * 1024 * 1024)
   try {
     return await checkAll(runner, json, targets)

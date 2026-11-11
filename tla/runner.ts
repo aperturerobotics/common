@@ -5,7 +5,9 @@
 //
 // The worker is this module. The main thread sends it one model or mutant at a
 // time; the worker checks it with checkModel or checkMutant and posts its
-// progress and then its result.
+// progress and then its result. Only the worker loads check.js, and lazily:
+// check.js imports this module, and under Node a static import back, or a
+// top-level await on it, never settles.
 
 import fs from 'node:fs'
 import os from 'node:os'
@@ -13,18 +15,17 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
   isMainThread,
+  type MessagePort,
   parentPort,
   Worker,
   workerData,
 } from 'node:worker_threads'
-import {
-  checkModel,
-  checkMutant,
-  type Model,
-  type ModelResult,
-  type Mutant,
-  type MutantResult,
-  type Progress,
+import type {
+  Model,
+  ModelResult,
+  Mutant,
+  MutantResult,
+  Progress,
 } from './check.js'
 
 // Job is one check the main thread sends the worker.
@@ -197,10 +198,17 @@ export function startRunner(
     current = undefined
     done.resolve(reply.result)
   })
+  // A worker that fails or exits mid-check, such as out of heap, fails that
+  // check rather than leaving it pending forever.
   worker.on('error', (err) => {
     const done = current
     current = undefined
     done?.reject(err)
+  })
+  worker.on('exit', (code) => {
+    const done = current
+    current = undefined
+    done?.reject(new Error(`checker worker exited with code ${code}`))
   })
 
   const run = <R extends ModelResult | MutantResult>(job: Job, name: string) =>
@@ -228,7 +236,15 @@ export function startRunner(
 }
 
 if (!isMainThread && parentPort) {
-  const port = parentPort
+  void serveJobs(parentPort)
+}
+
+// serveJobs runs the worker: it checks each job the main thread sends, posting
+// its progress and then its result. It imports check.js without awaiting it at
+// the top level, so this module finishes evaluating before check.js, which
+// imports it, needs it; the port queues any job sent in the meantime.
+async function serveJobs(port: MessagePort): Promise<void> {
+  const { checkModel, checkMutant } = await import('./check.js')
   const { shared, workers } = workerData as RunnerData
   const onProgress = (progress: Progress) =>
     port.postMessage({ kind: 'progress', progress } satisfies Reply)
