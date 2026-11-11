@@ -18,6 +18,11 @@
 // rule; a mutant that still passes means the spec does not model what the
 // guard protects, or the guard is dead code, and fails the run.
 //
+// A spec with a testdata directory beside it also checks each config mutant
+// there: testdata/Foo-<name>.cfg checks Foo.tla under changed constants and
+// names the rule it must break in a comment line, \* expect: <Rule>. A config
+// mutant with no expect line fails the run unchecked.
+//
 // Every result carries its state counts, so a baseline and a simpler design
 // can be compared over the same bounds; -json prints one object per result.
 
@@ -28,6 +33,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { isMainThread } from 'node:worker_threads'
 import { check, formatValue, type TraceStep } from 'tla-ts'
 import {
+  configMutantsOf,
+  findConfigMutants,
   findModels,
   type Model,
   moduleLoader,
@@ -35,7 +42,14 @@ import {
 } from './models.js'
 import { startRunner, type Runner } from './runner.js'
 
-export { findModels, type Model, moduleLoader, sharedModulesDir }
+export {
+  configMutantsOf,
+  findConfigMutants,
+  findModels,
+  type Model,
+  moduleLoader,
+  sharedModulesDir,
+}
 
 // ModelResult is the outcome of checking one Model.
 export interface ModelResult extends Model {
@@ -332,8 +346,9 @@ export interface Mutant {
   // replace lists [from, to] pairs applied to the spec's source in order. Each
   // from must occur exactly once, so a mutant cannot go stale silently.
   replace: [string, string][]
-  // expect, when set, is text the broken rule's name must contain, such as an
-  // invariant name, deadlock, or a module name for a refinement.
+  // expect, when set, names the rule the mutant must break: an invariant or
+  // property name, deadlock, or the module of a broken formula, such as the
+  // interface a refinement implements.
   expect?: string
   // config names the config to check, relative to the spec; the default is
   // Foo.cfg.
@@ -341,9 +356,10 @@ export interface Mutant {
 }
 
 // MutantVerdict is kill when the mutant broke its expected rule, LIVE when it
-// still passed, MISS when it broke another rule, and stale when its text no
-// longer matches the spec. Only kill passes the run.
-export type MutantVerdict = 'kill' | 'LIVE' | 'MISS' | 'stale'
+// still passed, MISS when it broke another rule, ERROR when it checked nothing,
+// such as on a parse or constant error or with no expected rule to judge, and
+// stale when its text no longer matches the spec. Only kill passes the run.
+export type MutantVerdict = 'kill' | 'LIVE' | 'MISS' | 'ERROR' | 'stale'
 
 // MutantResult is the outcome of checking one Mutant.
 export interface MutantResult extends ModelResult {
@@ -360,6 +376,51 @@ export function mutantsOf(spec: string): Mutant[] {
     : []
 }
 
+// expectLine matches a config mutant's expect line, \* expect: <Rule>.
+const expectLine = /^\\\* expect: (\S+)\s*$/m
+
+// configMutant returns the Mutant a config mutant runs as: no replacements,
+// its config, and the rule its expect line names, or no rule without one.
+export function configMutant(model: Model): Mutant {
+  return {
+    name: path.basename(model.config, '.cfg'),
+    replace: [],
+    expect: expectLine.exec(fs.readFileSync(model.config, 'utf8'))?.[1],
+    config: path.relative(path.dirname(model.spec), model.config),
+  }
+}
+
+// moduleOf matches the module ruleName shows for a broken formula.
+const moduleOf = /\((\w+) line \d+\)$/
+
+// breaks reports whether rule, a broken rule's name, is expect: the same name,
+// or for a formula, its module.
+const breaks = (rule: string | undefined, expect: string) =>
+  rule === expect || moduleOf.exec(rule ?? '')?.[1] === expect
+
+// unjudged returns the result of a mutant that was not checked.
+export function unjudged(
+  model: Model,
+  mutant: Mutant,
+  verdict: 'ERROR' | 'stale',
+  error: string,
+): MutantResult {
+  return {
+    ...model,
+    ok: false,
+    ms: 0,
+    status: 'error',
+    states: 0,
+    generated: 0,
+    depth: 0,
+    collision: { calculated: 0 },
+    rule: verdict === 'stale' ? 'stale' : 'error',
+    error,
+    mutant,
+    verdict,
+  }
+}
+
 // applyMutant returns source with each of mutant's replacements applied, and
 // throws when a from text does not occur exactly once.
 function applyMutant(source: string, mutant: Mutant): string {
@@ -373,9 +434,9 @@ function applyMutant(source: string, mutant: Mutant): string {
   return out
 }
 
-// checkMutant checks one mutant of spec. A parse or evaluation error checks
-// nothing, so it never counts as a kill. onProgress receives the search's
-// progress every 60 s.
+// checkMutant checks one mutant of spec. A run that errors or checks no state
+// tested nothing, so it is an ERROR and never a kill. onProgress receives the
+// search's progress every 60 s.
 export async function checkMutant(
   spec: string,
   mutant: Mutant,
@@ -393,28 +454,18 @@ export async function checkMutant(
   try {
     source = applyMutant(fs.readFileSync(spec, 'utf8'), mutant)
   } catch (err) {
-    return {
-      ...model,
-      ok: false,
-      ms: 0,
-      status: 'error',
-      states: 0,
-      generated: 0,
-      depth: 0,
-      collision: { calculated: 0 },
-      rule: 'stale',
-      error: err instanceof Error ? err.message : String(err),
-      mutant,
-      verdict: 'stale',
-    }
+    const error = err instanceof Error ? err.message : String(err)
+    return unjudged(model, mutant, 'stale', error)
   }
   const r = await checkSource(model, source, shared, workers, onProgress)
-  const killed = !r.ok && r.status !== 'error'
-  const verdict: MutantVerdict = !killed
-    ? 'LIVE'
-    : !mutant.expect || r.rule?.includes(mutant.expect)
-      ? 'kill'
-      : 'MISS'
+  const verdict: MutantVerdict =
+    r.status === 'error' || r.states === 0
+      ? 'ERROR'
+      : r.ok
+        ? 'LIVE'
+        : !mutant.expect || breaks(r.rule, mutant.expect)
+          ? 'kill'
+          : 'MISS'
   return { ...r, mutant, verdict }
 }
 
@@ -423,7 +474,11 @@ const usage = `usage: aptre-tla [-json] [-workers N] [path...]
 
 Checks every TLA+ spec with a .cfg beside it under each path (default: the
 working directory), that the chart of each spec with a Foo.view.ts is current,
-and that each mutant in Foo.mutants.json breaks its expected rule. Prints the
+and that each mutant in Foo.mutants.json, and each config mutant in testdata/
+beside the spec, breaks its expected rule. A config mutant names its rule in a
+line \\* expect: <Rule>; a path may name a testdata directory or one config in
+it. A mutant prints kill when it broke that rule, MISS when it broke another,
+LIVE when it passed and ERROR when it checked nothing. Prints the
 state counts of every result, its calculated and observed chance of a
 fingerprint collision, and the shortest trace to each broken rule;
 TLA_MUTANT_TRACES=1 also prints each killing trace. chart writes the charts.
@@ -433,7 +488,7 @@ A search that runs past a few seconds prints a progress line to stderr every
 last one before exiting. The checker spills its queue under TLA_SPILL (default:
 the temporary directory) and the run removes it on exit; TLA_LIMIT_MIB stops
 the run, with exit code 1, once RSS plus spilled bytes pass that many MiB.
-Exits 1 when a model fails or a mutant survives, and 2 when the arguments are
+Exits 1 when a model fails or a mutant is not a kill, and 2 when the arguments are
 wrong, such as a missing path or a spec file with no config beside it. A
 directory with no models passes.`
 
@@ -469,8 +524,12 @@ function printResult(
   }
   const verdict = mutant ? r.verdict : r.ok ? 'pass' : 'FAIL'
   const stats = `${String(r.states).padStart(7)} states ${String(r.depth).padStart(3)} deep ${r.ms.toFixed(0).padStart(6)} ms  collision ${formatCollision(r.collision)}`
+  const want =
+    mutant && r.verdict !== 'kill' && r.mutant.expect
+      ? `  want ${r.mutant.expect}`
+      : ''
   console.log(
-    `${verdict.padEnd(5)} ${stats}  ${name}${r.rule ? `  ${r.rule}` : ''}`,
+    `${verdict.padEnd(5)} ${stats}  ${name}${r.rule ? `  ${r.rule}` : ''}${want}`,
   )
   const passed = mutant ? r.verdict === 'kill' : r.ok
   if (passed && !(mutant && process.env.TLA_MUTANT_TRACES)) return
@@ -520,8 +579,21 @@ async function checkAll(
   let failed = 0
   let count = 0
   const specs = new Set<string>()
+  // configMutants holds the config mutants to judge, by config path: those of
+  // each spec checked, and those a target names, a testdata directory or a
+  // config in one.
+  const configMutants = new Map<string, Model>()
+  const addConfigMutants = (models: Model[]) =>
+    models.forEach((m) => configMutants.set(m.config, m))
   for (const target of targets.length ? targets : ['.']) {
-    let found = 0
+    const resolved = path.resolve(target)
+    const testdata = fs.statSync(resolved).isFile()
+      ? findConfigMutants(path.dirname(resolved)).filter(
+          (m) => m.config === resolved,
+        )
+      : findConfigMutants(resolved)
+    addConfigMutants(testdata)
+    let found = testdata.length
     for (const model of findModels(target)) {
       found++
       count++
@@ -534,15 +606,30 @@ async function checkAll(
     if (found === 0 && fs.statSync(target).isFile())
       return usageError(`${target} has no Foo.cfg beside its Foo.tla`)
   }
+  let mutants = 0
   for (const spec of specs) {
+    addConfigMutants(configMutantsOf(path.resolve(spec)))
     for (const mutant of mutantsOf(spec)) {
+      mutants++
       const name = `${path.relative('.', spec)} mutant "${mutant.name}"`
       const r = await runner.checkMutant(spec, mutant, name)
       printResult(json, r, name)
       if (r.verdict !== 'kill') failed++
     }
   }
-  if (!json) console.log(`${count} model(s), ${failed} failed`)
+  for (const model of configMutants.values()) {
+    mutants++
+    const mutant = configMutant(model)
+    const name = path.relative('.', model.config)
+    const r =
+      mutant.expect === undefined
+        ? unjudged(model, mutant, 'ERROR', 'no \\* expect: <Rule> line')
+        : await runner.checkMutant(model.spec, mutant, name)
+    printResult(json, r, name)
+    if (r.verdict !== 'kill') failed++
+  }
+  if (!json)
+    console.log(`${count} model(s), ${mutants} mutant(s), ${failed} failed`)
   return failed ? 1 : 0
 }
 

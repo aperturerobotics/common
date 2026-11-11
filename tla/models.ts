@@ -5,7 +5,8 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 // Directories never walked for specs. A testdata directory holds fixtures,
-// such as deliberately broken specs, that its own tests check by path.
+// such as deliberately broken specs, that its own tests check by path, and
+// the config mutants of the specs beside it (see configMutantsOf).
 const skipDirs = new Set([
   'node_modules',
   'vendor',
@@ -35,16 +36,16 @@ export function sharedModulesDir(): string {
   }
 }
 
-// modelsInDir yields the Models whose configs sit directly in dir.
+// modelsInDir yields the Models whose configs sit directly in dir. A config
+// directly in a testdata directory is a config mutant, not a Model.
 function* modelsInDir(dir: string, names: string[]): Generator<Model> {
+  if (path.basename(dir) === 'testdata') return
   const stems = names
     .filter((n) => n.endsWith('.tla'))
     .map((n) => n.slice(0, -4))
-    .sort((a, b) => b.length - a.length)
   for (const name of [...names].sort()) {
     if (!name.endsWith('.cfg')) continue
-    const cfg = name.slice(0, -4)
-    const stem = stems.find((s) => cfg === s || cfg.startsWith(s + '-'))
+    const stem = stemOf(name, stems)
     if (stem === undefined) continue
     yield { spec: path.join(dir, stem + '.tla'), config: path.join(dir, name) }
   }
@@ -73,6 +74,50 @@ export function* findModels(target: string): Generator<Model> {
       continue
     yield* findModels(path.join(target, e.name))
   }
+}
+
+// stemOf returns the stem of the spec among stems that the config file name
+// cfg belongs to, Foo for Foo.cfg or Foo-<variant>.cfg, preferring the
+// longest, or undefined.
+function stemOf(cfg: string, stems: string[]): string | undefined {
+  const name = cfg.slice(0, -'.cfg'.length)
+  return stems
+    .filter((s) => name === s || name.startsWith(s + '-'))
+    .sort((a, b) => b.length - a.length)[0]
+}
+
+// findConfigMutants returns the config mutants in dir, a testdata directory:
+// each config in it paired with the spec beside dir it belongs to, Foo.tla
+// for testdata/Foo.cfg and testdata/Foo-<name>.cfg. A config mutant checks
+// the spec under changed constants and must break the rule its expect line
+// names.
+export function findConfigMutants(dir: string): Model[] {
+  if (path.basename(dir) !== 'testdata' || !fs.statSync(dir).isDirectory())
+    return []
+  const parent = path.dirname(dir)
+  const stems = fs
+    .readdirSync(parent)
+    .filter((n) => n.endsWith('.tla'))
+    .map((n) => n.slice(0, -'.tla'.length))
+  const mutants: Model[] = []
+  for (const name of fs.readdirSync(dir).sort()) {
+    if (!name.endsWith('.cfg')) continue
+    const stem = stemOf(name, stems)
+    if (stem === undefined) continue
+    mutants.push({
+      spec: path.join(parent, stem + '.tla'),
+      config: path.join(dir, name),
+    })
+  }
+  return mutants
+}
+
+// configMutantsOf returns the config mutants of spec, from the testdata
+// directory beside it.
+export function configMutantsOf(spec: string): Model[] {
+  const dir = path.join(path.dirname(spec), 'testdata')
+  if (!fs.existsSync(dir)) return []
+  return findConfigMutants(dir).filter((m) => m.spec === spec)
 }
 
 // moduleLoader resolves a module name for spec: from the spec's own directory,

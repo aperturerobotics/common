@@ -7,7 +7,10 @@ import {
   chartOf,
   checkModel,
   checkMutant,
+  configMutant,
+  configMutantsOf,
   drawChart,
+  findConfigMutants,
   findModels,
   mutantsOf,
 } from './check.js'
@@ -109,6 +112,31 @@ describe('aptre-tla', () => {
       replace: [['no such text', '']],
     })
     expect(stale).toMatchObject({ verdict: 'stale', rule: 'stale' })
+  })
+
+  it('judges each config mutant in testdata by its expect line', async () => {
+    const spec = path.join(testdata, 'worker', 'Worker.tla')
+    const verdicts: Record<string, string | undefined> = {}
+    for (const model of configMutantsOf(spec)) {
+      const mutant = configMutant(model)
+      verdicts[mutant.name] =
+        mutant.expect === undefined
+          ? undefined
+          : (await checkMutant(spec, mutant)).verdict
+    }
+    // An error checks nothing, so it is never a kill, and a mutant with no
+    // expect line is left for the command to fail unchecked.
+    expect(verdicts).toEqual({
+      'Worker-error': 'ERROR',
+      'Worker-live': 'LIVE',
+      'Worker-miss': 'MISS',
+      'Worker-unfair': 'kill',
+      'Worker-unjudged': undefined,
+    })
+    // The testdata directory itself names the same mutants.
+    expect(
+      findConfigMutants(path.join(testdata, 'worker', 'testdata')),
+    ).toEqual(configMutantsOf(spec))
   })
 
   it('selects one spec when given its file', () => {
