@@ -25,6 +25,7 @@ import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { isMainThread } from 'node:worker_threads'
 import { check, formatValue, type TraceStep } from 'tla-ts'
 import {
   findModels,
@@ -32,6 +33,7 @@ import {
   moduleLoader,
   sharedModulesDir,
 } from './models.js'
+import type { Runner } from './runner.js'
 
 export { findModels, type Model, moduleLoader, sharedModulesDir }
 
@@ -59,6 +61,19 @@ export interface ModelResult extends Model {
   trace?: string[]
   // error is the message of a model that could not be checked.
   error?: string
+}
+
+// Progress is how far a long search has got, reported every 60 s: its counts,
+// and, from a checker that measures them, the bytes its seen states take and
+// the bytes and states of the queue it spilled to disk.
+export interface Progress {
+  distinctStates: number
+  generatedStates: number
+  depth: number
+  queuedStates: number
+  seenBytes?: number
+  spillBytes?: number
+  spillStates?: number
 }
 
 // Collision holds TLC's two estimates of a fingerprint collision: calculated
@@ -220,17 +235,19 @@ function describeTrace(trace: TraceStep[], loopStart?: number): string[] {
 // checkModel checks one Model and, when its spec has a view, that its committed
 // chart is current. A model tla-ts cannot check, such as one whose config names
 // a rule that depends on no variable, is reported as failed with its error
-// rather than thrown.
+// rather than thrown. onProgress receives the search's progress every 60 s.
 export async function checkModel(
   model: Model,
   shared = sharedModulesDir(),
   workers = 1,
+  onProgress?: (progress: Progress) => void,
 ): Promise<ModelResult> {
   const r = await checkSource(
     model,
     fs.readFileSync(model.spec, 'utf8'),
     shared,
     workers,
+    onProgress,
   )
   const stale = await staleChart(model)
   if (stale === undefined) return r
@@ -249,6 +266,7 @@ async function checkSource(
   source: string,
   shared: string,
   workers: number,
+  onProgress?: (progress: Progress) => void,
 ): Promise<ModelResult> {
   const loadModule = moduleLoader(model.spec, shared)
   const start = performance.now()
@@ -264,6 +282,9 @@ async function checkSource(
       config: fs.readFileSync(model.config, 'utf8'),
       loadModule,
       workers,
+      onProgress: (p) => {
+        if (p.kind === 'progress') onProgress?.(p.statistics as Progress)
+      },
     })
     const r = {
       ...model,
@@ -353,12 +374,14 @@ function applyMutant(source: string, mutant: Mutant): string {
 }
 
 // checkMutant checks one mutant of spec. A parse or evaluation error checks
-// nothing, so it never counts as a kill.
+// nothing, so it never counts as a kill. onProgress receives the search's
+// progress every 60 s.
 export async function checkMutant(
   spec: string,
   mutant: Mutant,
   shared = sharedModulesDir(),
   workers = 1,
+  onProgress?: (progress: Progress) => void,
 ): Promise<MutantResult> {
   const dir = path.dirname(spec)
   const config = path.join(
@@ -385,7 +408,7 @@ export async function checkMutant(
       verdict: 'stale',
     }
   }
-  const r = await checkSource(model, source, shared, workers)
+  const r = await checkSource(model, source, shared, workers, onProgress)
   const killed = !r.ok && r.status !== 'error'
   const verdict: MutantVerdict = !killed
     ? 'LIVE'
@@ -404,6 +427,12 @@ and that each mutant in Foo.mutants.json breaks its expected rule. Prints the
 state counts of every result, its calculated and observed chance of a
 fingerprint collision, and the shortest trace to each broken rule;
 TLA_MUTANT_TRACES=1 also prints each killing trace. chart writes the charts.
+
+A search that runs past a few seconds prints a progress line to stderr every
+60 s: its states, depth, queue, memory and RSS. SIGINT and SIGTERM print the
+last one before exiting. The checker spills its queue under TLA_SPILL (default:
+the temporary directory) and the run removes it on exit; TLA_LIMIT_MIB stops
+the run, with exit code 1, once RSS plus spilled bytes pass that many MiB.
 Exits 1 when a model fails or a mutant survives, and 2 when the arguments are
 wrong, such as a missing path or a spec file with no config beside it. A
 directory with no models passes.`
@@ -470,7 +499,25 @@ async function main(args: string[]): Promise<number> {
   }
   if (!Number.isInteger(workers) || workers < 1)
     return usageError('-workers takes a positive integer')
+  const limit = Number(process.env.TLA_LIMIT_MIB ?? Infinity)
+  if (!(limit > 0)) return usageError('TLA_LIMIT_MIB takes a positive number')
   const shared = sharedModulesDir()
+  const { startRunner } = await import('./runner.js')
+  const runner = startRunner(shared, workers, limit * 1024 * 1024)
+  try {
+    return await checkAll(runner, json, targets)
+  } finally {
+    await runner.close()
+  }
+}
+
+// checkAll checks every Model and mutant under targets through runner and
+// prints one line per result.
+async function checkAll(
+  runner: Runner,
+  json: boolean,
+  targets: string[],
+): Promise<number> {
   let failed = 0
   let count = 0
   const specs = new Set<string>()
@@ -480,8 +527,9 @@ async function main(args: string[]): Promise<number> {
       found++
       count++
       specs.add(model.spec)
-      const r = await checkModel(model, shared, workers)
-      printResult(json, r, path.relative('.', r.config))
+      const name = path.relative('.', model.config)
+      const r = await runner.checkModel(model, name)
+      printResult(json, r, name)
       if (!r.ok) failed++
     }
     if (found === 0 && fs.statSync(target).isFile())
@@ -489,12 +537,9 @@ async function main(args: string[]): Promise<number> {
   }
   for (const spec of specs) {
     for (const mutant of mutantsOf(spec)) {
-      const r = await checkMutant(spec, mutant, shared, workers)
-      printResult(
-        json,
-        r,
-        `${path.relative('.', spec)} mutant "${mutant.name}"`,
-      )
+      const name = `${path.relative('.', spec)} mutant "${mutant.name}"`
+      const r = await runner.checkMutant(spec, mutant, name)
+      printResult(json, r, name)
       if (r.verdict !== 'kill') failed++
     }
   }
@@ -532,6 +577,7 @@ async function writeCharts(args: string[]): Promise<number> {
 }
 
 if (
+  isMainThread &&
   process.argv[1] &&
   fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)
 ) {

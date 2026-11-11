@@ -186,6 +186,19 @@ line, and the command exits 1. Projects add it to their check script as
 `"check:tla": "aptre-tla"`. The `@aptre/common/tla` export offers `findModels`
 and `checkModel` for tools such as commit hooks.
 
+A long search prints a progress line to stderr every 60 s with its states,
+depth, queue, memory and RSS; SIGINT and SIGTERM print the last one before
+exiting, so a stopped run shows how far it got. Two variables bound a large run:
+
+```bash
+# Spill the queue to a disk, not a RAM-backed /tmp, and stop past 24 GiB
+TLA_SPILL=/var/tmp TLA_LIMIT_MIB=24576 bunx aptre-tla pkg/foo/Foo.tla
+```
+
+`TLA_SPILL` sets where the checker spills its queue (default: the temporary
+directory); the run removes its spill on exit. `TLA_LIMIT_MIB` stops the run,
+with exit code 1, once RSS plus spilled bytes pass that many MiB.
+
 ## How It Works
 
 The `aptre` tool orchestrates code generation using embedded WebAssembly:
