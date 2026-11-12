@@ -84,16 +84,16 @@
     "typescript": "^7.0.0"
   },
   "dependencies": {
-    "@aptre/protobuf-es-lite": "1.2.4",
+    "@aptre/protobuf-es-lite": "1.2.6",
     "starpc": "^0.52.3",
-    "tla-ts": "0.0.9",
+    "tla-ts": "0.0.10",
     "vitest": "^5.1.0"
   },
   "resolutions": {
-    "@aptre/protobuf-es-lite": "1.2.4"
+    "@aptre/protobuf-es-lite": "1.2.6"
   },
   "overrides": {
-    "@aptre/protobuf-es-lite": "1.2.4"
+    "@aptre/protobuf-es-lite": "1.2.6"
   },
   "bin": {
     "aptre-tla": "./dist/tla/check.js"
