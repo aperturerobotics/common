@@ -20,24 +20,24 @@ type Config struct {
 	// ProjectDir is the project directory.
 	// If empty, uses the current working directory.
 	ProjectDir string
-	// Targets is the list of proto file glob patterns to process.
-	// Default: ["./*.proto"]
+	// Targets is the list of proto file glob patterns to process, by default
+	// ["./*.proto"].
 	Targets []string
 	// Exclude is a list of proto file glob patterns to exclude.
 	// Files matching any of these patterns will be skipped.
 	Exclude []string
 	// Force regenerates all files regardless of cache.
 	Force bool
-	// CacheFile is the path to the cache file.
-	// Default: ".protoc-manifest.json"
+	// CacheFile is the path to the cache file, by default
+	// ".protoc-manifest.json".
 	CacheFile string
 	// Verbose enables verbose output.
 	Verbose bool
-	// GoLiteFeatures is the go-lite features to enable.
-	// Default: "marshal+unmarshal+size+equal+json+clone+text"
+	// GoLiteFeatures is the go-lite features to enable, by default
+	// "marshal+unmarshal+size+equal+json+clone+text".
 	GoLiteFeatures string
-	// ToolsDir is the tools directory containing plugin binaries.
-	// Default: ".tools"
+	// ToolsDir is the tools directory containing plugin binaries, by default
+	// ".tools" in the project; an absolute path is used as given.
 	ToolsDir string
 	// ExtraArgs contains any additional protoc arguments.
 	ExtraArgs []string
@@ -138,7 +138,16 @@ func (c *Config) GetToolsDir() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(projectDir, c.ToolsDir), nil
+	return ToolsPath(projectDir, c.ToolsDir), nil
+}
+
+// ToolsPath resolves a tools directory against the project directory. An
+// absolute tools directory, such as one several checkouts share, is kept.
+func ToolsPath(projectDir, toolsDir string) string {
+	if filepath.IsAbs(toolsDir) {
+		return filepath.Clean(toolsDir)
+	}
+	return filepath.Join(projectDir, toolsDir)
 }
 
 // HasGoMod checks if go.mod exists in the project directory.

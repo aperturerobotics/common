@@ -159,9 +159,11 @@ func ensureGenerateDeps(cfg *protogen.Config, verbose bool) error {
 			return err
 		}
 		toolsPath := toolsDir
-		if err := ensureToolsDir(projectDir, toolsPath, verbose); err != nil {
+		unlock, err := ensureToolsDir(projectDir, toolsPath, verbose)
+		if err != nil {
 			return err
 		}
+		defer unlock()
 		for _, tool := range plan.nativeTools {
 			if err := ensureTool(projectDir, toolsPath, tool, false, verbose); err != nil {
 				return err
@@ -190,7 +192,7 @@ var depsCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "tools-dir",
-			Usage: "Tools directory path",
+			Usage: "Tools directory, relative to the project or absolute to share it between checkouts",
 			Value: ".tools",
 		},
 		&cli.StringFlag{
@@ -250,10 +252,13 @@ func ensureAllDeps(projectDir, toolsDir string, verbose, force bool) error {
 		return err
 	}
 
-	toolsPath := filepath.Join(absProjectDir, toolsDir)
-	if err := ensureToolsDir(absProjectDir, toolsPath, verbose); err != nil {
+	// Hold the tools directory's lock across every build into it.
+	toolsPath := protogen.ToolsPath(absProjectDir, toolsDir)
+	unlock, err := ensureToolsDir(absProjectDir, toolsPath, verbose)
+	if err != nil {
 		return err
 	}
+	defer unlock()
 
 	// Build the generators and formatter required by explicit dependency setup.
 	requiredTools := []string{"protoc-gen-go-lite", "protoc-gen-go-starpc", "protoc-gen-starpc-cpp", "protoc-gen-starpc-rust", "gofumpt"}
@@ -327,15 +332,26 @@ func invalidateToolBinaries(toolsPath string) error {
 }
 
 // ensureToolsDir reconciles extracted tool metadata with the selected common module.
-func ensureToolsDir(projectDir, toolsPath string, verbose bool) error {
+//
+// It takes the directory's lock first and returns its release, which the
+// caller defers past every build into the directory, so checkouts that share
+// one tools directory build into it one at a time. A waiter rechecks each
+// stamp under the lock and builds nothing when another checkout already did.
+func ensureToolsDir(projectDir, toolsPath string, verbose bool) (func(), error) {
 	// Create the tool directory before reading or publishing its metadata stamp.
 	if err := os.MkdirAll(toolsPath, 0o755); err != nil {
-		return err
+		return nil, err
+	}
+
+	// Wait for any other checkout building into a shared directory.
+	unlock, err := lockToolsDir(toolsPath)
+	if err != nil {
+		return nil, err
 	}
 
 	// Extract the selected common module and invalidate binaries from older inputs.
 	identity := resolveCommonPackage(projectDir)
-	_, err := reconcileToolsStamp(toolsStampPath(toolsPath), identity, func() error {
+	_, err = reconcileToolsStamp(toolsStampPath(toolsPath), identity, func() error {
 		if verbose {
 			fmt.Println("Synchronizing embedded tool metadata...")
 		}
@@ -351,7 +367,13 @@ func ensureToolsDir(projectDir, toolsPath string, verbose bool) error {
 	}, func() error {
 		return invalidateToolBinaries(toolsPath)
 	})
-	return err
+
+	// Keep the lock for the caller's builds unless reconciling failed.
+	if err != nil {
+		unlock()
+		return nil, err
+	}
+	return unlock, nil
 }
 
 // resolveCommonPackage follows project replacements before falling back to build metadata.
@@ -492,14 +514,17 @@ func EnsureToolBuilt(projectDir, toolsDir, toolName string, verbose bool) (strin
 	if err != nil {
 		return "", err
 	}
+	toolsPath := protogen.ToolsPath(absProjectDir, toolsDir)
 
-	toolsPath := filepath.Join(absProjectDir, toolsDir)
-
-	// Synchronize metadata before reusing or building an executable.
-	if err := ensureToolsDir(absProjectDir, toolsPath, verbose); err != nil {
+	// Synchronize metadata under the directory's lock before reusing or
+	// building an executable.
+	unlock, err := ensureToolsDir(absProjectDir, toolsPath, verbose)
+	if err != nil {
 		return "", fmt.Errorf("failed to ensure tools directory: %w", err)
 	}
+	defer unlock()
 
+	// Build or reuse the requested executable.
 	if err := ensureTool(absProjectDir, toolsPath, toolName, false, verbose); err != nil {
 		return "", err
 	}

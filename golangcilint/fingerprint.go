@@ -17,7 +17,9 @@ import (
 // Fingerprint hashes a custom configuration and the contents of local plugins.
 // Versioned plugin inputs are pinned in the configuration; local plugins include
 // source, module files, and embedded assets. External local replacements and
-// environment-specific build flags require explicit cache invalidation.
+// environment-specific build flags require explicit cache invalidation. Paths
+// count relative to the configuration's directory, never absolute, so every
+// checkout with the same content has the same fingerprint.
 func Fingerprint(configPath string, config []byte) (string, error) {
 	// Parse local paths with the same YAML representation used by the builder.
 	var inputs struct {
@@ -35,8 +37,15 @@ func Fingerprint(configPath string, config []byte) (string, error) {
 		hash.Write(data)
 	}
 	write([]byte(runtime.Version()))
-	write([]byte(configPath))
 	write(config)
+
+	// Plugin paths are hashed relative to the configuration's directory, so the
+	// same content in two checkouts gives one fingerprint and they can share a
+	// build.
+	configDir, err := filepath.EvalSymlinks(filepath.Dir(configPath))
+	if err != nil {
+		return "", errors.Wrap(err, "resolve golangci-lint configuration directory")
+	}
 
 	// Walk plugin files in lexical order, excluding build caches and dependencies.
 	for _, plugin := range inputs.Plugins {
@@ -52,6 +61,7 @@ func Fingerprint(configPath string, config []byte) (string, error) {
 			return "", errors.Wrap(err, "resolve local golangci-lint plugin")
 		}
 		err = filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
+			// Skip build caches, dependencies and symlinks to directories.
 			if err != nil {
 				return err
 			}
@@ -71,11 +81,17 @@ func Fingerprint(configPath string, config []byte) (string, error) {
 					return nil
 				}
 			}
+
+			// Hash each file by its path relative to the configuration and its bytes.
 			data, err := os.ReadFile(path) //nolint:gosec // Local plugin sources are trusted build inputs; fingerprinting only reads them.
 			if err != nil {
 				return err
 			}
-			write([]byte(path))
+			rel, err := filepath.Rel(configDir, path)
+			if err != nil {
+				return err
+			}
+			write([]byte(filepath.ToSlash(rel)))
 			write(data)
 			return nil
 		})

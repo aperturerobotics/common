@@ -60,6 +60,30 @@ func TestFingerprint(t *testing.T) {
 	}
 }
 
+// TestFingerprintSharedAcrossCheckouts checks that the same content in two
+// checkouts gives one fingerprint, so they share one linter build.
+func TestFingerprintSharedAcrossCheckouts(t *testing.T) {
+	config := []byte("version: v2.13.2\nplugins:\n  - module: example.com/plugin\n    path: ./lint\n")
+	checkout := func() string {
+		t.Helper()
+		dir := t.TempDir()
+		if err := os.Mkdir(filepath.Join(dir, "lint"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "lint", "plugin.go"), []byte("package plugin"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		sum, err := Fingerprint(filepath.Join(dir, ".custom-gcl.yml"), config)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return sum
+	}
+	if a, b := checkout(), checkout(); a != b {
+		t.Fatalf("two checkouts with the same content gave fingerprints %s and %s", a, b)
+	}
+}
+
 // TestFingerprintErrors rejects malformed YAML and missing local plugins.
 func TestFingerprintErrors(t *testing.T) {
 	for _, config := range []string{"plugins: [", "plugins:\n - path: missing-plugin\n"} {

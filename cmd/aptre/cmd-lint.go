@@ -3,7 +3,6 @@ package main
 import (
 	"os"
 	"os/exec"
-	"path/filepath"
 
 	"github.com/aperturerobotics/cli"
 )
@@ -14,7 +13,7 @@ var lintCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "tools-dir",
-			Usage: "Tools directory path",
+			Usage: "Tools directory, relative to the project or absolute to share it between checkouts",
 			Value: ".tools",
 		},
 		&cli.StringFlag{
@@ -65,7 +64,7 @@ var fixCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "tools-dir",
-			Usage: "Tools directory path",
+			Usage: "Tools directory, relative to the project or absolute to share it between checkouts",
 			Value: ".tools",
 		},
 		&cli.StringFlag{
@@ -117,7 +116,7 @@ var formatCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "tools-dir",
-			Usage: "Tools directory path",
+			Usage: "Tools directory, relative to the project or absolute to share it between checkouts",
 			Value: ".tools",
 		},
 		&cli.StringFlag{
@@ -170,7 +169,7 @@ var goimportsCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "tools-dir",
-			Usage: "Tools directory path",
+			Usage: "Tools directory, relative to the project or absolute to share it between checkouts",
 			Value: ".tools",
 		},
 		&cli.StringFlag{
@@ -200,8 +199,8 @@ func runGoimports(c *cli.Context) error {
 		}
 	}
 
-	goimportsPath := filepath.Join(projectDir, toolsDir, "bin", "goimports")
-	if err := ensureTool(projectDir, filepath.Join(projectDir, toolsDir), "goimports", false, verbose); err != nil {
+	goimportsPath, err := EnsureToolBuilt(projectDir, toolsDir, "goimports", verbose)
+	if err != nil {
 		return err
 	}
 

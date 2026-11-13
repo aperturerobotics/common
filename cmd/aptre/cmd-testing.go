@@ -28,7 +28,7 @@ var testCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:  "tools-dir",
-			Usage: "Tools directory path",
+			Usage: "Tools directory, relative to the project or absolute to share it between checkouts",
 			Value: ".tools",
 		},
 	},
