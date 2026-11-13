@@ -379,7 +379,7 @@ func (g *Generator) getToolVersions() string {
 	versions = append(versions, "protoc=embedded")
 
 	// Get Go tool versions from tools/go.mod
-	toolsGoMod := filepath.Join(g.ProjectDir, g.Config.ToolsDir, "go.mod")
+	toolsGoMod := filepath.Join(ToolsPath(g.ProjectDir, g.Config.ToolsDir), "go.mod")
 	if data, err := os.ReadFile(toolsGoMod); err == nil {
 		scanner := bufio.NewScanner(bytes.NewReader(data))
 		for scanner.Scan() {
@@ -454,7 +454,7 @@ func (g *Generator) formatGeneratedFiles(protoFiles []string) error {
 
 	// Format Go files with gofumpt
 	if len(goFiles) > 0 {
-		gofumptPath := filepath.Join(g.ProjectDir, g.Config.ToolsDir, "bin", "gofumpt")
+		gofumptPath := filepath.Join(ToolsPath(g.ProjectDir, g.Config.ToolsDir), "bin", "gofumpt")
 		if _, err := os.Stat(gofumptPath); err == nil {
 			// Retry gofumpt up to 3 times with a small delay.
 			// This works around a race condition where gofumpt may see a file size
@@ -498,7 +498,7 @@ func (g *Generator) formatGeneratedFiles(protoFiles []string) error {
 
 	// Format TypeScript files with oxfmt
 	if len(tsFiles) > 0 {
-		oxfmtConfig := filepath.Join(g.ProjectDir, g.Config.ToolsDir, ".oxfmtrc.json")
+		oxfmtConfig := filepath.Join(ToolsPath(g.ProjectDir, g.Config.ToolsDir), ".oxfmtrc.json")
 		if _, err := os.Stat(oxfmtConfig); err == nil {
 			args := []string{"-c", oxfmtConfig}
 			args = append(args, tsFiles...)
