@@ -80,6 +80,6 @@ describe('chartModel', () => {
       )
       drawn.push(name)
     }
-    expect(drawn).toHaveLength(33)
+    expect(drawn).toHaveLength(34)
   })
 })

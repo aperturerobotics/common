@@ -116,12 +116,36 @@ export type CheckResult = {
   exit: 0 | 1 | 2
   stop: Stop | undefined
   drawing: { status: number | null } | undefined
-  states: { distinct: number; initial: number; complete: boolean; cut: boolean }
+  states: {
+    distinct: number
+    initial: number
+    complete: boolean
+    cut: boolean
+    // boxes is the number of boxes the full chart would draw, set when the
+    // drawing run finished and that number passed CHART_BOXES.
+    boxes?: number
+    // tests is a lower bound on the action tests the drawing run would
+    // evaluate, set when it passed CHART_TESTS.
+    tests?: number
+  }
 }
 
 export const RERUN_STATES = 100_000
 
-export const CHART_STATES = 500
+// CHART_BOXES bounds the boxes a chart draws: the distinct places the view's
+// state() puts the reachable states, counting each enclosing box once. Past
+// it the chart draws only the bug paths.
+export const CHART_BOXES = 500
+
+// CHART_TESTS bounds the action tests the drawing run evaluates: each step
+// it draws tests every action the spec names. On an M-series Mac a test took
+// 3.9 to 5.9 us (a 3-action grid, and the WizardFinish corpus spec at two
+// and three tabs), so the bound keeps the drawing run under about 10 s.
+export const CHART_TESTS = 1_500_000
+
+// DRAW_STATES bounds the distinct states the drawing run keeps in memory:
+// 103,823 states of the 3-action grid drew with a peak of 694 MB.
+export const DRAW_STATES = 100_000
 
 export type View = {
   state?: (vars: Vars) => unknown

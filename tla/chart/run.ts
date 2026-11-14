@@ -36,10 +36,12 @@ import { parseValue } from './frontends/value.js'
 import { checkView } from './frontends/view.js'
 import {
   type Bug,
-  CHART_STATES,
+  CHART_BOXES,
+  CHART_TESTS,
   type CheckResult,
   type Config,
   type ConfigSection,
+  DRAW_STATES,
   type Graph,
   hasSection,
   type Lasso,
@@ -58,11 +60,13 @@ import {
   type Trace,
   type TraceState,
   type Value,
+  type View,
   type Vars,
   type Verdict,
 } from './ir.js'
 import { compile } from './pipeline.js'
 import { addPast, deadEnds, lasso, mark } from './passes/annotate.js'
+import { countBoxes } from './passes/label.js'
 import { pathGraph } from './passes/paths.js'
 
 type Load = (name: string) => string | undefined
@@ -314,11 +318,18 @@ const sliceOf = (src: string, location: Value) => {
   return lines.join('\n')
 }
 
-// recordText writes a record of strings and numbers, such as an action's
-// location, as a TLA+ record literal.
+// isPlain reports whether v is a string, number or boolean.
+const isPlain = (v: Value) => typeof v !== 'object'
+
+// plainText writes a string, number or boolean as TLA+.
+const plainText = (v: Value) =>
+  typeof v === 'boolean' ? (v ? 'TRUE' : 'FALSE') : JSON.stringify(v)
+
+// recordText writes a record of strings, numbers and booleans, such as an
+// action's location, as a TLA+ record literal.
 const recordText = (record: Value) => {
   const { keys, values } = record as Tuple
-  return `[${keys.map((k, i) => `${String(k)} |-> ${JSON.stringify(values[i])}`).join(', ')}]`
+  return `[${keys.map((k, i) => `${String(k)} |-> ${plainText(values[i])}`).join(', ')}]`
 }
 
 // actionTests defines one predicate per action TLC names, grouped by name and
@@ -326,19 +337,25 @@ const recordText = (record: Value) => {
 function actionTests(load: Load, actions: Value[]) {
   const groups = new Map<
     string,
-    { name: string; location: Value; context: string[] }
+    { name: string; location: Value; context: string[]; bound: Value[] }
   >()
   for (const a of actions) {
     const name = field(a, 'name') as string
     const location = field(a, 'location')
     const k = key(name) + key(location)
     const context = field(a, 'context') as Tuple | undefined
-    if (!groups.has(k))
-      groups.set(k, {
-        name,
-        location,
-        context: context?.keys.map(String) ?? [],
-      })
+    let g = groups.get(k)
+    if (!g)
+      groups.set(
+        k,
+        (g = {
+          name,
+          location,
+          context: context?.keys.map(String) ?? [],
+          bound: [],
+        }),
+      )
+    if (context) g.bound.push(context)
   }
   const defs: string[] = []
   const tests: string[] = []
@@ -355,9 +372,15 @@ function actionTests(load: Load, actions: Value[]) {
         ? g.name
         : text
     if (g.context.length) {
+      // Each step tests the action under every binding of its parameters.
+      // Bindings of plain values are written out as a literal set; others are
+      // found in TLCGet("spec"), which evaluates again on every step.
+      const literal = g.bound.every((b) => (b as Tuple).values.every(isPlain))
       defs.push(
-        `ChartG${i} == {chartAction \\in ChartTLC!TLCGet("spec").actions : chartAction.name = ${JSON.stringify(g.name)} /\\ chartAction.location = ${recordText(g.location)}}`,
-        `ChartA${i} ==\n  \\E chartAction \\in ChartG${i} :\n  LET ${g.context.map((k) => `${k} == chartAction.context.${k}`).join('\n      ')}\n  IN\n${body}`,
+        literal
+          ? `ChartG${i} == {${g.bound.map(recordText).join(', ')}}`
+          : `ChartG${i} == {chartAction.context : chartAction \\in {chartAction \\in ChartTLC!TLCGet("spec").actions : chartAction.name = ${JSON.stringify(g.name)} /\\ chartAction.location = ${recordText(g.location)}}}`,
+        `ChartA${i} ==\n  \\E chartContext \\in ChartG${i} :\n  LET ${g.context.map((k) => `${k} == chartContext.${k}`).join('\n      ')}\n  IN\n${body}`,
       )
     } else defs.push(`ChartA${i} ==\n${body}`)
     tests.push(`(IF ChartA${i} THEN {${JSON.stringify(g.name)}} ELSE {})`)
@@ -406,12 +429,16 @@ type Drawn = {
 }
 
 // drawGraph runs the two wrapper runs and builds the state graph.
+// It returns the action tests the run would evaluate instead, when they pass
+// CHART_TESTS: generated, the steps of a complete check, predicts them, and
+// a count of the steps drawn stops the run when the check was cut short.
 async function drawGraph(
   spec: Spec,
   config: Config,
   load: Load,
   extra: Map<string, string>,
-): Promise<Drawn> {
+  generated: number | undefined,
+): Promise<Drawn | { tests: number }> {
   const tag = `chart-${randomBytes(16).toString('hex')}`
   const tagged = new RegExp(`^<<\\s*"${tag}"`)
   const drawn: ConfigSection[] = []
@@ -448,6 +475,10 @@ async function drawGraph(
       `TLC could not list the actions of ${spec.module} (exit ${first.status}):\n${first.message}`,
     )
   const { defs, tests } = actionTests(load, actions)
+  const steps = Math.floor(CHART_TESTS / Math.max(tests.length, 1))
+  if (generated !== undefined && generated > steps)
+    return { tests: generated * tests.length }
+  let drawnSteps = 0
   const both = (list: string[]) => (list.length ? list.join(' /\\ ') : 'TRUE')
   const inModel = both(config.constraints)
   const broken: string[] = []
@@ -459,7 +490,7 @@ async function drawGraph(
     wrapper('ChartRun', spec.module, [
       ...defs,
       `ChartBroken == ${[...broken, '{}'].join(' \\cup ')}`,
-      `ChartMark == ChartTLC!PrintT(<<"${tag}", "s", ChartTLC!TLCGet("level"), ${vars}, ${config.view ?? 'TRUE'}, ${inModel}>>) /\\ ChartTLC!PrintT(<<"${tag}", "b", ${vars}, ChartBroken>>) /\\ ${inModel} /\\ ChartNaturals!<=(ChartTLC!TLCGet("distinct"), ${CHART_STATES})`,
+      `ChartMark == ChartTLC!PrintT(<<"${tag}", "s", ChartTLC!TLCGet("level"), ${vars}, ${config.view ?? 'TRUE'}, ${inModel}>>) /\\ ChartTLC!PrintT(<<"${tag}", "b", ${vars}, ChartBroken>>) /\\ ${inModel} /\\ ChartNaturals!<=(ChartTLC!TLCGet("distinct"), ${DRAW_STATES})`,
       `ChartStep == ${both(config.actionConstraints)} /\\ ChartTLC!PrintT(<<"${tag}", "t", ${vars}, ${vars}', ${[...tests, '{}'].join(' \\cup ')}>>)`,
     ]),
   )
@@ -535,6 +566,7 @@ async function drawGraph(
         }
         return
       }
+      if (++drawnSteps > steps) throw new Error('over the test budget')
       const [from, to, named] = rest
       const target = classAt(to)
       if (!target?.inModel) return
@@ -549,6 +581,7 @@ async function drawGraph(
   // A rule that fails to evaluate stops the run in the successor's
   // CONSTRAINT, before the step into it prints; the failure's trace ends with
   // that step.
+  if (drawnSteps > steps) return { tests: drawnSteps * tests.length }
   const last = stopped(second) ? (second.trace ?? []).slice(-2) : []
   if (last.length === 2) {
     const classOfStep = ({ state }: TraceStep) =>
@@ -594,10 +627,12 @@ function* only(marks: Iterable<Mark>, rules: Set<string>) {
 }
 
 // checkSpec checks model with tla-ts and builds the CheckResult that
-// statechart's passes compile into a chart and a report.
+// statechart's passes compile into a chart and a report. view decides how
+// many boxes the chart draws, which the chart budget bounds.
 export async function checkSpec(
   model: Model,
   load: Load = moduleLoader(model.spec),
+  view: View = {},
 ): Promise<CheckResult> {
   const file = model.config
   const config = readConfig({ file, text: fs.readFileSync(file, 'utf8') })
@@ -637,7 +672,13 @@ export async function checkSpec(
   const groups = [all]
   let first: Run | undefined
   let stop: Stop | undefined
-  const states = { distinct: 0, initial: 0, complete: false, cut: false }
+  let generated: number | undefined
+  const states: CheckResult['states'] = {
+    distinct: 0,
+    initial: 0,
+    complete: false,
+    cut: false,
+  }
   while (groups.length) {
     const group: Rule[] = []
     for (const rule of groups[0])
@@ -676,12 +717,14 @@ export async function checkSpec(
       // Liveness is checked after every state is reached, so the rest held.
       if (liveness) {
         states.complete = true
+        generated = r.generatedStates
         for (const rule of group)
           if (rule.kind !== 'property' && !verdicts.has(ruleKey(rule)))
             decide(rule, 'holds')
       }
     } else if (r.status === 'success') {
       states.complete = true
+      generated = r.generatedStates
       for (const rule of group) decide(rule, 'holds')
     } else
       throw new Error(
@@ -714,22 +757,25 @@ export async function checkSpec(
   for (const rule of rules) checked.push(must(verdicts, ruleKey(rule)))
   const common = { spec, exit, stop, states, rules: checked }
 
-  if (states.distinct <= CHART_STATES) {
-    const d = await drawGraph(spec, config, loadModule, extra)
-    states.initial = d.initial
-    if (d.distinct <= CHART_STATES) {
-      const { graph, find, drawing } = d
+  if (states.distinct <= DRAW_STATES) {
+    const d = await drawGraph(spec, config, loadModule, extra, generated)
+    let full: Drawn | undefined
+    if ('tests' in d) states.tests = d.tests
+    else {
+      states.initial = d.initial
+      if (d.distinct <= DRAW_STATES) {
+        const boxes = countBoxes(d.graph.states.values(), view)
+        if (boxes > CHART_BOXES) states.boxes = boxes
+        else full = d
+      }
+    }
+    if (full) {
+      const { graph, find, drawing, marks } = full
       const broken = new Set<string>()
       for (const { rule, outcome } of verdicts.values())
         if (rule.kind === 'invariant' && outcome === 'broken')
           broken.add(rule.name)
-      const past = mark(
-        graph,
-        only(d.marks, broken),
-        spec.variables,
-        rules,
-        find,
-      )
+      const past = mark(graph, only(marks, broken), spec.variables, rules, find)
       const excludes = hasSection(spec, 'ACTION_CONSTRAINT')
       for (const rule of rules) {
         const { outcome, trace } = must(verdicts, ruleKey(rule))
@@ -783,5 +829,6 @@ export async function chartModel(
   view: { readonly [name: string]: unknown } = {},
   load?: Load,
 ) {
-  return compile(await checkSpec(model, load), checkView(view, inspect))
+  const checked = checkView(view, inspect)
+  return compile(await checkSpec(model, load, checked), checked)
 }
