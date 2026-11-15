@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -491,12 +490,12 @@ message Scratch {
 func repoRoot(t *testing.T) string {
 	t.Helper()
 
-	// Locate fixture assets relative to this source, independent of the working directory.
-	_, filename, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("get caller")
+	// go test runs in the package directory, two levels below the checkout root.
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatalf("resolve repository root: %v", err)
 	}
-	return filepath.Clean(filepath.Join(filepath.Dir(filename), "..", ".."))
+	return root
 }
 
 // runTestCommand completes fixture setup or fails with the command output.

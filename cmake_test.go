@@ -3,7 +3,6 @@ package main
 import (
 	"os"
 	"os/exec"
-	"path/filepath"
 	"runtime"
 	"testing"
 )
@@ -18,12 +17,11 @@ func TestCMakeBuild(t *testing.T) {
 		t.Skip("cmake not found, skipping test")
 	}
 
-	// Get the directory containing this test file (project root)
-	_, filename, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("failed to get current file path")
+	// go test runs in the package directory, which is the project root.
+	projectDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("get working directory: %v", err)
 	}
-	projectDir := filepath.Dir(filename)
 
 	// Create a temporary build directory
 	buildDir, err := os.MkdirTemp("", "cmake-build-*")
