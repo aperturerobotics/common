@@ -149,6 +149,49 @@ describe('aptre-tla', () => {
     ])
   })
 
+  it('reports each config that pairs with no spec', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'aptre-tla-'))
+    try {
+      const write = (name: string) => fs.writeFileSync(path.join(dir, name), '')
+      fs.mkdirSync(path.join(dir, 'orphan'))
+      for (const name of [
+        'Gate.tla',
+        'Gate.cfg',
+        'Gate-one.cfg',
+        'GateNoHandler.cfg',
+        'Other.cfg',
+        'orphan/Lone.cfg',
+      ])
+        write(name)
+      const unmatched: string[] = []
+      const report = (config: string, fix: string) =>
+        unmatched.push(`${path.relative(dir, config)}: ${fix}`)
+      const models = [...findModels(dir, report)]
+      expect(models.map((m) => path.basename(m.config))).toEqual([
+        'Gate-one.cfg',
+        'Gate.cfg',
+      ])
+      expect(unmatched).toEqual([
+        'GateNoHandler.cfg: name it Gate.cfg or Gate-<variant>.cfg',
+        'Other.cfg: name it <Spec>.cfg or <Spec>-<variant>.cfg for a spec beside it: Gate',
+        'orphan/Lone.cfg: no .tla spec is beside it',
+      ])
+      // A file target reports only itself.
+      unmatched.length = 0
+      expect([...findModels(path.join(dir, 'Gate.tla'), report)]).toHaveLength(
+        2,
+      )
+      expect([
+        ...findModels(path.join(dir, 'GateNoHandler.cfg'), report),
+      ]).toEqual([])
+      expect(unmatched).toEqual([
+        'GateNoHandler.cfg: name it Gate.cfg or Gate-<variant>.cfg',
+      ])
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
   it('fails a stale chart until it is redrawn', async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'aptre-tla-'))
     try {

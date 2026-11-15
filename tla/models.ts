@@ -36,28 +36,62 @@ export function sharedModulesDir(): string {
   }
 }
 
-// modelsInDir yields the Models whose configs sit directly in dir. A config
-// directly in a testdata directory is a config mutant, not a Model.
-function* modelsInDir(dir: string, names: string[]): Generator<Model> {
+// Unmatched reports a config that belongs to no spec: its path and how to name
+// it so that it does.
+export type Unmatched = (config: string, fix: string) => void
+
+// modelsInDir yields the Models whose configs sit directly in dir and passes
+// each config that belongs to no spec beside it to unmatched, so that a check
+// never skips it in silence. A config directly in a testdata
+// directory is a config mutant, not a Model.
+function* modelsInDir(
+  dir: string,
+  names: string[],
+  unmatched?: Unmatched,
+): Generator<Model> {
   if (path.basename(dir) === 'testdata') return
   const stems = names
     .filter((n) => n.endsWith('.tla'))
     .map((n) => n.slice(0, -4))
   for (const name of [...names].sort()) {
     if (!name.endsWith('.cfg')) continue
+    const config = path.join(dir, name)
     const stem = stemOf(name, stems)
-    if (stem === undefined) continue
-    yield { spec: path.join(dir, stem + '.tla'), config: path.join(dir, name) }
+    if (stem === undefined) unmatched?.(config, namingFix(name, stems))
+    else yield { spec: path.join(dir, stem + '.tla'), config }
   }
 }
 
-// findModels yields every Model under target, a directory, a .tla or a .cfg.
-export function* findModels(target: string): Generator<Model> {
+// namingFix tells how to name the config file cfg so that it belongs to one
+// of stems, the specs beside it: the longest stem its name starts with, or
+// any of them.
+function namingFix(cfg: string, stems: string[]): string {
+  if (!stems.length) return 'no .tla spec is beside it'
+  const name = cfg.slice(0, -'.cfg'.length)
+  const stem = stems
+    .filter((s) => name.startsWith(s))
+    .sort((a, b) => b.length - a.length)[0]
+  const forms = (s: string) => `${s}.cfg or ${s}-<variant>.cfg`
+  if (stem !== undefined) return `name it ${forms(stem)}`
+  return `name it ${forms('<Spec>')} for a spec beside it: ${[...stems].sort().join(', ')}`
+}
+
+// findModels yields every Model under target, a directory, a .tla or a .cfg,
+// and passes each config under target that belongs to no spec to unmatched.
+// A .tla target reports no config: one beside it may belong to another spec.
+export function* findModels(
+  target: string,
+  unmatched?: Unmatched,
+): Generator<Model> {
   const stat = fs.statSync(target)
   if (stat.isFile()) {
     const dir = path.dirname(target)
     const base = path.basename(target)
-    for (const model of modelsInDir(dir, fs.readdirSync(dir))) {
+    const own: Unmatched = (config, fix) => {
+      if (path.resolve(config) === path.resolve(target))
+        unmatched?.(config, fix)
+    }
+    for (const model of modelsInDir(dir, fs.readdirSync(dir), own)) {
       if (model.spec === target || model.config === target) yield model
       else if (base.endsWith('.tla') && path.basename(model.spec) === base)
         yield model
@@ -68,11 +102,12 @@ export function* findModels(target: string): Generator<Model> {
   yield* modelsInDir(
     target,
     entries.filter((e) => e.isFile()).map((e) => e.name),
+    unmatched,
   )
   for (const e of entries) {
     if (!e.isDirectory() || e.name.startsWith('.') || skipDirs.has(e.name))
       continue
-    yield* findModels(path.join(target, e.name))
+    yield* findModels(path.join(target, e.name), unmatched)
   }
 }
 

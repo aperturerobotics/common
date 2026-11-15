@@ -2,9 +2,11 @@
 // Checks TLA+ specs with tla-ts.
 //
 // A spec is checked once per model config beside it: Foo.tla pairs with
-// Foo.cfg and with each Foo-<variant>.cfg in the same directory. A .tla with no
-// config is a helper module and is checked only through the specs that
-// INSTANCE it. Module names resolve from the spec's own directory, then from
+// Foo.cfg and with each Foo-<variant>.cfg in the same directory. A .cfg that
+// pairs with no spec beside it fails the run, naming the file and how to name
+// it, so that a run never reports a pass over fewer models than the directory
+// holds. A .tla with no config is a helper module and is checked only through
+// the specs that INSTANCE it. Module names resolve from the spec's own directory, then from
 // the shared modules this package ships in tla/, such as Surface.tla.
 //
 // A spec with a view beside it, Foo.view.ts for Foo.tla, also has a state
@@ -39,6 +41,7 @@ import {
   type Model,
   moduleLoader,
   sharedModulesDir,
+  type Unmatched,
 } from './models.js'
 import { startRunner, type Runner } from './runner.js'
 
@@ -49,6 +52,7 @@ export {
   type Model,
   moduleLoader,
   sharedModulesDir,
+  type Unmatched,
 }
 
 // ModelResult is the outcome of checking one Model.
@@ -475,7 +479,8 @@ const usage = `usage: aptre-tla [-json] [-workers N] [path...]
 Checks every TLA+ spec with a .cfg beside it under each path (default: the
 working directory), that the chart of each spec with a Foo.view.ts is current,
 and that each mutant in Foo.mutants.json, and each config mutant in testdata/
-beside the spec, breaks its expected rule. A config mutant names its rule in a
+beside the spec, breaks its expected rule. A .cfg that pairs with no spec, as
+Foo.cfg or Foo-<variant>.cfg beside Foo.tla, fails the run. A config mutant names its rule in a
 line \\* expect: <Rule>; a path may name a testdata directory or one config in
 it. A mutant prints kill when it broke that rule, MISS when it broke another,
 LIVE when it passed and ERROR when it checked nothing. Prints the
@@ -585,6 +590,17 @@ async function checkAll(
   const configMutants = new Map<string, Model>()
   const addConfigMutants = (models: Model[]) =>
     models.forEach((m) => configMutants.set(m.config, m))
+  // unmatched fails a config that pairs with no spec: checking nothing for it
+  // would pass a run over fewer models than the directory holds.
+  let found = 0
+  const unmatched: Unmatched = (config, fix) => {
+    found++
+    failed++
+    const name = path.relative('.', config)
+    const error = `matches no spec: ${fix}`
+    if (json) console.log(JSON.stringify({ kind: 'unmatched', name, error }))
+    else console.log(`${'FAIL'.padEnd(5)} ${name}  ${error}`)
+  }
   for (const target of targets.length ? targets : ['.']) {
     const resolved = path.resolve(target)
     const testdata = fs.statSync(resolved).isFile()
@@ -593,8 +609,8 @@ async function checkAll(
         )
       : findConfigMutants(resolved)
     addConfigMutants(testdata)
-    let found = testdata.length
-    for (const model of findModels(target)) {
+    found = testdata.length
+    for (const model of findModels(target, unmatched)) {
       found++
       count++
       specs.add(model.spec)
