@@ -54,6 +54,7 @@ func NewPostProcessor(projectDir, vendorDir, modulePath string, tsImportBoundari
 
 // ProcessGeneratedFiles processes all generated files for a proto file.
 func (p *PostProcessor) ProcessGeneratedFiles(protoFile string) error {
+	// Derive the output directory and filename stem.
 	protoDir := filepath.Dir(protoFile)
 	baseName := strings.TrimSuffix(filepath.Base(protoFile), ".proto")
 
@@ -63,10 +64,14 @@ func (p *PostProcessor) ProcessGeneratedFiles(protoFile string) error {
 	if err != nil {
 		return err
 	}
+
+	// Find the alternative C++ source extension.
 	cppFiles, err := filepath.Glob(filepath.Join(searchDir, baseName+"*.pb.cpp"))
 	if err != nil {
 		return err
 	}
+
+	// Find both C++ header extensions.
 	hFiles, err := filepath.Glob(filepath.Join(searchDir, baseName+"*.pb.h"))
 	if err != nil {
 		return err
@@ -76,6 +81,7 @@ func (p *PostProcessor) ProcessGeneratedFiles(protoFile string) error {
 		return err
 	}
 
+	// Apply the C++ transformations to every matching extension.
 	allCppFiles := append(ccFiles, cppFiles...)
 	allCppFiles = append(allCppFiles, hFiles...)
 	allCppFiles = append(allCppFiles, hppFiles...)
@@ -91,6 +97,7 @@ func (p *PostProcessor) ProcessGeneratedFiles(protoFile string) error {
 		return err
 	}
 
+	// Rewrite protobuf imports in each generated Go file.
 	for _, f := range goFiles {
 		if err := p.ProcessGoFile(f); err != nil {
 			return err
@@ -103,6 +110,7 @@ func (p *PostProcessor) ProcessGeneratedFiles(protoFile string) error {
 		return err
 	}
 
+	// Rewrite dependency imports in each generated TypeScript file.
 	for _, f := range tsFiles {
 		if err := p.ProcessTsFile(f); err != nil {
 			return err
@@ -135,11 +143,13 @@ func (p *PostProcessor) ProcessGeneratedFiles(protoFile string) error {
 // - Prepends the Go build tag if not present.
 // - Rewrites include paths from absolute to relative.
 func (p *PostProcessor) ProcessCppFile(filePath string) error {
+	// Read the generated C++ source before transforming it.
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return err
 	}
 
+	// Track whether build tags or includes change any line.
 	modified := false
 	lines := strings.Split(string(data), "\n")
 
@@ -160,6 +170,7 @@ func (p *PostProcessor) ProcessCppFile(filePath string) error {
 	// Match includes like: #include "github.com/aperturerobotics/common/example/file.pb.h"
 	includePattern := regexp.MustCompile(`#include "` + regexp.QuoteMeta(p.ModulePath) + `/([^"]+\.pb\.h)"`)
 
+	// Rewrite matching module includes relative to this file.
 	for i, line := range lines {
 		matches := includePattern.FindStringSubmatch(line)
 		if len(matches) > 1 {
@@ -189,6 +200,7 @@ func (p *PostProcessor) ProcessCppFile(filePath string) error {
 		}
 	}
 
+	// Write the C++ source only when a transformation changed it.
 	if modified {
 		return os.WriteFile(filePath, []byte(strings.Join(lines, "\n")), 0o644) //nolint:gosec
 	}
@@ -199,11 +211,13 @@ func (p *PostProcessor) ProcessCppFile(filePath string) error {
 // ProcessGoFile processes a Go file.
 // Rewrites standard protobuf imports to protobuf-go-lite equivalents.
 func (p *PostProcessor) ProcessGoFile(filePath string) error {
+	// Read the generated Go source before transforming imports.
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return err
 	}
 
+	// Track import replacements without rewriting unchanged files.
 	content := string(data)
 	modified := false
 
@@ -215,6 +229,7 @@ func (p *PostProcessor) ProcessGoFile(filePath string) error {
 		}
 	}
 
+	// Persist the Go source only when an import changed.
 	if modified {
 		return os.WriteFile(filePath, []byte(content), 0o644) //nolint:gosec
 	}
@@ -225,6 +240,7 @@ func (p *PostProcessor) ProcessGoFile(filePath string) error {
 // ProcessPythonFile rewrites canonical Go module imports to the module-relative
 // packages installed by the current project and its vendored dependencies.
 func (p *PostProcessor) ProcessPythonFile(filePath string) error {
+	// Read the generated Python source before transforming imports.
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return err
@@ -259,6 +275,7 @@ func (p *PostProcessor) ProcessPythonFile(filePath string) error {
 }
 
 func (p *PostProcessor) pythonImportPrefixes() []string {
+	// Collect the current module and vendored dependency identities.
 	modules := map[string]struct{}{p.ModulePath: {}}
 	modulesFile := filepath.Join(p.VendorDir, "modules.txt")
 	if data, err := os.ReadFile(modulesFile); err == nil {
@@ -300,11 +317,13 @@ func (p *PostProcessor) pythonImportPrefixes() []string {
 // might import from "../../../controllerbus/bus/api/api.pb.js" which needs to be rewritten
 // to "@go/github.com/aperturerobotics/controllerbus/bus/api/api.pb.js".
 func (p *PostProcessor) ProcessTsFile(filePath string) error {
+	// Read the generated TypeScript source and its header.
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return err
 	}
 
+	// Keep the output directory for resolving vendor aliases.
 	fileDir := filepath.Dir(filePath)
 	content := string(data)
 
@@ -322,10 +341,12 @@ func (p *PostProcessor) ProcessTsFile(filePath string) error {
 	// Pattern to match any relative imports starting with ../
 	importPattern := regexp.MustCompile(`from\s+"(\.\.\/[^"]+)"`)
 
+	// Buffer transformed lines while preserving unchanged imports.
 	modified := false
 	var result bytes.Buffer
 	scanner := bufio.NewScanner(bytes.NewReader(data))
 
+	// Resolve each relative import against its proto source directory.
 	for scanner.Scan() {
 		line := scanner.Text()
 		lineModified := false
@@ -375,7 +396,9 @@ func (p *PostProcessor) ProcessTsFile(filePath string) error {
 
 				if !lineModified {
 					sourceBoundary, hasSourceBoundary := p.lookupTsImportBoundary(strings.TrimPrefix(strings.TrimPrefix(protoDir, p.ModulePath), "/"))
-					targetBoundary, hasTargetBoundary := p.lookupTsImportBoundary(strings.TrimPrefix(strings.TrimPrefix(strings.TrimSuffix(resolvedPath, ".js"), p.ModulePath), "/"))
+					targetBoundary, hasTargetBoundary := p.lookupTsImportBoundary(
+						strings.TrimPrefix(strings.TrimPrefix(strings.TrimSuffix(resolvedPath, ".js"), p.ModulePath), "/"),
+					)
 					if hasSourceBoundary && hasTargetBoundary && sourceBoundary != targetBoundary {
 						goImportPath := "@go/" + resolvedPath
 						newLine := strings.Replace(line, importPath, goImportPath, 1)
@@ -394,10 +417,12 @@ func (p *PostProcessor) ProcessTsFile(filePath string) error {
 		result.WriteString("\n")
 	}
 
+	// Return a scan failure before replacing the original file.
 	if err := scanner.Err(); err != nil {
 		return err
 	}
 
+	// Persist transformed imports only when a line changed.
 	if modified {
 		// Remove trailing newline added by loop
 		output := result.Bytes()
@@ -412,8 +437,10 @@ func (p *PostProcessor) ProcessTsFile(filePath string) error {
 
 // lookupTsImportBoundary returns the longest matching configured boundary.
 func (p *PostProcessor) lookupTsImportBoundary(moduleRelPath string) (string, bool) {
+	// Normalize separators and surrounding slashes before matching.
 	moduleRelPath = strings.Trim(strings.ReplaceAll(moduleRelPath, "\\", "/"), "/")
 
+	// Choose the longest configured path prefix.
 	var best string
 	for _, boundary := range p.TsImportBoundaries {
 		boundary = strings.Trim(strings.ReplaceAll(boundary, "\\", "/"), "/")
@@ -429,6 +456,7 @@ func (p *PostProcessor) lookupTsImportBoundary(moduleRelPath string) (string, bo
 		best = boundary
 	}
 
+	// Report whether any configured boundary matched.
 	if best == "" {
 		return "", false
 	}
@@ -520,6 +548,7 @@ func (p *PostProcessor) ProcessAllTsFiles(dir string) error {
 // protobuf package hierarchy, but we need them at vendor/{module_path}/{proto_dir}/
 // to match other generated files.
 func (p *PostProcessor) ProcessRustFiles(protoFile string) error {
+	// Derive the Rust output's proto-relative destination.
 	protoDir := filepath.Dir(protoFile)
 	baseName := strings.TrimSuffix(filepath.Base(protoFile), ".proto")
 
@@ -587,6 +616,7 @@ func (p *PostProcessor) cleanEmptyDirs(dir string) {
 
 // extractProtoPackage extracts the package name from a proto file.
 func extractProtoPackage(protoPath string) (string, error) {
+	// Read the proto source before matching its package declaration.
 	data, err := os.ReadFile(protoPath)
 	if err != nil {
 		return "", err

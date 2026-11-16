@@ -58,18 +58,22 @@ func matchesAnyPattern(filePath string, patterns []string) bool {
 
 // discoverPattern finds proto files matching a single pattern using git ls-files.
 func discoverPattern(projectDir, pattern string) ([]string, error) {
+	// Ask Git for tracked files matching this pattern.
 	cmd := exec.Command("git", "ls-files", pattern)
 	cmd.Dir = projectDir
 
+	// Capture the tracked paths and any command diagnostics.
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
+	// Use a filesystem glob when Git cannot list the project.
 	if err := cmd.Run(); err != nil {
 		// If git ls-files fails, fall back to filepath.Glob
 		return filepath.Glob(filepath.Join(projectDir, pattern))
 	}
 
+	// Keep nonempty proto paths from the tracked-file output.
 	var files []string
 	scanner := bufio.NewScanner(&stdout)
 	for scanner.Scan() {
@@ -84,12 +88,14 @@ func discoverPattern(projectDir, pattern string) ([]string, error) {
 
 // GetGoModule reads the module path from go.mod in the given directory.
 func GetGoModule(projectDir string) (string, error) {
+	// Read the project's module declaration.
 	goModPath := filepath.Join(projectDir, "go.mod")
 	data, err := os.ReadFile(goModPath)
 	if err != nil {
 		return "", err
 	}
 
+	// Parse the module path without requiring a complete module file.
 	modFile, err := modfile.ParseLax(goModPath, data, nil)
 	if err != nil {
 		return "", err
@@ -100,9 +106,11 @@ func GetGoModule(projectDir string) (string, error) {
 
 // GetGeneratedFiles returns the expected generated file paths for a proto file.
 func GetGeneratedFiles(protoFile, projectDir, modulePath string, hasGo, hasTS bool) []string {
+	// Derive the generated output stem from the proto path.
 	protoDir := filepath.Dir(protoFile)
 	baseName := strings.TrimSuffix(filepath.Base(protoFile), ".proto")
 
+	// Accumulate the enabled output paths in language order.
 	var files []string
 
 	// C++ files are always generated
@@ -112,6 +120,7 @@ func GetGeneratedFiles(protoFile, projectDir, modulePath string, hasGo, hasTS bo
 		filepath.Join("vendor", modulePath, protoDir, baseName+".pb.h"),
 	)
 
+	// Include Go messages and service outputs when enabled.
 	if hasGo {
 		files = append(
 			files,
@@ -120,6 +129,7 @@ func GetGeneratedFiles(protoFile, projectDir, modulePath string, hasGo, hasTS bo
 		)
 	}
 
+	// Include TypeScript messages and service outputs when enabled.
 	if hasTS {
 		files = append(
 			files,
@@ -133,9 +143,11 @@ func GetGeneratedFiles(protoFile, projectDir, modulePath string, hasGo, hasTS bo
 
 // FindGeneratedFilesForProto finds actual enabled outputs for a proto file.
 func FindGeneratedFilesForProto(protoFile, projectDir, vendorDir, modulePath string, langs Languages, rpcs RPCLibraries) ([]string, error) {
+	// Derive the directory and output stem shared by the generators.
 	protoDir := filepath.Dir(protoFile)
 	baseName := strings.TrimSuffix(filepath.Base(protoFile), ".proto")
 
+	// Match protoc's C# filename casing and word boundaries.
 	var csharpBase strings.Builder
 	capNext := true
 	for i := range len(baseName) {
@@ -163,6 +175,7 @@ func FindGeneratedFilesForProto(protoFile, projectDir, vendorDir, modulePath str
 		csharpFile = "_" + csharpFile
 	}
 
+	// Select only patterns produced by enabled generators.
 	var relativePatterns []string
 	if langs.Has(LanguageCpp) {
 		relativePatterns = append(relativePatterns, baseName+".pb.cc", baseName+".pb.h")
@@ -183,6 +196,7 @@ func FindGeneratedFilesForProto(protoFile, projectDir, vendorDir, modulePath str
 		}
 	}
 
+	// Search project outputs before their vendored aliases.
 	searches := []struct {
 		dir      string
 		patterns []string
@@ -226,6 +240,7 @@ func FindGeneratedFilesForProto(protoFile, projectDir, vendorDir, modulePath str
 		}
 	}
 
+	// Return stable project-relative output paths.
 	relPaths := make([]string, 0, len(seen))
 	for _, rel := range seen {
 		relPaths = append(relPaths, rel)

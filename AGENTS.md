@@ -33,7 +33,7 @@ This repository (`github.com/aperturerobotics/common`) provides shared tooling a
 
 ### Plugin Types
 
-The `PluginType` enum in `protogen/plugins.go` defines supported languages:
+The `PluginType` enum in `protogen/plugin.go` defines supported languages:
 
 ```go
 const (
@@ -75,7 +75,7 @@ This runs `embed.bash` and then `aptre generate`.
 
 ## Adding a New Plugin
 
-1. Add the plugin type to `protogen/plugins.go`
+1. Add the plugin type to `protogen/plugin.go`
 2. Add discovery logic in `DiscoverPlugins()`
 3. Add protoc args in `GetProtocArgs()`
 4. Add plugin path lookup in `findPluginPath()`, or serve it in process from

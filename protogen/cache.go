@@ -25,16 +25,6 @@ type Cache struct {
 	Packages map[string]*PackageInfo `json:"packages"`
 }
 
-// PackageInfo contains cached information about a proto package.
-type PackageInfo struct {
-	// Hash is the content hash of all proto files in this package.
-	Hash string `json:"hash"`
-	// GeneratedFiles is the list of generated output files.
-	GeneratedFiles []string `json:"generatedFiles"`
-	// ProtoFiles is the list of source proto file paths.
-	ProtoFiles []string `json:"protoFiles"`
-}
-
 // NewCache creates a new empty cache.
 func NewCache() *Cache {
 	return &Cache{
@@ -46,6 +36,7 @@ func NewCache() *Cache {
 // LoadCache loads the cache from a file.
 // Returns an empty cache if the file doesn't exist.
 func LoadCache(path string) (*Cache, error) {
+	// Read the manifest, treating a missing file as an empty cache.
 	data, err := os.ReadFile(path)
 	if os.IsNotExist(err) {
 		return NewCache(), nil
@@ -54,6 +45,7 @@ func LoadCache(path string) (*Cache, error) {
 		return nil, err
 	}
 
+	// Discard a manifest whose JSON cannot be decoded.
 	var cache Cache
 	if err := json.Unmarshal(data, &cache); err != nil {
 		// If cache is corrupted, return empty cache
@@ -65,6 +57,7 @@ func LoadCache(path string) (*Cache, error) {
 		return NewCache(), nil
 	}
 
+	// Ensure callers can add package entries to an empty manifest.
 	if cache.Packages == nil {
 		cache.Packages = make(map[string]*PackageInfo)
 	}
@@ -92,16 +85,19 @@ func (c *Cache) SetToolVersions(versions string) {
 }
 
 // NeedsRegeneration checks if a cached package needs regeneration.
+//
 // Returns true if:
 // - The package is not in the cache
 // - The proto file list or content hash has changed
 // - The protoc flags or selected tool versions have changed
 // - Force is true
 func (c *Cache) NeedsRegeneration(packageKey string, protoFiles []string, projectDir string, flagsHash string, toolVersions string, force bool) (bool, error) {
+	// An explicit force request bypasses every cache identity.
 	if force {
 		return true, nil
 	}
 
+	// A different toolchain invalidates the generated output.
 	if c.ToolVersions != toolVersions {
 		return true, nil
 	}
@@ -111,6 +107,7 @@ func (c *Cache) NeedsRegeneration(packageKey string, protoFiles []string, projec
 		return true, nil
 	}
 
+	// A package without a recorded identity must be generated.
 	info, ok := c.Packages[packageKey]
 	if !ok {
 		return true, nil
@@ -147,7 +144,7 @@ func (c *Cache) UpdatePackage(packageKey string, protoFiles []string, generatedF
 }
 
 // GetPackageKey generates a cache key for a proto file.
-// Uses the format: "module/path/to/dir;package_name"
+// It joins the module path with the proto file's directory.
 func GetPackageKey(modulePath, protoFile string) string {
 	dir := filepath.Dir(protoFile)
 	return filepath.Join(modulePath, dir)
@@ -155,6 +152,7 @@ func GetPackageKey(modulePath, protoFile string) string {
 
 // hashProtoFiles computes a hash of the contents of multiple proto files.
 func hashProtoFiles(protoFiles []string, projectDir string) (string, error) {
+	// Hash source names and contents into the package identity.
 	h := sha256.New()
 
 	// Sort files for deterministic hashing
@@ -162,6 +160,7 @@ func hashProtoFiles(protoFiles []string, projectDir string) (string, error) {
 	copy(sorted, protoFiles)
 	slices.Sort(sorted)
 
+	// Read sources in sorted order without changing the caller's list.
 	for _, f := range sorted {
 		path := filepath.Join(projectDir, f)
 		data, err := os.ReadFile(path)

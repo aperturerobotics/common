@@ -36,11 +36,13 @@ var testCmd = &cli.Command{
 }
 
 func runTest(c *cli.Context) error {
+	// Read the project and test runner selection.
 	projectDir := c.String("project-dir")
 	verbose := c.Bool("verbose")
 	browser := c.Bool("browser")
 	toolsDir := c.String("tools-dir")
 
+	// Default the project to the current directory.
 	if projectDir == "" {
 		var err error
 		projectDir, err = os.Getwd()
@@ -49,10 +51,12 @@ func runTest(c *cli.Context) error {
 		}
 	}
 
+	// Delegate browser tests to the Wasm runner.
 	if browser {
 		return runBrowserTest(projectDir, toolsDir, verbose, c.Args().Slice())
 	}
 
+	// Construct the native Go test invocation.
 	args := []string{"test"}
 	if verbose {
 		args = append(args, "-v")
@@ -65,6 +69,7 @@ func runTest(c *cli.Context) error {
 		args = append(args, "./...")
 	}
 
+	// Run native tests in the selected project.
 	cmd := exec.Command("go", args...)
 	cmd.Dir = projectDir
 	cmd.Stdout = os.Stdout
@@ -86,6 +91,7 @@ func runBrowserTest(projectDir, toolsDir string, verbose bool, extraArgs []strin
 		return err
 	}
 
+	// Construct the browser test invocation.
 	args := []string{"test", "-exec", absWasmTestPath, "-tags", "webtests"}
 	if verbose {
 		args = append(args, "-v")
@@ -98,6 +104,7 @@ func runBrowserTest(projectDir, toolsDir string, verbose bool, extraArgs []strin
 		args = append(args, "./...")
 	}
 
+	// Run Go tests with the browser executor and Wasm target.
 	cmd := exec.Command("go", args...)
 	cmd.Dir = projectDir
 	cmd.Stdout = os.Stdout

@@ -64,10 +64,12 @@ var releaseBundleCmd = &cli.Command{
 		},
 	},
 	Action: func(c *cli.Context) error {
+		// Read the project and tool selection.
 		projectDir := c.String("project-dir")
 		toolsDir := c.String("tools-dir")
 		verbose := c.Bool("verbose")
 
+		// Default the project to the current directory.
 		if projectDir == "" {
 			var err error
 			projectDir, err = os.Getwd()
@@ -76,6 +78,7 @@ var releaseBundleCmd = &cli.Command{
 			}
 		}
 
+		// Build the configured release tool.
 		goreleaserPath, err := EnsureToolBuilt(projectDir, toolsDir, "goreleaser", verbose)
 		if err != nil {
 			return err
@@ -94,6 +97,7 @@ var releaseBundleCmd = &cli.Command{
 		args := []string{"release", "--snapshot", "--clean", "--skip-publish"}
 		args = append(args, c.Args().Slice()...)
 
+		// Run the snapshot bundle with the caller's extra arguments.
 		cmd := exec.Command(goreleaserPath, args...)
 		cmd.Dir = projectDir
 		cmd.Stdout = os.Stdout
@@ -123,10 +127,12 @@ var releaseBuildCmd = &cli.Command{
 		},
 	},
 	Action: func(c *cli.Context) error {
+		// Read the project and tool selection.
 		projectDir := c.String("project-dir")
 		toolsDir := c.String("tools-dir")
 		verbose := c.Bool("verbose")
 
+		// Default the project to the current directory.
 		if projectDir == "" {
 			var err error
 			projectDir, err = os.Getwd()
@@ -135,6 +141,7 @@ var releaseBuildCmd = &cli.Command{
 			}
 		}
 
+		// Build the configured release tool.
 		goreleaserPath, err := EnsureToolBuilt(projectDir, toolsDir, "goreleaser", verbose)
 		if err != nil {
 			return err
@@ -153,6 +160,7 @@ var releaseBuildCmd = &cli.Command{
 		args := []string{"build", "--single-target", "--snapshot", "--clean"}
 		args = append(args, c.Args().Slice()...)
 
+		// Run the snapshot build with the caller's extra arguments.
 		cmd := exec.Command(goreleaserPath, args...)
 		cmd.Dir = projectDir
 		cmd.Stdout = os.Stdout
@@ -187,10 +195,12 @@ var releaseCheckCmd = &cli.Command{
 }
 
 func runGoreleaser(c *cli.Context, args []string) error {
+	// Read the project and tool selection.
 	projectDir := c.String("project-dir")
 	toolsDir := c.String("tools-dir")
 	verbose := c.Bool("verbose")
 
+	// Default the project to the current directory.
 	if projectDir == "" {
 		var err error
 		projectDir, err = os.Getwd()
@@ -199,13 +209,16 @@ func runGoreleaser(c *cli.Context, args []string) error {
 		}
 	}
 
+	// Build the configured release tool.
 	goreleaserPath, err := EnsureToolBuilt(projectDir, toolsDir, "goreleaser", verbose)
 	if err != nil {
 		return err
 	}
 
+	// Forward extra arguments after the selected release operation.
 	args = append(args, c.Args().Slice()...)
 
+	// Run the release tool with terminal output.
 	cmd := exec.Command(goreleaserPath, args...)
 	cmd.Dir = projectDir
 	cmd.Stdout = os.Stdout

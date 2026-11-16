@@ -41,12 +41,14 @@ var outdatedCmd = &cli.Command{
 }
 
 func runOutdated(c *cli.Context) error {
+	// Read the project and tool selection.
 	projectDir := c.String("project-dir")
 	toolsDir := c.String("tools-dir")
 	verbose := c.Bool("verbose")
 	direct := c.Bool("direct")
 	update := c.Bool("update")
 
+	// Default the project to the current directory.
 	if projectDir == "" {
 		var err error
 		projectDir, err = os.Getwd()
@@ -55,6 +57,7 @@ func runOutdated(c *cli.Context) error {
 		}
 	}
 
+	// Build the dependency report tool before connecting the pipeline.
 	outdatedPath, err := EnsureToolBuilt(projectDir, toolsDir, "go-mod-outdated", verbose)
 	if err != nil {
 		return err
@@ -65,6 +68,7 @@ func runOutdated(c *cli.Context) error {
 	listCmd.Dir = projectDir
 	listCmd.Env = append(os.Environ(), "GO111MODULE=on")
 
+	// Select which dependencies the report includes.
 	outdatedArgs := []string{}
 	if update {
 		outdatedArgs = append(outdatedArgs, "-update")
@@ -73,6 +77,7 @@ func runOutdated(c *cli.Context) error {
 		outdatedArgs = append(outdatedArgs, "-direct")
 	}
 
+	// Send the filtered report to the terminal.
 	outdatedExec := exec.Command(outdatedPath, outdatedArgs...)
 	outdatedExec.Dir = projectDir
 	outdatedExec.Stdout = os.Stdout
@@ -86,6 +91,7 @@ func runOutdated(c *cli.Context) error {
 	outdatedExec.Stdin = pipe
 	listCmd.Stderr = os.Stderr
 
+	// Start the producer before its report consumer.
 	if err := listCmd.Start(); err != nil {
 		return err
 	}
@@ -93,6 +99,7 @@ func runOutdated(c *cli.Context) error {
 		return err
 	}
 
+	// Reap both processes after the report consumes the module list.
 	listCmd.Wait()
 	return outdatedExec.Wait()
 }
