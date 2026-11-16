@@ -9,4 +9,3 @@ type PackageInfo struct {
 	// ProtoFiles is the list of source proto file paths.
 	ProtoFiles []string `json:"protoFiles"`
 }
-

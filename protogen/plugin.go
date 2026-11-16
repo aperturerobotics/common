@@ -34,4 +34,3 @@ type Plugin struct {
 	// repeat or take no value.
 	Flags []string
 }
-
