@@ -159,7 +159,7 @@ go run github.com/aperturerobotics/common/cmd/aptre@latest generate --verbose
 | `fix`              | Run golangci-lint with --fix                       |
 | `test`             | Run go test                                        |
 | `test --browser`   | Run tests in browser with WebAssembly              |
-| `format`           | Format Go code with gofumpt                        |
+| `format`           | Format Go code with gofmt                        |
 | `outdated`         | Show outdated dependencies                         |
 
 ## TLA+ Specs

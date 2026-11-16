@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"slices"
 	"testing"
 
+	"github.com/aperturerobotics/cli"
 	"github.com/aperturerobotics/common/protogen"
 	"github.com/pkg/errors"
 )
@@ -210,5 +212,49 @@ func TestReconcileToolsStampDoesNotInvalidateOnMatch(t *testing.T) {
 	changed, err := reconcileToolsStamp(stamp, "v1", func() error { t.Fatal("extract called"); return nil }, func() error { t.Fatal("invalidate called"); return nil })
 	if err != nil || changed {
 		t.Fatalf("matching stamp: changed=%v err=%v", changed, err)
+	}
+}
+
+// TestFormatPreservesCodeParagraphs keeps comments after continued calls separate.
+func TestFormatPreservesCodeParagraphs(t *testing.T) {
+	// A continued method call ends before the next action's comment.
+	project := t.TempDir()
+	path := filepath.Join(project, "paragraph.go")
+	const source = `package example
+
+func forward() {
+	// Forward the request through the selected client.
+	ok, err := newClient().
+		InvokeMethod("service", "method")
+
+	// Check the completed request before returning.
+	if err != nil {
+		panic(err)
+	}
+	_ = ok
+}
+`
+	if err := os.WriteFile(path, []byte(source), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	// Run the real command twice, without a module or a prepared tool directory.
+	app := &cli.App{Name: "aptre", Commands: []*cli.Command{formatCmd}}
+	for range 2 {
+		if err := app.RunContext(context.Background(), []string{"aptre", "format", "-C", project}); err != nil {
+			t.Fatal(err)
+		}
+		got, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(got) != source {
+			t.Fatalf("formatter changed code paragraph boundaries:\n%s", got)
+		}
+	}
+
+	// Formatting existing Go sources needs no downloaded project tools.
+	if _, err := os.Stat(filepath.Join(project, ".tools")); !os.IsNotExist(err) {
+		t.Fatalf("format prepared a tool directory: %v", err)
 	}
 }
