@@ -205,6 +205,12 @@ func (g *Generator) Generate(ctx context.Context) error {
 			return errors.Wrap(err, "failed to generate protos")
 		}
 
+		// Index selected inputs once before visiting their directory groups.
+		selectedFiles := make(map[string]struct{}, len(filesToGenerate))
+		for _, file := range filesToGenerate {
+			selectedFiles[file] = struct{}{}
+		}
+
 		// Post-process and update cache for each directory
 		postProcessor := NewPostProcessor(
 			g.ProjectDir,
@@ -218,10 +224,8 @@ func (g *Generator) Generate(ctx context.Context) error {
 			// Skip if not in files to generate
 			shouldProcess := false
 			for _, f := range files {
-				if slices.Contains(filesToGenerate, f) {
+				if _, ok := selectedFiles[f]; ok {
 					shouldProcess = true
-				}
-				if shouldProcess {
 					break
 				}
 			}
@@ -247,9 +251,14 @@ func (g *Generator) Generate(ctx context.Context) error {
 				generatedFiles = append(generatedFiles, gf...)
 			}
 
+			// Compare prior outputs against indexed current names before removing any.
 			if previous := g.Cache.Packages[packageKey]; previous != nil {
+				currentOutputs := make(map[string]struct{}, len(generatedFiles))
+				for _, file := range generatedFiles {
+					currentOutputs[file] = struct{}{}
+				}
 				for _, old := range previous.GeneratedFiles {
-					if slices.Contains(generatedFiles, old) {
+					if _, ok := currentOutputs[old]; ok {
 						continue
 					}
 					if err := os.Remove(filepath.Join(g.ProjectDir, old)); err != nil && !os.IsNotExist(err) {

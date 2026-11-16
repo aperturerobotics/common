@@ -30,11 +30,14 @@ var lintCmd = &cli.Command{
 	Action: runLint,
 }
 
+// runLint runs the selected linter with the caller's arguments.
 func runLint(c *cli.Context) error {
+	// Read the command's project and tool-directory options.
 	projectDir := c.String("project-dir")
 	toolsDir := c.String("tools-dir")
 	verbose := c.Bool("verbose")
 
+	// Default the project to the invocation directory.
 	if projectDir == "" {
 		var err error
 		projectDir, err = os.Getwd()
@@ -43,14 +46,17 @@ func runLint(c *cli.Context) error {
 		}
 	}
 
+	// Reuse or build the tool selected by this project.
 	lintPath, err := EnsureToolBuilt(projectDir, toolsDir, "golangci-lint", verbose)
 	if err != nil {
 		return err
 	}
 
+	// Preserve the caller's lint arguments after the command's fixed mode.
 	args := []string{"run"}
 	args = append(args, c.Args().Slice()...)
 
+	// Forward the tool's output and exit status without translation.
 	cmd := exec.Command(lintPath, args...)
 	cmd.Dir = projectDir
 	cmd.Stdout = os.Stdout
@@ -81,11 +87,14 @@ var fixCmd = &cli.Command{
 	Action: runFix,
 }
 
+// runFix runs the selected linter with fixes enabled.
 func runFix(c *cli.Context) error {
+	// Read the command's project and tool-directory options.
 	projectDir := c.String("project-dir")
 	toolsDir := c.String("tools-dir")
 	verbose := c.Bool("verbose")
 
+	// Default the project to the invocation directory.
 	if projectDir == "" {
 		var err error
 		projectDir, err = os.Getwd()
@@ -94,14 +103,17 @@ func runFix(c *cli.Context) error {
 		}
 	}
 
+	// Reuse or build the tool selected by this project.
 	lintPath, err := EnsureToolBuilt(projectDir, toolsDir, "golangci-lint", verbose)
 	if err != nil {
 		return err
 	}
 
+	// Preserve the caller's lint arguments after the command's fixed mode.
 	args := []string{"run", "--fix"}
 	args = append(args, c.Args().Slice()...)
 
+	// Forward the tool's output and exit status without translation.
 	cmd := exec.Command(lintPath, args...)
 	cmd.Dir = projectDir
 	cmd.Stdout = os.Stdout
@@ -133,11 +145,14 @@ var formatCmd = &cli.Command{
 	Action: runFormat,
 }
 
+// runFormat formats the selected project path with its configured formatter.
 func runFormat(c *cli.Context) error {
+	// Read the command's project and tool-directory options.
 	projectDir := c.String("project-dir")
 	toolsDir := c.String("tools-dir")
 	verbose := c.Bool("verbose")
 
+	// Default the project to the invocation directory.
 	if projectDir == "" {
 		var err error
 		projectDir, err = os.Getwd()
@@ -146,16 +161,19 @@ func runFormat(c *cli.Context) error {
 		}
 	}
 
+	// Reuse or build the tool selected by this project.
 	gofumptPath, err := EnsureToolBuilt(projectDir, toolsDir, "gofumpt", verbose)
 	if err != nil {
 		return err
 	}
 
+	// An explicit target narrows the command from the whole project.
 	target := "./"
 	if c.NArg() > 0 {
 		target = c.Args().First()
 	}
 
+	// Forward the tool's output and exit status without translation.
 	cmd := exec.Command(gofumptPath, "-w", target)
 	cmd.Dir = projectDir
 	cmd.Stdout = os.Stdout
@@ -186,11 +204,14 @@ var goimportsCmd = &cli.Command{
 	Action: runGoimports,
 }
 
+// runGoimports rewrites imports for the selected project path.
 func runGoimports(c *cli.Context) error {
+	// Read the command's project and tool-directory options.
 	projectDir := c.String("project-dir")
 	toolsDir := c.String("tools-dir")
 	verbose := c.Bool("verbose")
 
+	// Default the project to the invocation directory.
 	if projectDir == "" {
 		var err error
 		projectDir, err = os.Getwd()
@@ -199,16 +220,19 @@ func runGoimports(c *cli.Context) error {
 		}
 	}
 
+	// Reuse or build the tool selected by this project.
 	goimportsPath, err := EnsureToolBuilt(projectDir, toolsDir, "goimports", verbose)
 	if err != nil {
 		return err
 	}
 
+	// An explicit target narrows the command from the whole project.
 	target := "./"
 	if c.NArg() > 0 {
 		target = c.Args().First()
 	}
 
+	// Forward the tool's output and exit status without translation.
 	cmd := exec.Command(goimportsPath, "-w", target)
 	cmd.Dir = projectDir
 	cmd.Stdout = os.Stdout

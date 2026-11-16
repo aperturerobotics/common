@@ -26,7 +26,11 @@ type toolSpec struct {
 
 // defaultTools lists the supported build tools and their import identities.
 var defaultTools = []toolSpec{
-	{Name: "protoc-gen-go-lite", ImportPath: "github.com/aperturerobotics/protobuf-go-lite/cmd/protoc-gen-go-lite", ModulePath: "github.com/aperturerobotics/protobuf-go-lite"},
+	{
+		Name:       "protoc-gen-go-lite",
+		ImportPath: "github.com/aperturerobotics/protobuf-go-lite/cmd/protoc-gen-go-lite",
+		ModulePath: "github.com/aperturerobotics/protobuf-go-lite",
+	},
 	{Name: "protoc-gen-go-starpc", ImportPath: "github.com/aperturerobotics/starpc/cmd/protoc-gen-go-starpc", ModulePath: "github.com/aperturerobotics/starpc"},
 	{Name: "protoc-gen-starpc-cpp", ImportPath: "github.com/aperturerobotics/starpc/cmd/protoc-gen-starpc-cpp", ModulePath: "github.com/aperturerobotics/starpc"},
 	{Name: "protoc-gen-starpc-rust", ImportPath: "github.com/aperturerobotics/starpc/cmd/protoc-gen-starpc-rust", ModulePath: "github.com/aperturerobotics/starpc"},
@@ -83,6 +87,8 @@ func selectedToolPlan(projectDir, name string) toolBuildPlan {
 	if err != nil {
 		return toolBuildPlan{mode: toolBuildIsolated, spec: spec}
 	}
+
+	// A complete module record selects the versioned build; every other case falls back.
 	parts := strings.Split(strings.TrimSpace(string(out)), "\t")
 	if len(parts) < 3 {
 		return toolBuildPlan{mode: toolBuildIsolated, spec: spec}
@@ -131,6 +137,7 @@ func planGenerateDependencies(cfg *protogen.Config) (generateDependencyPlan, err
 	if langs.Has(protogen.LanguageRust) && rpcs.Has(protogen.RPCLibraryStarpc) {
 		tools = append(tools, "protoc-gen-starpc-rust")
 	}
+
 	// TypeScript generation also needs the project's package dependencies.
 	hasPackageJSON, err := cfg.HasPackageJSON()
 	if err != nil {
@@ -221,6 +228,7 @@ func runDeps(c *cli.Context) error {
 	verbose := c.Bool("verbose")
 	force := c.Bool("force")
 
+	// Resolve the default project before preparing its dependencies.
 	if projectDir == "" {
 		var err error
 		projectDir, err = os.Getwd()
@@ -234,6 +242,7 @@ func runDeps(c *cli.Context) error {
 
 // ensureDeps prepares all dependencies without forcing existing tool rebuilds.
 func ensureDeps(projectDir, toolsDir string, verbose bool) error {
+	// Resolve the default project before preparing its complete dependency set.
 	if projectDir == "" {
 		var err error
 		projectDir, err = os.Getwd()
@@ -352,6 +361,7 @@ func ensureToolsDir(projectDir, toolsPath string, verbose bool) (func(), error) 
 	// Extract the selected common module and invalidate binaries from older inputs.
 	identity := resolveCommonPackage(projectDir)
 	_, err = reconcileToolsStamp(toolsStampPath(toolsPath), identity, func() error {
+		// Resolve the metadata extraction target and report the synchronization.
 		if verbose {
 			fmt.Println("Synchronizing embedded tool metadata...")
 		}
@@ -359,6 +369,8 @@ func ensureToolsDir(projectDir, toolsPath string, verbose bool) (func(), error) 
 		if err != nil {
 			relToolsPath = filepath.Base(toolsPath)
 		}
+
+		// Extract embedded metadata into this project's selected tools directory.
 		cmd := exec.Command("go", "run", "-mod=mod", "-v", identity, relToolsPath)
 		cmd.Dir = projectDir
 		cmd.Stdout = os.Stdout
@@ -378,8 +390,10 @@ func ensureToolsDir(projectDir, toolsPath string, verbose bool) (func(), error) 
 
 // resolveCommonPackage follows project replacements before falling back to build metadata.
 func resolveCommonPackage(projectDir string) string {
+	// Render replacements in the same query that selects the common module.
 	const commonModule = "github.com/aperturerobotics/common"
-	const moduleTemplate = "{{with .Replace}}{{if .Version}}{{.Path}}@{{.Version}}{{else}}{{.Path}}{{end}}{{else}}{{if .Version}}{{.Path}}@{{.Version}}{{else}}{{.Path}}{{end}}{{end}}"
+	const moduleTemplate = "{{with .Replace}}{{if .Version}}{{.Path}}@{{.Version}}{{else}}{{.Path}}{{end}}" +
+		"{{else}}{{if .Version}}{{.Path}}@{{.Version}}{{else}}{{.Path}}{{end}}{{end}}"
 
 	// Prefer the module selected by the target project, including replacements.
 	cmd := exec.Command("go", "list", "-m", "-f", moduleTemplate, commonModule)
@@ -428,6 +442,7 @@ func ensureTool(projectDir, toolsPath, toolName string, force, verbose bool) err
 		return nil
 	}
 
+	// Announce only tools whose existing executable could not be reused.
 	if verbose {
 		fmt.Printf("Building %s...\n", toolName)
 	}
@@ -435,7 +450,8 @@ func ensureTool(projectDir, toolsPath, toolName string, force, verbose bool) err
 	// Install the project-pinned version or build from the isolated tools module.
 	var cmd *exec.Cmd
 	if plan.mode == toolBuildVersioned {
-		cmd = exec.Command("go", "install", spec.ImportPath+"@"+plan.version) //nolint:gosec // spec and version come from the fixed tool plan.
+		//nolint:gosec // spec and version come from the fixed tool plan.
+		cmd = exec.Command("go", "install", spec.ImportPath+"@"+plan.version)
 		cmd.Dir = projectDir
 		cmd.Env = append(os.Environ(), "GOBIN="+filepath.Join(toolsPath, "bin"))
 	} else {
@@ -452,6 +468,7 @@ func ensureTool(projectDir, toolsPath, toolName string, force, verbose bool) err
 // version, so a project dependency bump rebuilds it. An isolated tool follows
 // the tools module, whose changes invalidate every binary through the stamp.
 func toolBinaryCurrent(binPath string, plan toolBuildPlan) bool {
+	// Require an executable before comparing its embedded module identity.
 	if _, err := os.Stat(binPath); err != nil {
 		return false
 	}
@@ -464,6 +481,7 @@ func toolBinaryCurrent(binPath string, plan toolBuildPlan) bool {
 // builtModuleVersion reads the version of modulePath recorded in an executable's
 // build information, or returns empty when the executable does not record it.
 func builtModuleVersion(binPath, modulePath string) string {
+	// Read the main and dependency versions from one executable metadata record.
 	info, err := buildinfo.ReadFile(binPath)
 	if err != nil {
 		return ""
@@ -492,6 +510,7 @@ func ensureNodeModules(projectDir string, verbose bool) error {
 		fmt.Println("Installing node_modules...")
 	}
 
+	// Let the project package manager prepare its declared dependencies.
 	cmd := exec.Command("bun", "install")
 	cmd.Dir = projectDir
 	cmd.Stdout = os.Stdout
@@ -510,6 +529,7 @@ func EnsureToolBuilt(projectDir, toolsDir, toolName string, verbose bool) (strin
 		}
 	}
 
+	// Resolve a relative tools directory against the absolute project path.
 	absProjectDir, err := filepath.Abs(projectDir)
 	if err != nil {
 		return "", err
@@ -550,6 +570,7 @@ func maybeBuildCustomGolangCILint(projectDir, toolsPath string, verbose bool) er
 		}
 		return err
 	}
+
 	// Reuse a custom binary only while its configuration and plugin files match.
 	baseLintPath := filepath.Join(toolsPath, "bin", "golangci-lint")
 	customStampPath := customGolangCIStampPath(toolsPath)
@@ -571,14 +592,20 @@ func maybeBuildCustomGolangCILint(projectDir, toolsPath string, verbose bool) er
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(filepath.Join(buildDir, ".custom-gcl.yml"), buildConf, 0o600); err != nil { //nolint:gosec // Fixed filename inside our newly created build directory.
+
+	// Write the fixed configuration file inside the private build directory.
+	//nolint:gosec // Fixed filename inside our newly created build directory.
+	if err := os.WriteFile(filepath.Join(buildDir, ".custom-gcl.yml"), buildConf, 0o600); err != nil {
 		return err
 	}
 
 	// The installed custom binary can be older than the tools module and cannot
 	// reliably rebuild itself. Compile the builder selected by the tools module.
 	builderPath := filepath.Join(buildDir, "builder")
-	cmd := exec.Command("go", "build", "-mod=readonly", "-o", builderPath, "github.com/golangci/golangci-lint/v2/cmd/golangci-lint")
+	cmd := exec.Command(
+		"go", "build", "-mod=readonly", "-o", builderPath,
+		"github.com/golangci/golangci-lint/v2/cmd/golangci-lint",
+	)
 	cmd.Dir = toolsPath
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
