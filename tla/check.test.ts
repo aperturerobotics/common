@@ -12,6 +12,7 @@ import {
   drawChart,
   findConfigMutants,
   findModels,
+  judgedMutants,
   mutantsOf,
 } from './check.js'
 
@@ -137,6 +138,35 @@ describe('aptre-tla', () => {
     expect(
       findConfigMutants(path.join(testdata, 'worker', 'testdata')),
     ).toEqual(configMutantsOf(spec))
+  })
+
+  it('judges each mutant only in a run that checks its config', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'aptre-tla-'))
+    try {
+      for (const name of ['Gate.tla', 'Gate.cfg', 'Gate-b.cfg'])
+        fs.writeFileSync(path.join(dir, name), '')
+      fs.writeFileSync(
+        path.join(dir, 'Gate.mutants.json'),
+        JSON.stringify([
+          { name: 'base', replace: [] },
+          { name: 'b', replace: [], config: 'Gate-b.cfg' },
+          { name: 'gone', replace: [], config: 'Gate-gone.cfg' },
+        ]),
+      )
+      const spec = path.join(dir, 'Gate.tla')
+      const judged = (...configs: string[]) =>
+        judgedMutants(
+          spec,
+          new Set(configs.map((c) => path.resolve(dir, c))),
+        ).map((m) => m.name)
+      // A mutant whose config is no model is judged wherever its spec is, so
+      // it fails rather than going unchecked.
+      expect(judged('Gate-b.cfg')).toEqual(['b', 'gone'])
+      expect(judged('Gate.cfg')).toEqual(['base', 'gone'])
+      expect(judged('Gate.cfg', 'Gate-b.cfg')).toEqual(['base', 'b', 'gone'])
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true })
+    }
   })
 
   it('selects one spec when given its file', () => {

@@ -25,6 +25,12 @@
 // names the rule it must break in a comment line, \* expect: <Rule>. A config
 // mutant with no expect line fails the run unchecked.
 //
+// A mutant belongs to the config it runs against, so a run judges it only when
+// the run checks that config: a mutant from Foo.mutants.json when its config
+// is among the run's models, and a config mutant when a path names the spec,
+// a directory holding it, or the testdata directory or config itself. Runs
+// split by config, such as CI jobs, thus judge each mutant once between them.
+//
 // Every result carries its state counts, so a baseline and a simpler design
 // can be compared over the same bounds; -json prints one object per result.
 
@@ -448,12 +454,7 @@ export async function checkMutant(
   workers = 1,
   onProgress?: (progress: Progress) => void,
 ): Promise<MutantResult> {
-  const dir = path.dirname(spec)
-  const config = path.join(
-    dir,
-    mutant.config ?? path.basename(spec).slice(0, -'.tla'.length) + '.cfg',
-  )
-  const model = { spec, config }
+  const model = { spec, config: configOf(spec, mutant) }
   let source: string
   try {
     source = applyMutant(fs.readFileSync(spec, 'utf8'), mutant)
@@ -473,6 +474,29 @@ export async function checkMutant(
   return { ...r, mutant, verdict }
 }
 
+// configOf returns the path of the config mutant runs against: the one it
+// names beside spec, or Foo.cfg.
+function configOf(spec: string, mutant: Mutant): string {
+  return path.join(
+    path.dirname(spec),
+    mutant.config ?? path.basename(spec).slice(0, -'.tla'.length) + '.cfg',
+  )
+}
+
+// judgedMutants returns the mutants of spec, from Foo.mutants.json, that a run
+// which checked the configs in checked, as absolute paths, judges: those
+// whose config it checked, and those whose config is none of the spec's
+// models, which no run checks and so must fail where the spec is checked.
+export function judgedMutants(spec: string, checked: Set<string>): Mutant[] {
+  const models = new Set(
+    [...findModels(spec)].map((m) => path.resolve(m.config)),
+  )
+  return mutantsOf(spec).filter((mutant) => {
+    const config = path.resolve(configOf(spec, mutant))
+    return checked.has(config) || !models.has(config)
+  })
+}
+
 const usage = `usage: aptre-tla [-json] [-workers N] [path...]
        aptre-tla chart [path...]
 
@@ -483,7 +507,10 @@ beside the spec, breaks its expected rule. A .cfg that pairs with no spec, as
 Foo.cfg or Foo-<variant>.cfg beside Foo.tla, fails the run. A config mutant names its rule in a
 line \\* expect: <Rule>; a path may name a testdata directory or one config in
 it. A mutant prints kill when it broke that rule, MISS when it broke another,
-LIVE when it passed and ERROR when it checked nothing. Prints the
+LIVE when it passed and ERROR when it checked nothing. A mutant is judged only
+in a run that checks its config: a Foo.mutants.json mutant when its config is
+among the models checked, a config mutant when a path names its spec, a
+directory holding it, or the mutant itself. Prints the
 state counts of every result, its calculated and observed chance of a
 fingerprint collision, and the shortest trace to each broken rule;
 TLA_MUTANT_TRACES=1 also prints each killing trace. chart writes the charts.
@@ -584,6 +611,11 @@ async function checkAll(
   let failed = 0
   let count = 0
   const specs = new Set<string>()
+  // checked holds each model config checked, as an absolute path; whole holds
+  // each spec a path named whole, by its file or a directory holding it,
+  // whose config mutants the run judges.
+  const checked = new Set<string>()
+  const whole = new Set<string>()
   // configMutants holds the config mutants to judge, by config path: those of
   // each spec checked, and those a target names, a testdata directory or a
   // config in one.
@@ -610,10 +642,13 @@ async function checkAll(
       : findConfigMutants(resolved)
     addConfigMutants(testdata)
     found = testdata.length
+    const byConfig = target.endsWith('.cfg')
     for (const model of findModels(target, unmatched)) {
       found++
       count++
       specs.add(model.spec)
+      checked.add(path.resolve(model.config))
+      if (!byConfig) whole.add(model.spec)
       const name = path.relative('.', model.config)
       const r = await runner.checkModel(model, name)
       printResult(json, r, name)
@@ -624,8 +659,8 @@ async function checkAll(
   }
   let mutants = 0
   for (const spec of specs) {
-    addConfigMutants(configMutantsOf(path.resolve(spec)))
-    for (const mutant of mutantsOf(spec)) {
+    if (whole.has(spec)) addConfigMutants(configMutantsOf(path.resolve(spec)))
+    for (const mutant of judgedMutants(spec, checked)) {
       mutants++
       const name = `${path.relative('.', spec)} mutant "${mutant.name}"`
       const r = await runner.checkMutant(spec, mutant, name)
