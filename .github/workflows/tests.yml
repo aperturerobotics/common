@@ -36,6 +36,7 @@ jobs:
         run: |
           (cd lint/protobufnil && go test ./...)
           (cd lint/lostresource && go test ./...)
+          (cd lint/polling && go test ./...)
       - run: bun run lint:js
       - run: bun run lint:go
       - run: bun run deps
