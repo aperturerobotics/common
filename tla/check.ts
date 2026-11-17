@@ -296,6 +296,12 @@ async function checkSource(
       config: fs.readFileSync(model.config, 'utf8'),
       loadModule,
       workers,
+      // A periodic liveness check runs on a wall-clock timer, so on a config
+      // with both a temporal property and a safety rule it would race the
+      // search for the verdict. Checking liveness once on the finished graph
+      // reports the first safety failure in breadth-first order, so a run's
+      // verdict, and a mutant's kill or MISS, depends on the model alone.
+      livenessCheck: 'final',
       onProgress: (p) => {
         if (p.kind === 'progress') onProgress?.(p.statistics as Progress)
       },
