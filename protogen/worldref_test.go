@@ -91,8 +91,8 @@ func runWorldRefGenerator(t *testing.T, msgs ...*descriptorpb.DescriptorProto) *
 }
 
 func TestGenerateWorldRefs(t *testing.T) {
-	// Inner declares one reference; Record holds scalar, repeated, unindexed
-	// and nested references and a span; A reaches Inner only through a cycle
+	// Inner declares one reference; Record holds scalar, repeated, unindexed,
+	// nested and map-valued references and a span; A reaches Inner only through a cycle
 	// with B; Plain declares nothing.
 	opt := descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL
 	rep := descriptorpb.FieldDescriptorProto_LABEL_REPEATED
@@ -113,7 +113,16 @@ func TestGenerateWorldRefs(t *testing.T) {
 			refField("created_at", 6, opt, str, "", "", false),
 			refField("ended_at", 7, opt, msg, ".google.protobuf.Timestamp", "", false),
 			refField("plain", 8, opt, str, "", "", false),
+			refField("items", 9, rep, msg, ".a.Record.ItemsEntry", "", false),
 		},
+		NestedType: []*descriptorpb.DescriptorProto{{
+			Name: proto.String("ItemsEntry"),
+			Field: []*descriptorpb.FieldDescriptorProto{
+				refField("key", 1, opt, descriptorpb.FieldDescriptorProto_TYPE_INT32, "", "", false),
+				refField("value", 2, opt, msg, ".a.Inner", "", false),
+			},
+			Options: &descriptorpb.MessageOptions{MapEntry: proto.Bool(true)},
+		}},
 		Options: spanOptions("created_at", "ended_at"),
 	}
 	a := &descriptorpb.DescriptorProto{
@@ -154,6 +163,7 @@ func TestGenerateWorldRefs(t *testing.T) {
 		`if v := m.GetNoteKey(); v != "" && !cb("a/note", v, false) {`,
 		"if !m.GetInner().RangeWorldRefs(cb) {",
 		"for _, v := range m.GetInners() {",
+		"for _, v := range m.GetItems() {",
 		"func (m *A) RangeWorldRefs(",
 		"if !m.GetB().RangeWorldRefs(cb) {",
 		"func (m *B) RangeWorldRefs(",
@@ -167,7 +177,7 @@ func TestGenerateWorldRefs(t *testing.T) {
 			t.Errorf("missing %q in:\n%s", want, content)
 		}
 	}
-	for _, unwanted := range []string{"Plain", "GetPlain", "GetCreatedAt().RangeWorldRefs"} {
+	for _, unwanted := range []string{"Plain", "GetPlain", "GetCreatedAt().RangeWorldRefs", "ItemsEntry"} {
 		if strings.Contains(content, unwanted) {
 			t.Errorf("unexpected %q in:\n%s", unwanted, content)
 		}

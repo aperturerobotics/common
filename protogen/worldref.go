@@ -261,6 +261,12 @@ func generateWorldRefFile(gen *liteprotogen.Plugin, file *liteprotogen.File, ind
 	var walk func(msgs []*liteprotogen.Message) error
 	walk = func(msgs []*liteprotogen.Message) error {
 		for _, msg := range msgs {
+			// Skip map entries: Go has no type for them, and the map's owner
+			// walks their values.
+			if msg.Desc.IsMapEntry() {
+				continue
+			}
+
 			// Read the message's span before emitting anything for it.
 			span, hasSpan, err := messageWorldSpan(msg.Desc)
 			if err != nil {
@@ -296,7 +302,7 @@ func generateWorldRefFile(gen *liteprotogen.Plugin, file *liteprotogen.File, ind
 
 // generateRangeWorldRefs writes the RangeWorldRefs method of msg, which walks
 // its reference fields and the references of its message fields in field
-// order.
+// order. Map values are walked in Go's map order, which is random.
 func generateRangeWorldRefs(g *liteprotogen.GeneratedFile, msg *liteprotogen.Message, index worldRefIndex) {
 	// Declare the method.
 	name := msg.GoIdent.GoName
