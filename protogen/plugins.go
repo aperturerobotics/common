@@ -25,6 +25,9 @@ type Plugins struct {
 	// GoTypeID is the protoc-gen-go-typeid plugin, served in process by
 	// GenerateTypeIDs.
 	GoTypeID *Plugin
+	// GoWorldRef is the protoc-gen-go-worldref plugin, served in process by
+	// GenerateWorldRefs.
+	GoWorldRef *Plugin
 	// ESLite is the protoc-gen-es-lite plugin.
 	ESLite *Plugin
 	// ESTypeID is the protoc-gen-es-typeid plugin, served in process by
@@ -150,6 +153,15 @@ func DiscoverPlugins(cfg *Config) (*Plugins, error) {
 				BinaryName: TypeIDPluginName,
 				Type:       PluginTypeGo,
 				OutFlag:    "go-typeid_out",
+				Options:    map[string]string{},
+			}
+
+			// World references extend the generated messages too.
+			plugins.GoWorldRef = &Plugin{
+				Name:       "go-worldref",
+				BinaryName: WorldRefPluginName,
+				Type:       PluginTypeGo,
+				OutFlag:    "go-worldref_out",
 				Options:    map[string]string{},
 			}
 		}
@@ -377,6 +389,11 @@ func (p *Plugins) GetProtocArgs(outDir, csharpOutDir string) []string {
 	// Go type IDs accompany the selected message output.
 	if p.GoTypeID != nil {
 		args = append(args, "--"+p.GoTypeID.OutFlag+"="+outDir)
+	}
+
+	// Go World references accompany the selected message output.
+	if p.GoWorldRef != nil {
+		args = append(args, "--"+p.GoWorldRef.OutFlag+"="+outDir)
 	}
 
 	// TypeScript plugins

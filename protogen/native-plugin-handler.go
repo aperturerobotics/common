@@ -60,7 +60,8 @@ func (h *NativePluginHandler) CloseProstWASM(ctx context.Context) error {
 // It spawns a plugin process, sends the CodeGeneratorRequest via stdin,
 // and returns the CodeGeneratorResponse from stdout.
 // For protoc-gen-prost, it uses the embedded WASM module if initialized, and
-// it serves the Go and TypeScript typeid generators in process.
+// it serves the Go and TypeScript typeid generators and the Go World
+// reference generator in process.
 func (h *NativePluginHandler) Communicate(ctx context.Context, program string, searchPath bool, input []byte) ([]byte, error) {
 	// Serve the embedded generators without a child process.
 	if program == "protoc-gen-prost" && h.prostWASM != nil {
@@ -69,6 +70,8 @@ func (h *NativePluginHandler) Communicate(ctx context.Context, program string, s
 	switch program {
 	case TypeIDPluginName:
 		return GenerateTypeIDs(input)
+	case WorldRefPluginName:
+		return GenerateWorldRefs(input)
 	case ESTypeIDPluginName:
 		return GenerateESTypeIDs(input)
 	}

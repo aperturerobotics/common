@@ -6,7 +6,6 @@ import (
 
 	liteprotogen "github.com/aperturerobotics/protobuf-go-lite/compiler/protogen"
 	"github.com/pkg/errors"
-	"google.golang.org/protobuf/encoding/protowire"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/descriptorpb"
@@ -15,9 +14,6 @@ import (
 
 // TypeIDPluginName is the protoc plugin executable name served in process.
 const TypeIDPluginName = "protoc-gen-go-typeid"
-
-// typeIDOptionField is the field number of the (typeid.id) message option.
-const typeIDOptionField protowire.Number = 51700
 
 // typeIDPackage is the Go package declaring typeid.Type.
 const typeIDPackage = liteprotogen.GoImportPath("github.com/aperturerobotics/common/typeid")
@@ -111,40 +107,16 @@ func appendTypedMessages(types []typedMessage, msgs []*liteprotogen.Message) ([]
 }
 
 // messageTypeID reads the (typeid.id) option of a message.
-//
-// The option is read from the encoded MessageOptions, so the generator needs
-// no registered extension and reads it whether protoc's descriptor resolved
-// the extension or left it as an unknown field.
 func messageTypeID(desc protoreflect.MessageDescriptor) (string, bool, error) {
-	// Encode the options as they appear on the wire.
-	b, err := proto.Marshal(desc.Options())
-	if err != nil {
-		return "", false, err
-	}
-
-	// Scan for the option field; the last occurrence wins, as in protobuf.
+	// The last occurrence of the option wins, as in protobuf.
 	var id string
 	var found bool
-	for len(b) != 0 {
-		num, typ, n := protowire.ConsumeTag(b)
-		if n < 0 {
-			return "", false, protowire.ParseError(n)
-		}
-		b = b[n:]
-		if num == typeIDOptionField && typ == protowire.BytesType {
-			v, n := protowire.ConsumeBytes(b)
-			if n < 0 {
-				return "", false, protowire.ParseError(n)
-			}
-			id, found = string(v), true
-			b = b[n:]
-			continue
-		}
-		n = protowire.ConsumeFieldValue(num, typ, b)
-		if n < 0 {
-			return "", false, protowire.ParseError(n)
-		}
-		b = b[n:]
+	err := scanOption(desc.Options(), typeIDOptionField, func(v []byte) error {
+		id, found = string(v), true
+		return nil
+	})
+	if err != nil {
+		return "", false, err
 	}
 
 	// A declared identifier must be usable as a key.
