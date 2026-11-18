@@ -9,8 +9,6 @@ import (
 
 func TestFindGeneratedFilesForProtoBuiltInLanguages(t *testing.T) {
 	projectDir := t.TempDir()
-	vendorDir := filepath.Join(projectDir, "vendor")
-	modulePath := "example.com/project"
 	protoDir := "api/v1"
 
 	generated := []string{
@@ -30,8 +28,6 @@ func TestFindGeneratedFilesForProtoBuiltInLanguages(t *testing.T) {
 	got, err := FindGeneratedFilesForProto(
 		filepath.Join(protoDir, "match_state.proto"),
 		projectDir,
-		vendorDir,
-		modulePath,
 		Languages{LanguageGo: {}, LanguageCSharp: {}, LanguagePython: {}},
 		RPCLibraries{},
 	)
@@ -50,18 +46,12 @@ func TestFindGeneratedFilesForProtoBuiltInLanguages(t *testing.T) {
 
 func TestFindGeneratedFilesForProtoDoesNotClaimUnrelatedCSharp(t *testing.T) {
 	projectDir := t.TempDir()
-	vendorDir := filepath.Join(projectDir, "vendor")
-	if err := os.MkdirAll(vendorDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
 	if err := os.WriteFile(filepath.Join(projectDir, "Other.cs"), nil, 0o644); err != nil {
 		t.Fatal(err)
 	}
 	got, err := FindGeneratedFilesForProto(
 		"match_state.proto",
 		projectDir,
-		vendorDir,
-		"example.com/project",
 		Languages{LanguageCSharp: {}, LanguagePython: {}},
 		RPCLibraries{},
 	)
@@ -75,15 +65,13 @@ func TestFindGeneratedFilesForProtoDoesNotClaimUnrelatedCSharp(t *testing.T) {
 
 func TestFindGeneratedFilesForProtoStarpcPythonClaimsServiceOutputs(t *testing.T) {
 	projectDir := t.TempDir()
-	vendorDir := filepath.Join(projectDir, "vendor")
-	modulePath := "example.com/project"
 	for _, name := range []string{"match_state_pb2.py", "match_state_pb2.pyi", "match_state_srpc.py", "match_state_srpc.pyi"} {
 		if err := os.WriteFile(filepath.Join(projectDir, name), nil, 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}
 	got, err := FindGeneratedFilesForProto(
-		"match_state.proto", projectDir, vendorDir, modulePath,
+		"match_state.proto", projectDir,
 		Languages{LanguagePython: {}}, RPCLibraries{RPCLibraryStarpcPython: {}},
 	)
 	if err != nil {
@@ -101,7 +89,7 @@ func TestFindGeneratedFilesForProtoStarpcPythonUnselected(t *testing.T) {
 		t.Fatal(err)
 	}
 	got, err := FindGeneratedFilesForProto(
-		"match_state.proto", projectDir, projectDir+"/vendor", "example.com/project",
+		"match_state.proto", projectDir,
 		Languages{LanguagePython: {}}, RPCLibraries{},
 	)
 	if err != nil {

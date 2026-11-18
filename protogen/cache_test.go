@@ -301,7 +301,6 @@ func TestGenerateFailureDoesNotPersistToolVersions(t *testing.T) {
 		ModuleDir:  dir,
 		ModulePath: "example.com/project",
 		VendorDir:  vendorDir,
-		OutDir:     vendorDir,
 		Stdout:     io.Discard,
 		Stderr:     io.Discard,
 	}
@@ -310,6 +309,59 @@ func TestGenerateFailureDoesNotPersistToolVersions(t *testing.T) {
 	}
 	if cache.ToolVersions != "accepted" {
 		t.Fatalf("failed generation persisted tool state %q", cache.ToolVersions)
+	}
+}
+
+// TestGenerateBesideVendoredNestedModule proves generation succeeds when the
+// project vendors one of its own nested modules, so vendor/ holds a real
+// directory under the project's module path, and that the output reaches the
+// project without touching the vendored copy.
+func TestGenerateBesideVendoredNestedModule(t *testing.T) {
+	// Lay out a project whose vendor/ holds its nested module lint.
+	dir, _ := writeProtoTree(t, map[string]string{
+		"api/a.proto": "syntax = \"proto3\";\npackage api;\nmessage A {}\n",
+		"vendor/example.com/project/lint/lint.go": "package lint\n",
+		"vendor/modules.txt":                      "# example.com/project/lint v0.0.0 => ./lint\n",
+	})
+	for _, args := range [][]string{{"init", "-q"}, {"add", "api"}} {
+		cmd := exec.Command("git", args...)
+		cmd.Dir = dir
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v: %s", args, err, out)
+		}
+	}
+
+	// Generate the built-in Python output.
+	config := NewConfig()
+	config.ProjectDir = dir
+	generator := &Generator{
+		Config:     config,
+		Plugins:    &Plugins{Languages: Languages{LanguagePython: {}}},
+		Cache:      NewCache(),
+		ProjectDir: dir,
+		ModuleDir:  dir,
+		ModulePath: "example.com/project",
+		VendorDir:  filepath.Join(dir, "vendor"),
+		Stdout:     io.Discard,
+		Stderr:     io.Discard,
+	}
+	if err := generator.Generate(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+
+	// The output is in the project and the vendored module is unchanged.
+	if _, err := os.Stat(filepath.Join(dir, "api", "a_pb2.py")); err != nil {
+		t.Fatalf("generated output: %v", err)
+	}
+	entries, err := os.ReadDir(filepath.Join(dir, "vendor", "example.com", "project"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || entries[0].Name() != "lint" || !entries[0].IsDir() {
+		t.Fatalf("vendored module path changed: %v", entries)
+	}
+	if data, err := os.ReadFile(filepath.Join(dir, "vendor", "example.com", "project", "lint", "lint.go")); err != nil || string(data) != "package lint\n" {
+		t.Fatalf("vendored file changed: %q, %v", data, err)
 	}
 }
 
@@ -345,7 +397,6 @@ func newTargetedGenerator(t *testing.T) (*Generator, string, string) {
 		ModuleDir:  dir,
 		ModulePath: "example.com/project",
 		VendorDir:  vendorDir,
-		OutDir:     vendorDir,
 		Stdout:     io.Discard,
 		Stderr:     io.Discard,
 	}
@@ -356,7 +407,7 @@ func newTargetedGenerator(t *testing.T) (*Generator, string, string) {
 			t.Fatal(err)
 		}
 	}
-	g.Cache.SetProtocFlags(g.buildProtocArgs(), g.ModuleDir)
+	g.Cache.ProtocFlagsHash = HashProtocFlags(g.buildProtocArgs(protocRootIdentity), g.ModuleDir)
 	g.Cache.SetToolVersions(g.getToolVersions())
 	return g, keyA, keyB
 }

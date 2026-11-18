@@ -74,11 +74,6 @@ func (c *Cache) Save(path string) error {
 	return os.WriteFile(path, data, 0o644)
 }
 
-// SetProtocFlags sets the protoc flags hash, keyed on rootDir-relative paths.
-func (c *Cache) SetProtocFlags(flags []string, rootDir string) {
-	c.ProtocFlagsHash = HashProtocFlags(flags, rootDir)
-}
-
 // SetToolVersions sets the tool versions string.
 func (c *Cache) SetToolVersions(versions string) {
 	c.ToolVersions = versions

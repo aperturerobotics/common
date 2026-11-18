@@ -32,12 +32,10 @@ type Generator struct {
 	ModuleDir string
 	// ModulePath is the Go module path.
 	ModulePath string
-	// VendorDir is the vendor directory.
+	// VendorDir is the vendor directory, which supplies imported schemas.
 	VendorDir string
 	// TsImportBoundaries are module-relative boundaries that trigger @go/ rewrites.
 	TsImportBoundaries []string
-	// OutDir is the output directory (same as VendorDir).
-	OutDir string
 	// Verbose enables verbose output.
 	Verbose bool
 	// Stdout is where to write standard output.
@@ -91,8 +89,6 @@ func NewGenerator(cfg *Config) (*Generator, error) {
 	}
 
 	// Retain the resolved configuration and output streams for this run.
-	vendorDir := filepath.Join(moduleDir, "vendor")
-	outDir := vendorDir
 	return &Generator{
 		Config:             cfg,
 		Plugins:            plugins,
@@ -100,9 +96,8 @@ func NewGenerator(cfg *Config) (*Generator, error) {
 		ProjectDir:         projectDir,
 		ModuleDir:          moduleDir,
 		ModulePath:         modulePath,
-		VendorDir:          vendorDir,
+		VendorDir:          filepath.Join(moduleDir, "vendor"),
 		TsImportBoundaries: tsImportBoundaries,
-		OutDir:             outDir,
 		Verbose:            cfg.Verbose,
 		Stdout:             os.Stdout,
 		Stderr:             os.Stderr,
@@ -111,11 +106,13 @@ func NewGenerator(cfg *Config) (*Generator, error) {
 
 // Generate runs the proto generation.
 func (g *Generator) Generate(ctx context.Context) error {
-	// Protoc's canonical module paths resolve through temporary project symlinks.
-	defer g.cleanupProjectSymlinks()
-	if err := g.setupProjectSymlinks(); err != nil {
-		return errors.Wrap(err, "failed to setup project symlinks")
+	// Protoc names the project's schemas and output by the module path, which
+	// resolves through this run's private root.
+	root, err := g.linkProtocRoot()
+	if err != nil {
+		return errors.Wrap(err, "failed to link protoc root")
 	}
+	defer os.RemoveAll(root)
 
 	// Discover proto files
 	protoFiles, err := DiscoverProtoFiles(g.ProjectDir, g.Config.Targets, g.Config.Exclude)
@@ -142,9 +139,8 @@ func (g *Generator) Generate(ctx context.Context) error {
 	// Get tool versions for cache invalidation.
 	toolVersions := g.getToolVersions()
 
-	// Build protoc arguments
-	protocArgs := g.buildProtocArgs()
-	flagsHash := HashProtocFlags(protocArgs, g.ModuleDir)
+	// Identify the protoc flags apart from the run's private root.
+	flagsHash := HashProtocFlags(g.buildProtocArgs(protocRootIdentity), g.ModuleDir)
 
 	// Group proto files by directory for cache tracking
 	filesByDir := make(map[string][]string)
@@ -201,7 +197,7 @@ func (g *Generator) Generate(ctx context.Context) error {
 			}
 		}
 
-		if err := g.runProtoc(ctx, filesToGenerate); err != nil {
+		if err := g.runProtoc(ctx, root, filesToGenerate); err != nil {
 			return errors.Wrap(err, "failed to generate protos")
 		}
 
@@ -219,6 +215,7 @@ func (g *Generator) Generate(ctx context.Context) error {
 			g.TsImportBoundaries,
 			g.Verbose,
 		)
+		postProcessor.ProtocRoot = root
 		for _, dir := range dirs {
 			files := filesByDir[dir]
 			// Skip if not in files to generate
@@ -244,7 +241,7 @@ func (g *Generator) Generate(ctx context.Context) error {
 			packageKey := GetPackageKey(g.ModulePath, files[0])
 			var generatedFiles []string
 			for _, f := range files {
-				gf, err := FindGeneratedFilesForProto(f, g.ProjectDir, g.VendorDir, g.ModulePath, g.Plugins.Languages, g.Plugins.RPCLibraries)
+				gf, err := FindGeneratedFilesForProto(f, g.ProjectDir, g.Plugins.Languages, g.Plugins.RPCLibraries)
 				if err != nil {
 					return errors.Wrapf(err, "failed to find generated files for %s", f)
 				}
@@ -283,7 +280,7 @@ func (g *Generator) Generate(ctx context.Context) error {
 	}
 
 	// Persist the flags and tool identity used to select this output set.
-	g.Cache.SetProtocFlags(protocArgs, g.ModuleDir)
+	g.Cache.ProtocFlagsHash = flagsHash
 	g.Cache.SetToolVersions(toolVersions)
 	cacheFile, err := g.Config.GetCacheFilePath()
 	if err != nil {
@@ -303,34 +300,35 @@ func (g *Generator) Generate(ctx context.Context) error {
 	return nil
 }
 
-// setupProjectSymlinks maps protoc's native and Python module paths to the project.
-func (g *Generator) setupProjectSymlinks() error {
-	for _, modulePath := range []string{
-		g.ModulePath,
-		pythonModulePath(g.ModulePath),
-	} {
-		symlinkPath := filepath.Join(g.VendorDir, modulePath)
-		if err := os.MkdirAll(filepath.Dir(symlinkPath), 0o755); err != nil {
-			return err
-		}
-		if err := os.Remove(symlinkPath); err != nil && !os.IsNotExist(err) {
-			return err
-		}
-		if err := os.Symlink(g.ProjectDir, symlinkPath); err != nil {
-			return err
-		}
-	}
-	return nil
-}
+// protocRootIdentity stands for the private protoc root in the flags hash, so
+// the cache identity does not change with the root's temporary path.
+const protocRootIdentity = "<protoc-root>"
 
-// cleanupProjectSymlinks removes the temporary protoc output mappings.
-func (g *Generator) cleanupProjectSymlinks() {
-	for _, modulePath := range []string{
-		g.ModulePath,
-		pythonModulePath(g.ModulePath),
-	} {
-		_ = os.Remove(filepath.Join(g.VendorDir, modulePath))
+// linkProtocRoot creates the private protoc root of one run: a directory
+// holding only links from the module's Go and Python import paths to the
+// project. Protoc resolves the project's schemas through it and writes its
+// output into it, so the output lands in the project. The root is separate from
+// vendor/, which may hold real directories under the module path, such as a
+// vendored nested module of the project. The caller removes the root with
+// os.RemoveAll, which removes the links and not their targets.
+func (g *Generator) linkProtocRoot() (string, error) {
+	// Create the root, removing it again if a link fails.
+	root, err := os.MkdirTemp("", "aptre-protoc-")
+	if err != nil {
+		return "", err
 	}
+	for _, modulePath := range slices.Compact([]string{g.ModulePath, pythonModulePath(g.ModulePath)}) {
+		link := filepath.Join(root, modulePath)
+		if err := os.MkdirAll(filepath.Dir(link), 0o755); err != nil {
+			_ = os.RemoveAll(root)
+			return "", err
+		}
+		if err := os.Symlink(g.ProjectDir, link); err != nil {
+			_ = os.RemoveAll(root)
+			return "", err
+		}
+	}
+	return root, nil
 }
 
 // pythonModulePath matches protoc's Python filename normalization.
@@ -339,12 +337,15 @@ func pythonModulePath(modulePath string) string {
 	return strings.ReplaceAll(modulePath, "-", "_")
 }
 
-// buildProtocArgs builds the protoc command arguments.
-func (g *Generator) buildProtocArgs() []string {
+// buildProtocArgs builds the protoc arguments for a protoc root. The root is
+// searched first, so the project's own schemas shadow any vendored copy.
+func (g *Generator) buildProtocArgs(root string) []string {
 	// Include paths
 	var args []string
-	args = append(args, "-I", g.OutDir)
-	args = append(args, "--proto_path", g.OutDir)
+	args = append(args, "-I", root)
+	if _, err := os.Stat(g.VendorDir); err == nil {
+		args = append(args, "-I", g.VendorDir)
+	}
 
 	// Add include path for google well-known proto types (timestamp.proto, any.proto, etc.)
 	// These are located at vendor/github.com/aperturerobotics/protobuf/src
@@ -354,7 +355,7 @@ func (g *Generator) buildProtocArgs() []string {
 	}
 
 	// Output and plugin arguments
-	args = append(args, g.Plugins.GetProtocArgs(g.OutDir, g.ProjectDir)...)
+	args = append(args, g.Plugins.GetProtocArgs(root, g.ProjectDir)...)
 
 	// Extra arguments from config
 	args = append(args, g.Config.ExtraArgs...)
@@ -363,17 +364,22 @@ func (g *Generator) buildProtocArgs() []string {
 }
 
 // runProtoc runs protoc for the given proto files using go-protoc-wasi.
-func (g *Generator) runProtoc(ctx context.Context, protoFiles []string) error {
-	// Build arguments with the vendor prefix that names each proto file.
-	args := g.buildProtocArgs()
+func (g *Generator) runProtoc(ctx context.Context, root string, protoFiles []string) error {
+	// Name each proto file by its module path under the root.
+	args := g.buildProtocArgs(root)
 	for _, f := range protoFiles {
-		args = append(args, filepath.Join(g.VendorDir, g.ModulePath, f))
+		args = append(args, filepath.Join(root, g.ModulePath, f))
 	}
 
-	// The vendor directory supplies imports and receives the output.
+	// The root names the project and receives the output; vendor/, when the
+	// project has one, supplies imports.
+	mounts := []string{root, g.ProjectDir}
+	if _, err := os.Stat(g.VendorDir); err == nil {
+		mounts = append(mounts, g.VendorDir)
+	}
 	run := &ProtocRun{
 		Plugins: g.Plugins,
-		Mounts:  []string{g.VendorDir, g.ProjectDir},
+		Mounts:  mounts,
 		Args:    args,
 		Verbose: g.Verbose,
 		Stdout:  g.Stdout,
@@ -447,7 +453,7 @@ func (g *Generator) formatGeneratedFiles(protoFiles []string) error {
 	// Select only files produced for the requested schemas and enabled languages.
 	var goFiles, tsFiles []string
 	for _, f := range protoFiles {
-		gf, err := FindGeneratedFilesForProto(f, g.ProjectDir, g.VendorDir, g.ModulePath, g.Plugins.Languages, g.Plugins.RPCLibraries)
+		gf, err := FindGeneratedFilesForProto(f, g.ProjectDir, g.Plugins.Languages, g.Plugins.RPCLibraries)
 		if err != nil {
 			continue
 		}

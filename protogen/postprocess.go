@@ -37,6 +37,9 @@ type PostProcessor struct {
 	TsImportBoundaries []string
 	// VendorDir is the vendor directory path.
 	VendorDir string
+	// ProtocRoot is the run's protoc root, where prost leaves Rust files by
+	// package path.
+	ProtocRoot string
 	// Verbose enables verbose output.
 	Verbose bool
 }
@@ -561,13 +564,13 @@ func (p *PostProcessor) ProcessRustFiles(protoFile string) error {
 		return nil // No package, skip
 	}
 
-	// Prost generates files at vendor/{package_path}/{basename}.pb.rs
-	// where package_path is the package name converted to directory structure
+	// Prost writes {package_path}/{basename}.pb.rs under the protoc root,
+	// where package_path is the package name as a directory path.
 	packagePath := strings.ReplaceAll(protoPackage, ".", "/")
-	srcFile := filepath.Join(p.VendorDir, packagePath, baseName+".pb.rs")
+	srcFile := filepath.Join(p.ProtocRoot, packagePath, baseName+".pb.rs")
 
-	// Target location is vendor/{module_path}/{proto_dir}/{basename}.pb.rs
-	dstDir := filepath.Join(p.VendorDir, p.ModulePath, protoDir)
+	// The file belongs beside its schema in the project.
+	dstDir := filepath.Join(p.ProjectDir, protoDir)
 	dstFile := filepath.Join(dstDir, baseName+".pb.rs")
 
 	// Check if source file exists
@@ -602,9 +605,9 @@ func (p *PostProcessor) ProcessRustFiles(protoFile string) error {
 	return nil
 }
 
-// cleanEmptyDirs removes empty directories up to the vendor dir.
+// cleanEmptyDirs removes empty directories up to the protoc root.
 func (p *PostProcessor) cleanEmptyDirs(dir string) {
-	for dir != p.VendorDir && strings.HasPrefix(dir, p.VendorDir) {
+	for dir != p.ProtocRoot && strings.HasPrefix(dir, p.ProtocRoot) {
 		entries, err := os.ReadDir(dir)
 		if err != nil || len(entries) > 0 {
 			break

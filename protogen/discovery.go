@@ -104,45 +104,8 @@ func GetGoModule(projectDir string) (string, error) {
 	return modFile.Module.Mod.Path, nil
 }
 
-// GetGeneratedFiles returns the expected generated file paths for a proto file.
-func GetGeneratedFiles(protoFile, projectDir, modulePath string, hasGo, hasTS bool) []string {
-	// Derive the generated output stem from the proto path.
-	protoDir := filepath.Dir(protoFile)
-	baseName := strings.TrimSuffix(filepath.Base(protoFile), ".proto")
-
-	// Accumulate the enabled output paths in language order.
-	var files []string
-
-	// C++ files are always generated
-	files = append(
-		files,
-		filepath.Join("vendor", modulePath, protoDir, baseName+".pb.cc"),
-		filepath.Join("vendor", modulePath, protoDir, baseName+".pb.h"),
-	)
-
-	// Include Go messages and service outputs when enabled.
-	if hasGo {
-		files = append(
-			files,
-			filepath.Join("vendor", modulePath, protoDir, baseName+".pb.go"),
-			filepath.Join("vendor", modulePath, protoDir, baseName+"_srpc.pb.go"),
-		)
-	}
-
-	// Include TypeScript messages and service outputs when enabled.
-	if hasTS {
-		files = append(
-			files,
-			filepath.Join("vendor", modulePath, protoDir, baseName+".pb.ts"),
-			filepath.Join("vendor", modulePath, protoDir, baseName+"_srpc.pb.ts"),
-		)
-	}
-
-	return files
-}
-
 // FindGeneratedFilesForProto finds actual enabled outputs for a proto file.
-func FindGeneratedFilesForProto(protoFile, projectDir, vendorDir, modulePath string, langs Languages, rpcs RPCLibraries) ([]string, error) {
+func FindGeneratedFilesForProto(protoFile, projectDir string, langs Languages, rpcs RPCLibraries) ([]string, error) {
 	// Derive the directory and output stem shared by the generators.
 	protoDir := filepath.Dir(protoFile)
 	baseName := strings.TrimSuffix(filepath.Base(protoFile), ".proto")
@@ -196,13 +159,12 @@ func FindGeneratedFilesForProto(protoFile, projectDir, vendorDir, modulePath str
 		}
 	}
 
-	// Search project outputs before their vendored aliases.
+	// Search the schema's directory, and the project root for C#.
 	searches := []struct {
 		dir      string
 		patterns []string
 	}{
 		{dir: filepath.Join(projectDir, protoDir), patterns: relativePatterns},
-		{dir: filepath.Join(vendorDir, modulePath, protoDir), patterns: relativePatterns},
 	}
 	if langs.Has(LanguageCSharp) {
 		searches = append(searches, struct {
@@ -214,9 +176,8 @@ func FindGeneratedFilesForProto(protoFile, projectDir, vendorDir, modulePath str
 		})
 	}
 
-	// Deduplicate by resolving to real paths. Prefer project-local paths over
-	// their vendor-symlink aliases.
-	seen := make(map[string]string)
+	// Return stable project-relative output paths.
+	var relPaths []string
 	for _, search := range searches {
 		for _, pattern := range search.patterns {
 			matches, err := filepath.Glob(filepath.Join(search.dir, pattern))
@@ -224,27 +185,14 @@ func FindGeneratedFilesForProto(protoFile, projectDir, vendorDir, modulePath str
 				return nil, err
 			}
 			for _, match := range matches {
-				realPath, err := filepath.EvalSymlinks(match)
-				if err != nil {
-					realPath = match
-				}
-				if _, exists := seen[realPath]; exists {
-					continue
-				}
 				rel, err := filepath.Rel(projectDir, match)
 				if err != nil {
-					rel = match
+					return nil, err
 				}
-				seen[realPath] = rel
+				relPaths = append(relPaths, rel)
 			}
 		}
 	}
-
-	// Return stable project-relative output paths.
-	relPaths := make([]string, 0, len(seen))
-	for _, rel := range seen {
-		relPaths = append(relPaths, rel)
-	}
 	slices.Sort(relPaths)
-	return relPaths, nil
+	return slices.Compact(relPaths), nil
 }
