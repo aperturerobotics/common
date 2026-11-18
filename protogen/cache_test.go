@@ -250,6 +250,16 @@ func TestGetToolVersionsIncludesUVLock(t *testing.T) {
 	}
 }
 
+// TestGetToolVersionsNamesGenerator keeps a generator change from reusing
+// output that an older generator wrote.
+func TestGetToolVersionsNamesGenerator(t *testing.T) {
+	generator := &Generator{ProjectDir: t.TempDir(), Config: NewConfig(), Plugins: &Plugins{}}
+	id := generatorIdentity()
+	if id == "" || id == "unknown" || !strings.Contains(generator.getToolVersions(), "generator="+id) {
+		t.Fatalf("tool versions %q omit generator identity %q", generator.getToolVersions(), id)
+	}
+}
+
 func TestGetToolVersionsIgnoresUVLockWithoutStarpcPython(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "uv.lock"), []byte("changed"), 0o644); err != nil {

@@ -10,9 +10,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime/debug"
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -391,7 +393,7 @@ func (g *Generator) runProtoc(ctx context.Context, root string, protoFiles []str
 func (g *Generator) getToolVersions() string {
 	// Get protoc version (embedded in go-protoc-wasi)
 	var versions []string
-	versions = append(versions, "protoc=embedded")
+	versions = append(versions, "protoc=embedded", "generator="+generatorIdentity())
 
 	// Get Go tool versions from tools/go.mod
 	toolsGoMod := filepath.Join(ToolsPath(g.ProjectDir, g.Config.ToolsDir), "go.mod")
@@ -446,6 +448,75 @@ func (g *Generator) getToolVersions() string {
 	}
 
 	return strings.Join(versions, ",")
+}
+
+// commonModulePath is the module that holds this generator.
+const commonModulePath = "github.com/aperturerobotics/common"
+
+// generatorIdentity names the source of the running generator, so a change to
+// the generator regenerates every package even when no tool version moved. A
+// build of a released or pseudo-versioned common reports the module's go.sum
+// hash, the same on every machine; a build inside common reports its clean VCS
+// revision. A local replace or a modified tree has neither, so it reports a
+// hash of the executable, which follows every edit.
+var generatorIdentity = sync.OnceValue(func() string {
+	// Name common by its checksum when it is a dependency of the main module.
+	info, ok := debug.ReadBuildInfo()
+	if ok {
+		for _, dep := range info.Deps {
+			if dep.Path != commonModulePath {
+				continue
+			}
+			if dep.Replace != nil {
+				dep = dep.Replace
+			}
+			if dep.Sum != "" {
+				return dep.Sum
+			}
+		}
+	}
+
+	// Name common by its clean revision when it is the main module.
+	if ok && info.Main.Path == commonModulePath {
+		var revision string
+		modified := true
+		for _, setting := range info.Settings {
+			switch setting.Key {
+			case "vcs.revision":
+				revision = setting.Value
+			case "vcs.modified":
+				modified = setting.Value != "false"
+			}
+		}
+		if revision != "" && !modified {
+			return "vcs:" + revision
+		}
+	}
+
+	// Otherwise hash the executable that holds the generator.
+	return executableHash()
+})
+
+// executableHash returns the hex SHA-256 of the running executable, or
+// "unknown" when it cannot be read.
+func executableHash() string {
+	// Open the running executable.
+	path, err := os.Executable()
+	if err != nil {
+		return "unknown"
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return "unknown"
+	}
+	defer f.Close()
+
+	// Hash its bytes.
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "unknown"
+	}
+	return "exe:" + hex.EncodeToString(h.Sum(nil))
 }
 
 // formatGeneratedFiles formats the generated Go and TypeScript files.
