@@ -3,7 +3,7 @@ module github.com/aperturerobotics/common
 go 1.27.0
 
 require (
-	github.com/aperturerobotics/abseil-cpp v0.0.0-20260131110040-4bb56e2f9017 // aperture-2
+	github.com/aperturerobotics/abseil-cpp v0.0.0-20261118220503-715c128d7a7c // master
 	github.com/aperturerobotics/cli v1.1.0
 	github.com/aperturerobotics/fastjson v0.1.2-0.20261024220211-b654d1d5b5aa
 	github.com/aperturerobotics/go-protoc-gen-prost v0.0.0-20261024221648-a1c7ae9a2bb8 // master
