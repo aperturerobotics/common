@@ -174,6 +174,16 @@ func TestGenerateWorldRefs(t *testing.T) {
 		"if start, err = time.Parse(time.RFC3339Nano, v); err != nil {",
 		"if v := m.GetEndedAt(); v != nil {",
 		"end = v.AsTime()",
+		"func (*Record) ScanWorldSpan(data []byte) (start, end time.Time, err error) {",
+		"num, typ, n := protowire.ConsumeTag(data)",
+		"case 6:",
+		"startText = v",
+		"case 7:",
+		"endSet = true",
+		"endNanos = int64(int32(x))",
+		"n = protowire.ConsumeFieldValue(num, typ, data)",
+		"if start, err = time.Parse(time.RFC3339Nano, string(startText)); err != nil {",
+		"end = time.Unix(endSeconds, endNanos).UTC()",
 	} {
 		if !strings.Contains(content, want) {
 			t.Errorf("missing %q in:\n%s", want, content)

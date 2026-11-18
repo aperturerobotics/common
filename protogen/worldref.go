@@ -22,6 +22,12 @@ const timestampName protoreflect.FullName = "google.protobuf.Timestamp"
 // timePackage is the Go package of time.Time.
 const timePackage = liteprotogen.GoImportPath("time")
 
+// fmtPackage is the Go package of fmt.Errorf.
+const fmtPackage = liteprotogen.GoImportPath("fmt")
+
+// protowirePackage is the lite runtime's wire format package.
+const protowirePackage = liteprotogen.GoImportPath("github.com/aperturerobotics/protobuf-go-lite/encoding/protowire")
+
 // worldRef is a decoded (world.ref) field option.
 type worldRef struct {
 	// predicate is the graph predicate of the reference.
@@ -45,7 +51,7 @@ type worldRefIndex map[protoreflect.FullName]bool
 // GenerateWorldRefs answers one encoded CodeGeneratorRequest for the Go World
 // reference generator. For each proto file with a message that carries a
 // (world.ref) field or declares (world.span) it emits <name>_worldref.pb.go
-// holding the message's RangeWorldRefs and WorldSpan methods.
+// holding the message's RangeWorldRefs, WorldSpan and ScanWorldSpan methods.
 func GenerateWorldRefs(input []byte) ([]byte, error) {
 	// Decode the request into the Go generator's file model.
 	req := &pluginpb.CodeGeneratorRequest{}
@@ -290,6 +296,7 @@ func generateWorldRefFile(gen *liteprotogen.Plugin, file *liteprotogen.File, ind
 			}
 			if hasSpan {
 				generateWorldSpan(g, msg, span)
+				generateScanWorldSpan(g, msg, span)
 			}
 			if err := walk(msg.Messages); err != nil {
 				return err
@@ -404,6 +411,158 @@ func generateWorldSpan(g *liteprotogen.GeneratedFile, msg *liteprotogen.Message,
 	g.P("return start, end, nil")
 	g.P("}")
 	g.P()
+}
+
+// generateScanWorldSpan writes the ScanWorldSpan method of msg, which reads
+// the span from msg's wire encoding: it walks the top-level fields once, reads
+// only the span fields, and skips the others without decoding them. A field
+// that occurs more than once resolves as a full decode resolves it: a string
+// takes its last value and a Timestamp merges its occurrences.
+func generateScanWorldSpan(g *liteprotogen.GeneratedFile, msg *liteprotogen.Message, span worldSpan) {
+	// Collect the span fields.
+	fields := []spanScanField{{out: "start", field: goField(msg, span.start)}}
+	if span.end != nil {
+		fields = append(fields, spanScanField{out: "end", field: goField(msg, span.end)})
+	}
+
+	// Declare the method and the state of each span field.
+	name := msg.GoIdent.GoName
+	g.P("// ScanWorldSpan returns the span WorldSpan returns for the ", name, " encoded")
+	g.P("// in data. It reads only the span fields and skips the others undecoded, so")
+	g.P("// it allocates nothing for them.")
+	g.P("// Returns an error if a span field is malformed or a string time is not")
+	g.P("// RFC 3339.")
+	g.P("func (*", name, ") ScanWorldSpan(data []byte) (start, end ", g.QualifiedGoIdent(timePackage.Ident("Time")), ", err error) {")
+	for _, f := range fields {
+		f.declare(g)
+	}
+
+	// Read each top-level tag.
+	g.P("for len(data) > 0 {")
+	g.P("num, typ, n := ", protowireIdent(g, "ConsumeTag"), "(data)")
+	generateAdvance(g, "data", "n")
+
+	// Read the span fields and skip the rest.
+	g.P("switch num {")
+	for _, f := range fields {
+		f.scan(g)
+	}
+	g.P("default:")
+	g.P("n = ", protowireIdent(g, "ConsumeFieldValue"), "(num, typ, data)")
+	generateAdvance(g, "data", "n")
+	g.P("}")
+	g.P("}")
+
+	// Convert each read field to its time.
+	for _, f := range fields {
+		f.convert(g)
+	}
+	g.P("return start, end, nil")
+	g.P("}")
+	g.P()
+}
+
+// generateAdvance writes the statements that return the parse error of a
+// negative length n, or else advance buf past n bytes.
+func generateAdvance(g *liteprotogen.GeneratedFile, buf, n string) {
+	g.P("if ", n, " < 0 {")
+	g.P("return start, end, ", protowireIdent(g, "ParseError"), "(", n, ")")
+	g.P("}")
+	g.P(buf, " = ", buf, "[", n, ":]")
+}
+
+// generateWireType writes the statement that rejects a wire type typ other
+// than want, as a full decode of field rejects it.
+func generateWireType(g *liteprotogen.GeneratedFile, typ, want, field string) {
+	errorf := g.QualifiedGoIdent(fmtPackage.Ident("Errorf"))
+	g.P("if ", typ, " != ", protowireIdent(g, want), " {")
+	g.P("return start, end, ", errorf, "(\"proto: wrong wireType = %d for field ", field, "\", ", typ, ")")
+	g.P("}")
+}
+
+// spanScanField is one span field ScanWorldSpan reads.
+type spanScanField struct {
+	// out is the result the field sets: start or end.
+	out string
+	// field is the time field.
+	field *liteprotogen.Field
+}
+
+// isText reports whether the field holds an RFC 3339 string.
+func (f spanScanField) isText() bool {
+	return f.field.Desc.Kind() == protoreflect.StringKind
+}
+
+// declare writes the variables holding what the scan has read of the field.
+func (f spanScanField) declare(g *liteprotogen.GeneratedFile) {
+	if f.isText() {
+		g.P("var ", f.out, "Text []byte")
+		return
+	}
+	g.P("var ", f.out, "Set bool")
+	g.P("var ", f.out, "Seconds, ", f.out, "Nanos int64")
+}
+
+// scan writes the switch case that reads one occurrence of the field.
+func (f spanScanField) scan(g *liteprotogen.GeneratedFile) {
+	// Read the length-delimited value; a string keeps its last value.
+	g.P("case ", strconv.Itoa(int(f.field.Desc.Number())), ":")
+	generateWireType(g, "typ", "BytesType", f.field.GoName)
+	g.P("v, n := ", protowireIdent(g, "ConsumeBytes"), "(data)")
+	generateAdvance(g, "data", "n")
+	if f.isText() {
+		g.P(f.out, "Text = v")
+		return
+	}
+
+	// Read each tag of the Timestamp.
+	g.P(f.out, "Set = true")
+	g.P("for len(v) > 0 {")
+	g.P("tnum, ttyp, tn := ", protowireIdent(g, "ConsumeTag"), "(v)")
+	generateAdvance(g, "v", "tn")
+
+	// Skip fields other than its seconds and nanos.
+	g.P("if tnum != 1 && tnum != 2 {")
+	g.P("tn = ", protowireIdent(g, "ConsumeFieldValue"), "(tnum, ttyp, v)")
+	generateAdvance(g, "v", "tn")
+	g.P("continue")
+	g.P("}")
+
+	// Read the seconds or nanos.
+	generateWireType(g, "ttyp", "VarintType", f.field.GoName)
+	g.P("x, tn := ", protowireIdent(g, "ConsumeVarint"), "(v)")
+	generateAdvance(g, "v", "tn")
+
+	// Merge it into what earlier occurrences set.
+	g.P("if tnum == 1 {")
+	g.P(f.out, "Seconds = int64(x)")
+	g.P("} else {")
+	g.P(f.out, "Nanos = int64(int32(x))")
+	g.P("}")
+	g.P("}")
+}
+
+// convert writes the statements that set the field's result from what the
+// scan read, as WorldSpan sets it from a decoded message.
+func (f spanScanField) convert(g *liteprotogen.GeneratedFile) {
+	if f.isText() {
+		parse := g.QualifiedGoIdent(timePackage.Ident("Parse"))
+		layout := g.QualifiedGoIdent(timePackage.Ident("RFC3339Nano"))
+		g.P("if len(", f.out, "Text) != 0 {")
+		g.P("if ", f.out, ", err = ", parse, "(", layout, ", string(", f.out, "Text)); err != nil {")
+		g.P("return start, end, err")
+		g.P("}")
+		g.P("}")
+		return
+	}
+	g.P("if ", f.out, "Set {")
+	g.P(f.out, " = ", g.QualifiedGoIdent(timePackage.Ident("Unix")), "(", f.out, "Seconds, ", f.out, "Nanos).UTC()")
+	g.P("}")
+}
+
+// protowireIdent returns the qualified name of a lite protowire identifier.
+func protowireIdent(g *liteprotogen.GeneratedFile, name string) string {
+	return g.QualifiedGoIdent(protowirePackage.Ident(name))
 }
 
 // goField returns the generated field of msg described by fd.
