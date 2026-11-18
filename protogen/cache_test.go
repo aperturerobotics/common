@@ -1,6 +1,7 @@
 package protogen
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -205,7 +206,7 @@ func TestToolVersionChangeInvalidatesCachedPackage(t *testing.T) {
 	dir, files := writeProtoTree(t, map[string]string{
 		"foo.proto": "syntax = \"proto3\";\npackage foo;\n",
 	})
-	cache := NewCache()
+	cache := NewRunCache()
 	cache.ProtocFlagsHash = "flags"
 	cache.ToolVersions = "starpc-python=old"
 	if err := cache.UpdatePackage("example/foo", files, nil, dir); err != nil {
@@ -275,7 +276,9 @@ func TestGetToolVersionsIgnoresUVLockWithoutStarpcPython(t *testing.T) {
 	}
 }
 
+// TestGenerateFailureDoesNotPersistToolVersions keeps failed outputs out of the manifest.
 func TestGenerateFailureDoesNotPersistToolVersions(t *testing.T) {
+	// Set up an invalid schema and a changed tool identity.
 	dir := t.TempDir()
 	vendorDir := filepath.Join(dir, "vendor")
 	if err := os.MkdirAll(vendorDir, 0o755); err != nil {
@@ -290,8 +293,6 @@ func TestGenerateFailureDoesNotPersistToolVersions(t *testing.T) {
 	config := NewConfig()
 	config.ProjectDir = dir
 	config.Targets = []string{"bad.proto"}
-	cache := NewCache()
-	cache.ToolVersions = "accepted"
 	plugins := &Plugins{
 		Languages:    Languages{LanguagePython: {}},
 		RPCLibraries: RPCLibraries{RPCLibraryStarpcPython: {}},
@@ -306,7 +307,6 @@ func TestGenerateFailureDoesNotPersistToolVersions(t *testing.T) {
 	generator := &Generator{
 		Config:     config,
 		Plugins:    plugins,
-		Cache:      cache,
 		ProjectDir: dir,
 		ModuleDir:  dir,
 		ModulePath: "example.com/project",
@@ -314,11 +314,24 @@ func TestGenerateFailureDoesNotPersistToolVersions(t *testing.T) {
 		Stdout:     io.Discard,
 		Stderr:     io.Discard,
 	}
-	if err := generator.Generate(context.Background()); err == nil {
+
+	// Seed the manifest with the last accepted tool state.
+	manifest := NewCache()
+	run := NewRunCache()
+	run.ToolVersions = "accepted"
+	manifest.Runs[generator.runKey()] = run
+	cacheFile := saveGeneratorCache(t, generator, manifest)
+
+	// Attempt generation and confirm the old manifest entry is intact on disk.
+	if err := generator.Generate(t.Context()); err == nil {
 		t.Fatal("invalid source generation unexpectedly succeeded")
 	}
-	if cache.ToolVersions != "accepted" {
-		t.Fatalf("failed generation persisted tool state %q", cache.ToolVersions)
+	saved, err := LoadCache(cacheFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := saved.Runs[generator.runKey()]; got == nil || got.ToolVersions != "accepted" {
+		t.Fatalf("failed generation changed the accepted run: %+v", got)
 	}
 }
 
@@ -347,7 +360,6 @@ func TestGenerateBesideVendoredNestedModule(t *testing.T) {
 	generator := &Generator{
 		Config:     config,
 		Plugins:    &Plugins{Languages: Languages{LanguagePython: {}}},
-		Cache:      NewCache(),
 		ProjectDir: dir,
 		ModuleDir:  dir,
 		ModulePath: "example.com/project",
@@ -375,11 +387,79 @@ func TestGenerateBesideVendoredNestedModule(t *testing.T) {
 	}
 }
 
+// TestGenerateLanguagesShareManifest proves two languages retain independent
+// cache hits when they generate the same schema into one project.
+func TestGenerateLanguagesShareManifest(t *testing.T) {
+	// Give both generators the same tracked schema and default manifest path.
+	dir, _ := writeProtoTree(t, map[string]string{
+		"go.mod":  "module example.com/project\n",
+		"a.proto": "syntax = \"proto3\";\npackage api;\nmessage A {}\n",
+	})
+	for _, args := range [][]string{{"init", "-q"}, {"add", "a.proto"}} {
+		cmd := exec.Command("git", args...)
+		cmd.Dir = dir
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v: %s", args, err, out)
+		}
+	}
+
+	// Run actual protoc once for each language, then reopen the shared manifest
+	// in new generators and require both languages to skip generation.
+	languages := []struct{ name, output string }{{"python", "a_pb2.py"}, {"csharp", "A.cs"}}
+	for pass := range 2 {
+		for _, lang := range languages {
+			// Select one language without external plugins.
+			cfg := NewConfig()
+			cfg.ProjectDir = dir
+			cfg.Languages = []string{lang.name}
+			cfg.RPCLibraries = []string{"none"}
+			gen, err := NewGenerator(cfg)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var stdout bytes.Buffer
+			gen.Stdout = &stdout
+			gen.Verbose = true
+
+			// Check the output and whether the schema went through protoc.
+			if err := gen.Generate(t.Context()); err != nil {
+				t.Fatalf("%s pass %d: %v", lang.name, pass+1, err)
+			}
+			if got := strings.Contains(stdout.String(), "Skipping . (up to date)"); got != (pass == 1) {
+				t.Fatalf("%s pass %d: unexpected cache result: %s", lang.name, pass+1, &stdout)
+			}
+			if _, err := os.Stat(filepath.Join(dir, lang.output)); err != nil {
+				t.Fatalf("%s output: %v", lang.name, err)
+			}
+		}
+	}
+}
+
+// TestLoadCacheDiscardsVersionTwo ensures the first run starts with no reusable state.
+func TestLoadCacheDiscardsVersionTwo(t *testing.T) {
+	// Put an old manifest at the configured path.
+	path := filepath.Join(t.TempDir(), DefaultCacheFile)
+	if err := os.WriteFile(path, []byte(`{"version":2,"packages":{"old":{}}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Old entries cannot answer a generation lookup.
+	cache, err := LoadCache(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cache.Version != CacheVersion || len(cache.Runs) != 0 {
+		t.Fatalf("expected an empty current manifest, got %+v", cache)
+	}
+}
+
 // newTargetedGenerator builds a generator over a two-package tree whose cache
 // holds up-to-date entries for both packages, so a run regenerates nothing and
 // needs no protoc.
-func newTargetedGenerator(t *testing.T) (*Generator, string, string) {
+func newTargetedGenerator(t *testing.T) (*Generator, *RunCache, string, string) {
 	t.Helper()
+
+	// Write two packages to check retention of entries outside the targets.
 	dir, _ := writeProtoTree(t, map[string]string{
 		"a/a.proto": "syntax = \"proto3\";\npackage a;\nmessage A {}\n",
 		"b/b.proto": "syntax = \"proto3\";\npackage b;\nmessage B {}\n",
@@ -392,6 +472,7 @@ func newTargetedGenerator(t *testing.T) (*Generator, string, string) {
 			t.Fatalf("git %v: %v: %s", args, err, out)
 		}
 	}
+	// Set up a generator selecting just the first package.
 	vendorDir := filepath.Join(dir, "vendor")
 	if err := os.MkdirAll(vendorDir, 0o755); err != nil {
 		t.Fatal(err)
@@ -402,7 +483,6 @@ func newTargetedGenerator(t *testing.T) (*Generator, string, string) {
 	g := &Generator{
 		Config:     config,
 		Plugins:    &Plugins{},
-		Cache:      NewCache(),
 		ProjectDir: dir,
 		ModuleDir:  dir,
 		ModulePath: "example.com/project",
@@ -410,22 +490,44 @@ func newTargetedGenerator(t *testing.T) (*Generator, string, string) {
 		Stdout:     io.Discard,
 		Stderr:     io.Discard,
 	}
+
+	// Seed the inventory with two current packages.
+	run := NewRunCache()
 	keyA := GetPackageKey(g.ModulePath, "a/a.proto")
 	keyB := GetPackageKey(g.ModulePath, "b/b.proto")
 	for key, file := range map[string]string{keyA: "a/a.proto", keyB: "b/b.proto"} {
-		if err := g.Cache.UpdatePackage(key, []string{file}, nil, dir); err != nil {
+		if err := run.UpdatePackage(key, []string{file}, nil, dir); err != nil {
 			t.Fatal(err)
 		}
 	}
-	g.Cache.ProtocFlagsHash = HashProtocFlags(g.buildProtocArgs(protocRootIdentity), g.ModuleDir)
-	g.Cache.SetToolVersions(g.getToolVersions())
-	return g, keyA, keyB
+	run.ProtocFlagsHash = HashProtocFlags(g.buildProtocArgs(protocRootIdentity), g.ModuleDir)
+	run.ToolVersions = g.getToolVersions()
+	manifest := NewCache()
+	manifest.Runs[g.runKey()] = run
+	saveGeneratorCache(t, g, manifest)
+	return g, run, keyA, keyB
+}
+
+// saveGeneratorCache writes a fixture to the same manifest path as generation.
+func saveGeneratorCache(t *testing.T, g *Generator, manifest *Cache) string {
+	t.Helper()
+
+	// Store the fixture for the next Generate call to load.
+	cacheFile, err := g.Config.GetCacheFilePath()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := manifest.Save(cacheFile); err != nil {
+		t.Fatal(err)
+	}
+	return cacheFile
 }
 
 // TestTargetedGenerateKeepsOtherPackages proves a run targeting one of two
 // packages updates the manifest without discarding the other package's entry.
 func TestTargetedGenerateKeepsOtherPackages(t *testing.T) {
-	g, keyA, keyB := newTargetedGenerator(t)
+	// Run against the targeted package, then read the persisted inventory.
+	g, _, keyA, keyB := newTargetedGenerator(t)
 	if err := g.Generate(context.Background()); err != nil {
 		t.Fatal(err)
 	}
@@ -437,8 +539,10 @@ func TestTargetedGenerateKeepsOtherPackages(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	// The non-target package is still present because its source still exists.
 	for _, key := range []string{keyA, keyB} {
-		if saved.Packages[key] == nil {
+		if saved.Runs[g.runKey()].Packages[key] == nil {
 			t.Fatalf("targeted run dropped manifest entry %q", key)
 		}
 	}
@@ -447,17 +551,29 @@ func TestTargetedGenerateKeepsOtherPackages(t *testing.T) {
 // TestTargetedGeneratePrunesDeletedPackages proves a package outside the
 // targets is still pruned once its proto files are gone from disk.
 func TestTargetedGeneratePrunesDeletedPackages(t *testing.T) {
-	g, keyA, keyB := newTargetedGenerator(t)
+	// Remove the untargeted package and run against the remaining input.
+	g, _, keyA, keyB := newTargetedGenerator(t)
 	if err := os.Remove(filepath.Join(g.ProjectDir, "b/b.proto")); err != nil {
 		t.Fatal(err)
 	}
 	if err := g.Generate(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	if g.Cache.Packages[keyA] == nil {
+
+	// Only the surviving package remains in the persisted inventory.
+	cacheFile, err := g.Config.GetCacheFilePath()
+	if err != nil {
+		t.Fatal(err)
+	}
+	saved, err := LoadCache(cacheFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	packages := saved.Runs[g.runKey()].Packages
+	if packages[keyA] == nil {
 		t.Fatalf("targeted package %q missing from manifest", keyA)
 	}
-	if g.Cache.Packages[keyB] != nil {
+	if packages[keyB] != nil {
 		t.Fatalf("deleted package %q still in manifest", keyB)
 	}
 }
@@ -466,14 +582,11 @@ func TestTargetedGeneratePrunesDeletedPackages(t *testing.T) {
 // identity changed, untargeted entries are dropped rather than being marked
 // current under the new identity.
 func TestTargetedGenerateDropsStaleOnIdentityChange(t *testing.T) {
-	g, _, keyB := newTargetedGenerator(t)
-	g.Cache.SetToolVersions("old")
-	g.Config.Targets = []string{"a/a.proto"}
-	// The targeted package needs protoc under the new identity, so only check
-	// pruning directly.
+	// Exercise pruning directly when only the targeted package was refreshed.
+	g, run, _, keyB := newTargetedGenerator(t)
 	current := map[string]struct{}{GetPackageKey(g.ModulePath, "a/a.proto"): {}}
-	g.Cache.DropOutsidePackages(current)
-	if g.Cache.Packages[keyB] != nil {
+	run.DropOutsidePackages(current)
+	if run.Packages[keyB] != nil {
 		t.Fatalf("untargeted package %q survived identity change", keyB)
 	}
 }

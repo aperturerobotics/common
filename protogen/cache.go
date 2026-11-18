@@ -11,30 +11,26 @@ import (
 )
 
 // CacheVersion is the current cache format version.
-const CacheVersion = 2
+const CacheVersion = 3
 
 // Cache represents the protoc manifest cache.
 type Cache struct {
 	// Version is the cache format version.
 	Version int `json:"version"`
-	// ProtocFlagsHash is the hash of the protoc flags.
-	ProtocFlagsHash string `json:"protocFlagsHash"`
-	// ToolVersions stores tool version strings for cache invalidation.
-	ToolVersions string `json:"toolVersions,omitempty"`
-	// Packages maps package identifiers to package info.
-	Packages map[string]*PackageInfo `json:"packages"`
+	// Runs maps generation selections to their independent output inventories.
+	Runs map[string]*RunCache `json:"runs"`
 }
 
 // NewCache creates a new empty cache.
 func NewCache() *Cache {
 	return &Cache{
-		Version:  CacheVersion,
-		Packages: make(map[string]*PackageInfo),
+		Version: CacheVersion,
+		Runs:    make(map[string]*RunCache),
 	}
 }
 
 // LoadCache loads the cache from a file.
-// Returns an empty cache if the file doesn't exist.
+// A missing, invalid or old manifest is a cache miss.
 func LoadCache(path string) (*Cache, error) {
 	// Read the manifest, treating a missing file as an empty cache.
 	data, err := os.ReadFile(path)
@@ -48,20 +44,18 @@ func LoadCache(path string) (*Cache, error) {
 	// Discard a manifest whose JSON cannot be decoded.
 	var cache Cache
 	if err := json.Unmarshal(data, &cache); err != nil {
-		// If cache is corrupted, return empty cache
 		return NewCache(), nil
 	}
 
-	// Check version compatibility
+	// Start fresh after a manifest format change.
 	if cache.Version != CacheVersion {
 		return NewCache(), nil
 	}
 
-	// Ensure callers can add package entries to an empty manifest.
-	if cache.Packages == nil {
-		cache.Packages = make(map[string]*PackageInfo)
+	// Ensure callers can add runs to an empty manifest.
+	if cache.Runs == nil {
+		cache.Runs = make(map[string]*RunCache)
 	}
-
 	return &cache, nil
 }
 
@@ -72,70 +66,6 @@ func (c *Cache) Save(path string) error {
 		return err
 	}
 	return os.WriteFile(path, data, 0o644)
-}
-
-// SetToolVersions sets the tool versions string.
-func (c *Cache) SetToolVersions(versions string) {
-	c.ToolVersions = versions
-}
-
-// NeedsRegeneration checks if a cached package needs regeneration.
-//
-// Returns true if:
-// - The package is not in the cache
-// - The proto file list or content hash has changed
-// - The protoc flags or selected tool versions have changed
-// - Force is true
-func (c *Cache) NeedsRegeneration(packageKey string, protoFiles []string, projectDir string, flagsHash string, toolVersions string, force bool) (bool, error) {
-	// An explicit force request bypasses every cache identity.
-	if force {
-		return true, nil
-	}
-
-	// A different toolchain invalidates the generated output.
-	if c.ToolVersions != toolVersions {
-		return true, nil
-	}
-
-	// Check if flags changed
-	if c.ProtocFlagsHash != flagsHash {
-		return true, nil
-	}
-
-	// A package without a recorded identity must be generated.
-	info, ok := c.Packages[packageKey]
-	if !ok {
-		return true, nil
-	}
-
-	// Check if proto files list changed
-	if !stringsEqual(info.ProtoFiles, protoFiles) {
-		return true, nil
-	}
-
-	// Check content hash
-	currentHash, err := hashProtoFiles(protoFiles, projectDir)
-	if err != nil {
-		return true, nil
-	}
-
-	return info.Hash != currentHash, nil
-}
-
-// UpdatePackage updates the cache for a package after generation.
-func (c *Cache) UpdatePackage(packageKey string, protoFiles []string, generatedFiles []string, projectDir string) error {
-	hash, err := hashProtoFiles(protoFiles, projectDir)
-	if err != nil {
-		return err
-	}
-
-	c.Packages[packageKey] = &PackageInfo{
-		Hash:           hash,
-		GeneratedFiles: generatedFiles,
-		ProtoFiles:     protoFiles,
-	}
-
-	return nil
 }
 
 // GetPackageKey generates a cache key for a proto file.
@@ -207,54 +137,4 @@ func relativizePath(p, rootDir string) string {
 		return p
 	}
 	return filepath.ToSlash(rel)
-}
-
-// stringsEqual checks if two string slices are equal.
-func stringsEqual(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
-}
-
-// CleanOrphanedPackages removes packages from the cache that are not in
-// currentPackages and no longer have any proto file on disk. Packages outside
-// currentPackages whose sources still exist are kept, so a run targeting a
-// subset of the tree does not discard the entries of the rest.
-func (c *Cache) CleanOrphanedPackages(currentPackages map[string]struct{}, projectDir string) {
-	for key, info := range c.Packages {
-		if _, ok := currentPackages[key]; ok {
-			continue
-		}
-		if info != nil && protoFilesExist(info.ProtoFiles, projectDir) {
-			continue
-		}
-		delete(c.Packages, key)
-	}
-}
-
-// DropOutsidePackages removes every package not in currentPackages. It is used
-// when the protoc flags or tool versions changed: the outputs of packages that
-// were not regenerated no longer match the new identity recorded in the cache.
-func (c *Cache) DropOutsidePackages(currentPackages map[string]struct{}) {
-	for key := range c.Packages {
-		if _, ok := currentPackages[key]; !ok {
-			delete(c.Packages, key)
-		}
-	}
-}
-
-// protoFilesExist reports whether any of the project-relative proto files exist.
-func protoFilesExist(protoFiles []string, projectDir string) bool {
-	for _, f := range protoFiles {
-		if _, err := os.Stat(filepath.Join(projectDir, f)); err == nil {
-			return true
-		}
-	}
-	return false
 }

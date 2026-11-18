@@ -362,6 +362,7 @@ message Scratch {
 	}
 }
 
+// TestGenerateCSharpAndPython checks combined generation and manifest-wide cleanup.
 func TestGenerateCSharpAndPython(t *testing.T) {
 	// Keep schemas, generated output and tool installation inside an isolated project.
 	projectDir := t.TempDir()
@@ -466,7 +467,7 @@ message Scratch {
 		t.Fatalf("Python stub second-run output changed: %v", err)
 	}
 
-	// Removing a language deletes only that language's stale outputs.
+	// A C#-only run must leave the combined run's Python output unchanged.
 	cfg.Languages = []string{"csharp"}
 	gen, err = protogen.NewGenerator(cfg)
 	if err != nil {
@@ -475,14 +476,24 @@ message Scratch {
 	if err := gen.Generate(t.Context()); err != nil {
 		t.Fatalf("C# generate: %v", err)
 	}
-	if _, err := os.Stat(pythonPath); !os.IsNotExist(err) {
-		t.Fatalf("expected stale Python output removal, got %v", err)
+	if got, err := os.ReadFile(pythonPath); err != nil || !bytes.Equal(got, python) {
+		t.Fatalf("C#-only generation changed the Python output: %v", err)
 	}
-	if _, err := os.Stat(pythonStubPath); !os.IsNotExist(err) {
-		t.Fatalf("expected stale Python stub removal, got %v", err)
+	if got, err := os.ReadFile(pythonStubPath); err != nil || !bytes.Equal(got, pythonStub) {
+		t.Fatalf("C#-only generation changed the Python stub: %v", err)
 	}
 	if got, err := os.ReadFile(csharpPath); err != nil || !bytes.Equal(got, csharp) {
-		t.Fatalf("C# output changed after language invalidation: %v", err)
+		t.Fatalf("C# output changed after single-language generation: %v", err)
+	}
+
+	// Clean covers all runs, including languages the last generator did not select.
+	if err := gen.Clean(); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{csharpPath, pythonPath, pythonStubPath, filepath.Join(projectDir, protogen.DefaultCacheFile)} {
+		if _, err := os.Stat(path); !os.IsNotExist(err) {
+			t.Fatalf("clean left %s: %v", path, err)
+		}
 	}
 }
 

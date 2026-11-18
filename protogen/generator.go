@@ -26,8 +26,6 @@ type Generator struct {
 	Config *Config
 	// Plugins contains the discovered plugins.
 	Plugins *Plugins
-	// Cache is the manifest cache.
-	Cache *Cache
 	// ProjectDir is the resolved project directory.
 	ProjectDir string
 	// ModuleDir is the resolved Go module root directory.
@@ -66,18 +64,6 @@ func NewGenerator(cfg *Config) (*Generator, error) {
 		return nil, errors.Wrap(err, "failed to get Go module")
 	}
 
-	// Locate the manifest that records previous generated outputs.
-	cacheFile, err := cfg.GetCacheFilePath()
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get cache file path")
-	}
-
-	// Restore the prior generation state before selecting changed packages.
-	cache, err := LoadCache(cacheFile)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to load cache")
-	}
-
 	// Resolve the configured generators from the project's tools.
 	plugins, err := DiscoverPlugins(cfg)
 	if err != nil {
@@ -94,7 +80,6 @@ func NewGenerator(cfg *Config) (*Generator, error) {
 	return &Generator{
 		Config:             cfg,
 		Plugins:            plugins,
-		Cache:              cache,
 		ProjectDir:         projectDir,
 		ModuleDir:          moduleDir,
 		ModulePath:         modulePath,
@@ -144,6 +129,21 @@ func (g *Generator) Generate(ctx context.Context) error {
 	// Identify the protoc flags apart from the run's private root.
 	flagsHash := HashProtocFlags(g.buildProtocArgs(protocRootIdentity), g.ModuleDir)
 
+	// Restore only this run's package inventory while retaining the other runs.
+	cacheFile, err := g.Config.GetCacheFilePath()
+	if err != nil {
+		return errors.Wrap(err, "failed to get cache file path")
+	}
+	manifest, err := LoadCache(cacheFile)
+	if err != nil {
+		return errors.Wrap(err, "failed to load cache")
+	}
+	runKey := g.runKey()
+	run := manifest.Runs[runKey]
+	if run == nil || run.Packages == nil {
+		run = NewRunCache()
+	}
+
 	// Group proto files by directory for cache tracking
 	filesByDir := make(map[string][]string)
 	for _, f := range protoFiles {
@@ -169,7 +169,7 @@ func (g *Generator) Generate(ctx context.Context) error {
 		currentPackages[packageKey] = struct{}{}
 
 		// Check if regeneration is needed
-		needsRegen, err := g.Cache.NeedsRegeneration(packageKey, files, g.ProjectDir, flagsHash, toolVersions, g.Config.Force)
+		needsRegen, err := run.NeedsRegeneration(packageKey, files, g.ProjectDir, flagsHash, toolVersions, g.Config.Force)
 		if err != nil {
 			return errors.Wrapf(err, "failed to check cache for %s", dir)
 		}
@@ -251,7 +251,7 @@ func (g *Generator) Generate(ctx context.Context) error {
 			}
 
 			// Compare prior outputs against indexed current names before removing any.
-			if previous := g.Cache.Packages[packageKey]; previous != nil {
+			if previous := run.Packages[packageKey]; previous != nil {
 				currentOutputs := make(map[string]struct{}, len(generatedFiles))
 				for _, file := range generatedFiles {
 					currentOutputs[file] = struct{}{}
@@ -265,41 +265,53 @@ func (g *Generator) Generate(ctx context.Context) error {
 					}
 				}
 			}
-			if err := g.Cache.UpdatePackage(packageKey, files, generatedFiles, g.ProjectDir); err != nil {
+			if err := run.UpdatePackage(packageKey, files, generatedFiles, g.ProjectDir); err != nil {
 				return errors.Wrapf(err, "failed to update cache for %s", dir)
 			}
 		}
 	}
 
-	// Prune cache entries. A targeted run only covers part of the tree, so
-	// packages outside it are kept while their proto files still exist. If the
-	// flags or tool versions changed, the untargeted outputs are stale under the
-	// new identity recorded below, so their entries are dropped to regenerate.
-	if g.Cache.ProtocFlagsHash != flagsHash || g.Cache.ToolVersions != toolVersions {
-		g.Cache.DropOutsidePackages(currentPackages)
-	} else {
-		g.Cache.CleanOrphanedPackages(currentPackages, g.ProjectDir)
-	}
-
-	// Persist the flags and tool identity used to select this output set.
-	g.Cache.ProtocFlagsHash = flagsHash
-	g.Cache.SetToolVersions(toolVersions)
-	cacheFile, err := g.Config.GetCacheFilePath()
-	if err != nil {
-		return err
-	}
-	if err := g.Cache.Save(cacheFile); err != nil {
-		return errors.Wrap(err, "failed to save cache")
-	}
-
-	// Format generated files
+	// Finish writing generated files before marking them current.
 	if len(filesToGenerate) > 0 {
 		if err := g.formatGeneratedFiles(filesToGenerate); err != nil {
 			return errors.Wrap(err, "failed to format generated files")
 		}
 	}
 
+	// Prune only this inventory. Entries outside the current selection are
+	// reusable only if their sources still exist and their tool identity matches.
+	if run.ProtocFlagsHash != flagsHash || run.ToolVersions != toolVersions {
+		run.DropOutsidePackages(currentPackages)
+	} else {
+		run.CleanOrphanedPackages(currentPackages, g.ProjectDir)
+	}
+
+	// Replace this run in the manifest without changing the others.
+	run.ProtocFlagsHash = flagsHash
+	run.ToolVersions = toolVersions
+	manifest.Runs[runKey] = run
+	if err := manifest.Save(cacheFile); err != nil {
+		return errors.Wrap(err, "failed to save cache")
+	}
+
+	// Make a cache hit visible without requiring verbose per-package logs.
+	if len(filesToGenerate) == 0 {
+		_, err := io.WriteString(g.Stdout, "Generated protobuf files are up to date.\n")
+		return err
+	}
 	return nil
+}
+
+// runKey identifies a language and source selection. Protoc options, including
+// RPC plugins, invalidate it in place so it can remove obsolete outputs.
+func (g *Generator) runKey() string {
+	return HashProtocFlags([]string{
+		g.ModulePath,
+		relativizePath(g.ProjectDir, g.ModuleDir),
+		strings.Join(g.Plugins.Languages.Names(), ","),
+		HashProtocFlags(g.Config.Targets, ""),
+		HashProtocFlags(g.Config.Exclude, ""),
+	}, "")
 }
 
 // protocRootIdentity stands for the private protoc root in the flags hash, so
@@ -607,20 +619,31 @@ func findOxfmt(projectDir string) string {
 	return "oxfmt"
 }
 
-// Clean removes all generated files and the cache.
+// Clean removes the generated files of every run in the selected manifest.
 func (g *Generator) Clean() error {
-	// Remove cache file
+	// Load the complete inventory before removing the manifest.
 	cacheFile, err := g.Config.GetCacheFilePath()
 	if err != nil {
 		return err
 	}
+	manifest, err := LoadCache(cacheFile)
+	if err != nil {
+		return errors.Wrap(err, "failed to load cache")
+	}
 	_ = os.Remove(cacheFile)
 
-	// Remove generated files listed in cache
-	for _, pkg := range g.Cache.Packages {
-		for _, f := range pkg.GeneratedFiles {
-			fullPath := filepath.Join(g.ProjectDir, f)
-			_ = os.Remove(fullPath)
+	// Remove outputs from each recorded generation selection.
+	for _, run := range manifest.Runs {
+		if run == nil {
+			continue
+		}
+		for _, pkg := range run.Packages {
+			if pkg == nil {
+				continue
+			}
+			for _, f := range pkg.GeneratedFiles {
+				_ = os.Remove(filepath.Join(g.ProjectDir, f))
+			}
 		}
 	}
 
