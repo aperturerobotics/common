@@ -454,43 +454,40 @@ func (g *Generator) getToolVersions() string {
 const commonModulePath = "github.com/aperturerobotics/common"
 
 // generatorIdentity names the source of the running generator, so a change to
-// the generator regenerates every package even when no tool version moved. A
-// build of a released or pseudo-versioned common reports the module's go.sum
-// hash, the same on every machine; a build inside common reports its clean VCS
-// revision. A local replace or a modified tree has neither, so it reports a
-// hash of the executable, which follows every edit.
+// the generator regenerates every package even when no tool version moved.
+// aptre's main package lives in common, so the build info names common as the
+// main module even when a project runs it from its own pinned version. A
+// released or pseudo-versioned common reports the module's go.sum hash, the
+// same on every machine; a build inside common reports its clean VCS revision.
+// A local replace or a modified tree has neither, so it reports a hash of the
+// executable, which follows every edit.
 var generatorIdentity = sync.OnceValue(func() string {
-	// Name common by its checksum when it is a dependency of the main module.
+	// Name common by its checksum when the build resolved it as a module.
 	info, ok := debug.ReadBuildInfo()
-	if ok {
-		for _, dep := range info.Deps {
-			if dep.Path != commonModulePath {
-				continue
-			}
-			if dep.Replace != nil {
-				dep = dep.Replace
-			}
-			if dep.Sum != "" {
-				return dep.Sum
-			}
-		}
+	if !ok || info.Main.Path != commonModulePath {
+		return executableHash()
+	}
+	mod := &info.Main
+	if mod.Replace != nil {
+		mod = mod.Replace
+	}
+	if mod.Sum != "" {
+		return mod.Sum
 	}
 
-	// Name common by its clean revision when it is the main module.
-	if ok && info.Main.Path == commonModulePath {
-		var revision string
-		modified := true
-		for _, setting := range info.Settings {
-			switch setting.Key {
-			case "vcs.revision":
-				revision = setting.Value
-			case "vcs.modified":
-				modified = setting.Value != "false"
-			}
+	// Name common by its clean revision when built from its own tree.
+	var revision string
+	modified := true
+	for _, setting := range info.Settings {
+		switch setting.Key {
+		case "vcs.revision":
+			revision = setting.Value
+		case "vcs.modified":
+			modified = setting.Value != "false"
 		}
-		if revision != "" && !modified {
-			return "vcs:" + revision
-		}
+	}
+	if revision != "" && !modified {
+		return "vcs:" + revision
 	}
 
 	// Otherwise hash the executable that holds the generator.
