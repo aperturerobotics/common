@@ -156,11 +156,13 @@ func TestGenerateWorldRefs(t *testing.T) {
 	content := out.GetContent()
 	for _, want := range []string{
 		"func (m *Inner) RangeWorldRefs(cb func(predicate, target string, indexed bool) bool) bool {",
-		`if v := m.GetTarget(); v != "" && !cb("a/inner", v, true) {`,
-		`if v := m.GetParentKey(); v != "" && !cb("a/parent", v, true) {`,
+		`Inner_TargetPredicate = "a/inner"`,
+		`if v := m.GetTarget(); v != "" && !cb(Inner_TargetPredicate, v, true) {`,
+		`Record_ParentKeyPredicate = "a/parent"`,
+		`if v := m.GetParentKey(); v != "" && !cb(Record_ParentKeyPredicate, v, true) {`,
 		"for _, v := range m.GetInputKeys() {",
-		`if v != "" && !cb("a/input", v, true) {`,
-		`if v := m.GetNoteKey(); v != "" && !cb("a/note", v, false) {`,
+		`if v != "" && !cb(Record_InputKeysPredicate, v, true) {`,
+		`if v := m.GetNoteKey(); v != "" && !cb(Record_NoteKeyPredicate, v, false) {`,
 		"if !m.GetInner().RangeWorldRefs(cb) {",
 		"for _, v := range m.GetInners() {",
 		"for _, v := range m.GetItems() {",

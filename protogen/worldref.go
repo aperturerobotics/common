@@ -304,8 +304,12 @@ func generateWorldRefFile(gen *liteprotogen.Plugin, file *liteprotogen.File, ind
 // its reference fields and the references of its message fields in field
 // order. Map values are walked in Go's map order, which is random.
 func generateRangeWorldRefs(g *liteprotogen.GeneratedFile, msg *liteprotogen.Message, index worldRefIndex) {
-	// Declare the method.
+	// Name each predicate the message declares, so readers of its edges share
+	// the declared string.
 	name := msg.GoIdent.GoName
+	generatePredicateConsts(g, msg)
+
+	// Declare the method.
 	g.P("// RangeWorldRefs calls cb with each World reference ", name, " declares,")
 	g.P("// including those of its message fields, until cb returns false.")
 	g.P("// Empty references are skipped.")
@@ -317,7 +321,7 @@ func generateRangeWorldRefs(g *liteprotogen.GeneratedFile, msg *liteprotogen.Mes
 	for _, f := range msg.Fields {
 		getter := "m.Get" + f.GoName + "()"
 		if ref, ok, _ := fieldWorldRef(f.Desc); ok {
-			call := "!cb(" + strconv.Quote(ref.predicate) + ", v, " + strconv.FormatBool(ref.index) + ")"
+			call := "!cb(" + predicateConst(msg, f) + ", v, " + strconv.FormatBool(ref.index) + ")"
 			if f.Desc.IsList() {
 				g.P("for _, v := range ", getter, " {")
 				g.P("if v != \"\" && ", call, " {")
@@ -350,6 +354,36 @@ func generateRangeWorldRefs(g *liteprotogen.GeneratedFile, msg *liteprotogen.Mes
 	g.P("return true")
 	g.P("}")
 	g.P()
+}
+
+// generatePredicateConsts writes one constant per reference field of msg,
+// holding the predicate its world.ref option declares.
+func generatePredicateConsts(g *liteprotogen.GeneratedFile, msg *liteprotogen.Message) {
+	// Collect the declared predicates in field order.
+	var refs []*liteprotogen.Field
+	for _, f := range msg.Fields {
+		if _, ok, _ := fieldWorldRef(f.Desc); ok {
+			refs = append(refs, f)
+		}
+	}
+	if len(refs) == 0 {
+		return
+	}
+
+	// Emit them as one constant block.
+	g.P("const (")
+	for _, f := range refs {
+		ref, _, _ := fieldWorldRef(f.Desc)
+		g.P("// ", predicateConst(msg, f), " is the World predicate of ", msg.GoIdent.GoName, ".", f.GoName, ".")
+		g.P(predicateConst(msg, f), " = ", strconv.Quote(ref.predicate))
+	}
+	g.P(")")
+	g.P()
+}
+
+// predicateConst returns the Go name of the predicate constant of field f.
+func predicateConst(msg *liteprotogen.Message, f *liteprotogen.Field) string {
+	return msg.GoIdent.GoName + "_" + f.GoName + "Predicate"
 }
 
 // generateWorldSpan writes the WorldSpan method of msg.
