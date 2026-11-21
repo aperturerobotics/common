@@ -49,6 +49,26 @@ const shapeOf = (shape: unknown, vars: Vars): Shape => {
   return pairs.length ? Object.fromEntries(pairs) : fail()
 }
 
+// countBoxes returns the number of boxes the view draws for states: each
+// distinct label path in each region, counting every enclosing box once.
+// Without a state() each state is its own box.
+export function countBoxes(
+  states: Iterable<{ vars: Vars }>,
+  view: View,
+): number {
+  const state = view.state
+  const boxes = new Set<string>()
+  let n = 0
+  for (const { vars } of states) {
+    n++
+    if (!state) continue
+    for (const [region, labels] of Object.entries(shapeOf(state(vars), vars)))
+      for (let i = 1; i <= labels.length; i++)
+        boxes.add(tupleKey([region, ...labels.slice(0, i)]))
+  }
+  return state ? boxes.size : n
+}
+
 const stepOf = (view: View) => (action: string, from: Vars, to: Vars) => {
   const label = (view.step ?? ((a: string) => a))(action, from, to)
   if (label === null || isLabel(label)) return label

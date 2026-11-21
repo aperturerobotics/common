@@ -1,7 +1,10 @@
 import {
   type Bug,
-  CHART_STATES,
+  CHART_BOXES,
+  CHART_TESTS,
+  DRAW_STATES,
   type Chart,
+  type CheckResult,
   type Graph,
   hasSection,
   list,
@@ -57,12 +60,7 @@ export function report(
     properties: Property[]
     stop: Stop | undefined
     drawing: { status: number | null } | undefined
-    states: {
-      distinct: number
-      initial: number
-      complete: boolean
-      cut: boolean
-    }
+    states: CheckResult['states']
   },
   found: Bug[],
   chart: Chart | undefined,
@@ -88,7 +86,7 @@ export function report(
     `# ${spec.module}`,
     '',
     paths
-      ? `TLC reached ${states.complete && !states.cut && states.distinct > CHART_STATES ? `${states.distinct.toLocaleString('en-US')} states, more than` : 'more states than'} the chart budget of ${CHART_STATES}, so ${chart ? `the chart draws only the bug paths: ${size} states and ${arrows} arrows` : 'the command wrote no chart.mmd'}.`
+      ? `${states.boxes !== undefined ? `The view draws ${states.boxes.toLocaleString('en-US')} boxes, more than the chart budget of ${CHART_BOXES}` : states.tests !== undefined ? `Drawing every state would test actions at least ${states.tests.toLocaleString('en-US')} times, more than the drawing budget of ${CHART_TESTS.toLocaleString('en-US')}` : `TLC reached ${states.complete && !states.cut && states.distinct > DRAW_STATES ? `${states.distinct.toLocaleString('en-US')} states, more than` : 'more states than'} the drawing budget of ${DRAW_STATES.toLocaleString('en-US')} states`}, so ${chart ? `the chart draws only the bug paths: ${size} states and ${arrows} arrows` : 'the command wrote no chart.mmd'}.`
       : `TLC reached ${graph.states.size - past - excluded} states and ${graph.steps.length - pastSteps} steps. The chart draws ${size} states and ${arrows} arrows.`,
   ]
   if (drawing)
