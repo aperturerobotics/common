@@ -9,7 +9,7 @@ require (
 	github.com/aperturerobotics/go-protoc-gen-prost v0.0.0-20261024221648-a1c7ae9a2bb8 // master
 	github.com/aperturerobotics/go-protoc-wasi v0.0.0-20261024220153-869f5fcfca4f // master
 	github.com/aperturerobotics/protobuf v0.0.0-20260203024654-8201686529c4 // wasi
-	github.com/aperturerobotics/protobuf-go-lite v0.19.1-0.20261028131920-f644656fc4a7 // latest
+	github.com/aperturerobotics/protobuf-go-lite v0.19.1-0.20261120061248-f1c7d6295149 // latest
 	github.com/aperturerobotics/starpc v0.52.3 // latest
 	github.com/pkg/errors v0.9.1
 	github.com/tetratelabs/wazero v1.12.0
