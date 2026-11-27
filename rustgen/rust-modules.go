@@ -1,4 +1,4 @@
-package protogen
+package rustgen
 
 import (
 	"maps"
@@ -8,33 +8,33 @@ import (
 	"unicode"
 )
 
-// RustModules declares generated Rust files under the module of their protobuf
+// Modules declares generated Rust files under the module of their protobuf
 // package. A package whose files sit in several directories gets one module, so
 // each message is defined once and references between its files resolve.
 // Modules are named as prost names them, so packages that prost merges into one
 // module, such as Upper.case and upper.case, share one here.
-type RustModules struct {
+type Modules struct {
 	// files are the project-relative paths included directly in this module.
 	files []string
 	// children are the modules of the next package segment, by Rust name.
-	children map[string]*RustModules
+	children map[string]*Modules
 }
 
-// NewRustModules constructs an empty module tree.
-func NewRustModules() *RustModules {
-	return &RustModules{children: make(map[string]*RustModules)}
+// NewModules constructs an empty module tree.
+func NewModules() *Modules {
+	return &Modules{children: make(map[string]*Modules)}
 }
 
 // Add includes file in the module of the dotted protobuf package.
 // An empty package selects the root module.
-func (m *RustModules) Add(protoPackage, file string) {
+func (m *Modules) Add(protoPackage, file string) {
 	node := m
 	if protoPackage != "" {
 		for segment := range strings.SplitSeq(protoPackage, ".") {
 			name := rustModuleName(segment)
 			child, ok := node.children[name]
 			if !ok {
-				child = NewRustModules()
+				child = NewModules()
 				node.children[name] = child
 			}
 			node = child
@@ -46,14 +46,14 @@ func (m *RustModules) Add(protoPackage, file string) {
 // Render returns the module declarations. Includes are relative to the crate
 // root through CARGO_MANIFEST_DIR, so the output does not depend on the
 // checkout path. Output is sorted and so independent of the order of Add.
-func (m *RustModules) Render() string {
+func (m *Modules) Render() string {
 	var out strings.Builder
 	m.render(&out, 0)
 	return out.String()
 }
 
 // render writes this module's includes, then its child modules, at depth.
-func (m *RustModules) render(out *strings.Builder, depth int) {
+func (m *Modules) render(out *strings.Builder, depth int) {
 	indent := strings.Repeat("    ", depth)
 
 	// Declare this package's files before opening any child package.

@@ -1,4 +1,4 @@
-package protogen
+package rustgen
 
 import (
 	"strings"

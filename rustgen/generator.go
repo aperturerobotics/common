@@ -304,7 +304,7 @@ func (g *Generator) runProtoc(ctx context.Context, protoFiles []string, outDir, 
 // to its protobuf package, as recorded in the compiled descriptor set.
 func (g *Generator) renderModules(packages map[string]string, generated []string) (string, error) {
 	// A service file belongs to the package of the schema that declares it.
-	modules := protogen.NewRustModules()
+	modules := NewModules()
 	for _, file := range generated {
 		stem := strings.TrimSuffix(file, rustMessageSuffix)
 		protoPackage, ok := packages[stem]

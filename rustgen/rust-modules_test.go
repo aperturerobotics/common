@@ -1,10 +1,10 @@
-package protogen
+package rustgen
 
 import "testing"
 
-func TestRustModulesRenderNestsPackages(t *testing.T) {
+func TestModulesRenderNestsPackages(t *testing.T) {
 	// Mix a root schema with nested packages and multiple files in one package.
-	modules := NewRustModules()
+	modules := NewModules()
 	files := []struct{ pkg, file string }{
 		{"bifrost.api", "net/daemon/api/api.pb.rs"},
 		{"bifrost.api.controller", "net/daemon/api/controller/controller.pb.rs"},
@@ -36,9 +36,9 @@ pub mod bifrost {
 	}
 }
 
-func TestRustModulesNamePackagesAsProstDoes(t *testing.T) {
+func TestModulesNamePackagesAsProstDoes(t *testing.T) {
 	// Exercise casing, keywords and identifiers that need a leading underscore.
-	modules := NewRustModules()
+	modules := NewModules()
 	files := []struct{ pkg, file string }{
 		{"Upper.case", "a.pb.rs"},
 		{"upper.case", "b.pb.rs"},
@@ -86,8 +86,8 @@ pub mod v1 {
 	}
 }
 
-func TestRustModulesQuoteIncludePaths(t *testing.T) {
-	modules := NewRustModules()
+func TestModulesQuoteIncludePaths(t *testing.T) {
+	modules := NewModules()
 	modules.Add("", "dir with \"quote\"/back\\slash\tname.pb.rs")
 
 	expected := `include!(concat!(env!("CARGO_MANIFEST_DIR"), "/dir with \"quote\"/back\\slash\tname.pb.rs"));
