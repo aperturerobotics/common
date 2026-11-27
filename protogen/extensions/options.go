@@ -1,4 +1,6 @@
-package protogen
+// Package extensions generates TypeID and World reference bindings from custom
+// protobuf options, serving protoc plugin requests in process.
+package extensions
 
 import (
 	"google.golang.org/protobuf/encoding/protowire"

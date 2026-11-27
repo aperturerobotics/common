@@ -1,4 +1,4 @@
-package protogen
+package extensions
 
 import (
 	"strings"

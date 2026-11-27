@@ -5,6 +5,7 @@ import (
 	"context"
 	"os/exec"
 
+	"github.com/aperturerobotics/common/protogen/extensions"
 	prost "github.com/aperturerobotics/go-protoc-gen-prost"
 	"github.com/pkg/errors"
 	"github.com/tetratelabs/wazero"
@@ -68,12 +69,12 @@ func (h *NativePluginHandler) Communicate(ctx context.Context, program string, s
 		return h.prostWASM.Execute(ctx, input)
 	}
 	switch program {
-	case TypeIDPluginName:
-		return GenerateTypeIDs(input)
-	case WorldRefPluginName:
-		return GenerateWorldRefs(input)
-	case ESTypeIDPluginName:
-		return GenerateESTypeIDs(input)
+	case extensions.TypeIDPluginName:
+		return extensions.GenerateTypeIDs(input)
+	case extensions.WorldRefPluginName:
+		return extensions.GenerateWorldRefs(input)
+	case extensions.ESTypeIDPluginName:
+		return extensions.GenerateESTypeIDs(input)
 	}
 
 	// Find the plugin path

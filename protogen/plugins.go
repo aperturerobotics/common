@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/aperturerobotics/common/protogen/extensions"
 	"github.com/aperturerobotics/fastjson"
 	"github.com/pkg/errors"
 )
@@ -23,15 +24,15 @@ type Plugins struct {
 	// GoStarpc is the protoc-gen-go-starpc plugin.
 	GoStarpc *Plugin
 	// GoTypeID is the protoc-gen-go-typeid plugin, served in process by
-	// GenerateTypeIDs.
+	// extensions.GenerateTypeIDs.
 	GoTypeID *Plugin
 	// GoWorldRef is the protoc-gen-go-worldref plugin, served in process by
-	// GenerateWorldRefs.
+	// extensions.GenerateWorldRefs.
 	GoWorldRef *Plugin
 	// ESLite is the protoc-gen-es-lite plugin.
 	ESLite *Plugin
 	// ESTypeID is the protoc-gen-es-typeid plugin, served in process by
-	// GenerateESTypeIDs.
+	// extensions.GenerateESTypeIDs.
 	ESTypeID *Plugin
 	// ESStarpc is the protoc-gen-es-starpc plugin.
 	ESStarpc *Plugin
@@ -150,7 +151,7 @@ func DiscoverPlugins(cfg *Config) (*Plugins, error) {
 			// Type IDs extend the generated messages, so they follow go-lite.
 			plugins.GoTypeID = &Plugin{
 				Name:       "go-typeid",
-				BinaryName: TypeIDPluginName,
+				BinaryName: extensions.TypeIDPluginName,
 				Type:       PluginTypeGo,
 				OutFlag:    "go-typeid_out",
 				Options:    map[string]string{},
@@ -159,7 +160,7 @@ func DiscoverPlugins(cfg *Config) (*Plugins, error) {
 			// World references extend the generated messages too.
 			plugins.GoWorldRef = &Plugin{
 				Name:       "go-worldref",
-				BinaryName: WorldRefPluginName,
+				BinaryName: extensions.WorldRefPluginName,
 				Type:       PluginTypeGo,
 				OutFlag:    "go-worldref_out",
 				Options:    map[string]string{},
@@ -263,7 +264,7 @@ func DiscoverPlugins(cfg *Config) (*Plugins, error) {
 			// Type IDs import the generated messages, so they follow es-lite.
 			plugins.ESTypeID = &Plugin{
 				Name:       "es-typeid",
-				BinaryName: ESTypeIDPluginName,
+				BinaryName: extensions.ESTypeIDPluginName,
 				Type:       PluginTypeTypeScript,
 				OutFlag:    "es-typeid_out",
 				Options:    map[string]string{},
