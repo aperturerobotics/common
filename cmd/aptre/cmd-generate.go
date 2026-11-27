@@ -5,6 +5,7 @@ import (
 
 	"github.com/aperturerobotics/cli"
 	"github.com/aperturerobotics/common/protogen"
+	"github.com/aperturerobotics/common/rustgen"
 	"github.com/pkg/errors"
 )
 
@@ -153,7 +154,7 @@ func runGenerate(c *cli.Context) error {
 // runRustGenerate generates or checks the whole-graph Rust output.
 func runRustGenerate(c *cli.Context, cfg *protogen.Config, check bool) error {
 	// Resolve graph configuration and required plugins before touching outputs.
-	gen, err := protogen.NewRustGenerator(cfg)
+	gen, err := rustgen.NewGenerator(cfg)
 	if err != nil {
 		return errors.Wrap(err, "failed to create rust generator")
 	}

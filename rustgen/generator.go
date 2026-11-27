@@ -1,4 +1,8 @@
-package protogen
+// Package rustgen compiles a whole protobuf schema graph into Rust bindings.
+// It renders before publication, compares the complete output set for read-only
+// drift checks, and publishes its inventory after removing obsolete outputs.
+// Configuration, plugin discovery and protoc execution are shared with protogen.
+package rustgen
 
 import (
 	"bytes"
@@ -12,6 +16,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/aperturerobotics/common/protogen"
 	"github.com/aperturerobotics/protobuf-go-lite/types/descriptorpb"
 	"github.com/pkg/errors"
 )
@@ -27,21 +32,21 @@ const rustMessageSuffix = ".pb.rs"
 // rustServiceSuffix ends the stem of generated Rust service bindings.
 const rustServiceSuffix = "_srpc"
 
-// RustGenerator generates Rust protobuf bindings for the whole schema graph.
+// Generator generates Rust protobuf bindings for the whole schema graph.
 //
-// Unlike Generator, which caches per directory, it compiles every schema in
+// Unlike protogen.Generator, which caches per directory, it compiles every schema in
 // one protoc run so that type resolution sees the full graph, and it owns the
 // complete output set: messages, service bindings, module declarations, the
 // reflection descriptor set, and the inventory used to remove obsolete files.
 // Output is built in memory and compared with the project before any write,
 // which is what makes a read-only drift check possible.
-type RustGenerator struct {
+type Generator struct {
 	// Config is the generator configuration.
-	Config *Config
+	Config *protogen.Config
 	// Rust is the Rust section of the project configuration.
-	Rust *RustConfig
+	Rust *protogen.RustConfig
 	// Plugins contains the Rust plugins.
-	Plugins *Plugins
+	Plugins *protogen.Plugins
 	// ProjectDir is the resolved project directory and crate root.
 	ProjectDir string
 	// ModulePath is the import path prefix of the project's schemas.
@@ -50,8 +55,8 @@ type RustGenerator struct {
 	Stdout io.Writer
 }
 
-// NewRustGenerator creates a RustGenerator from the aptre.rust configuration.
-func NewRustGenerator(cfg *Config) (*RustGenerator, error) {
+// NewGenerator creates a Generator from the aptre.rust configuration.
+func NewGenerator(cfg *protogen.Config) (*Generator, error) {
 	// Resolve the project identity and Rust configuration.
 	projectDir, err := cfg.GetProjectDir()
 	if err != nil {
@@ -92,8 +97,8 @@ func NewRustGenerator(cfg *Config) (*RustGenerator, error) {
 	}
 
 	// Require selected services instead of silently deleting their previous output.
-	starpc, prost := discoverRustPlugins(filepath.Join(toolsDir, "bin"), rpcs)
-	if rpcs.Has(RPCLibraryStarpc) && starpc == nil {
+	starpc, prost := protogen.DiscoverRustPlugins(filepath.Join(toolsDir, "bin"), rpcs)
+	if rpcs.Has(protogen.RPCLibraryStarpc) && starpc == nil {
 		return nil, errors.Errorf("protoc-gen-starpc-rust is not built in %s; run aptre deps", filepath.Join(toolsDir, "bin"))
 	}
 	prost.Flags = append([]string{rustFileModules}, rust.ProstOptions...)
@@ -108,11 +113,11 @@ func NewRustGenerator(cfg *Config) (*RustGenerator, error) {
 		}
 	}
 
-	return &RustGenerator{
+	return &Generator{
 		Config: cfg,
 		Rust:   rust,
-		Plugins: &Plugins{
-			Languages:    Languages{LanguageRust: {}},
+		Plugins: &protogen.Plugins{
+			Languages:    protogen.Languages{protogen.LanguageRust: {}},
 			RPCLibraries: rpcs,
 			RustStarpc:   starpc,
 			RustProst:    prost,
@@ -132,7 +137,7 @@ func isRustTypeOption(option string) bool {
 
 // Generate writes the changed outputs and removes obsolete ones. It returns
 // the project-relative paths it wrote or removed.
-func (g *RustGenerator) Generate(ctx context.Context) ([]string, error) {
+func (g *Generator) Generate(ctx context.Context) ([]string, error) {
 	outputs, err := g.render(ctx)
 	if err != nil {
 		return nil, err
@@ -142,7 +147,7 @@ func (g *RustGenerator) Generate(ctx context.Context) ([]string, error) {
 
 // Check compares the project with freshly generated output without writing.
 // It returns the project-relative paths that are outdated, missing, or obsolete.
-func (g *RustGenerator) Check(ctx context.Context) ([]string, error) {
+func (g *Generator) Check(ctx context.Context) ([]string, error) {
 	outputs, err := g.render(ctx)
 	if err != nil {
 		return nil, err
@@ -151,10 +156,10 @@ func (g *RustGenerator) Check(ctx context.Context) ([]string, error) {
 }
 
 // render builds every output in memory, keyed by project-relative slash path.
-func (g *RustGenerator) render(ctx context.Context) (map[string][]byte, error) {
+func (g *Generator) render(ctx context.Context) (map[string][]byte, error) {
 	// Select the schemas that compile as roots; their imports must be tracked
 	// too, so every schema in the graph gets an output.
-	protoFiles, err := DiscoverProtoFiles(g.ProjectDir, g.Config.Targets, slices.Concat(g.Config.Exclude, g.Rust.Exclude))
+	protoFiles, err := protogen.DiscoverProtoFiles(g.ProjectDir, g.Config.Targets, slices.Concat(g.Config.Exclude, g.Rust.Exclude))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to discover proto files")
 	}
@@ -260,7 +265,7 @@ func declaresRustItems(data []byte) bool {
 
 // runProtoc compiles all schemas in one run, writing Rust output to outDir and
 // the descriptor set of the whole graph to descriptorPath.
-func (g *RustGenerator) runProtoc(ctx context.Context, protoFiles []string, outDir, descriptorPath string) error {
+func (g *Generator) runProtoc(ctx context.Context, protoFiles []string, outDir, descriptorPath string) error {
 	// Canonical imports of this project resolve to the project directory and
 	// all others to the vendor directory, so no schema is copied or linked.
 	vendorDir := filepath.Join(g.ProjectDir, "vendor")
@@ -284,7 +289,7 @@ func (g *RustGenerator) runProtoc(ctx context.Context, protoFiles []string, outD
 	}
 
 	// The shared runner owns WASI, mounts and plugin process cleanup.
-	run := &ProtocRun{
+	run := &protogen.ProtocRun{
 		Plugins: g.Plugins,
 		Mounts:  []string{g.ProjectDir, outDir},
 		Args:    args,
@@ -297,9 +302,9 @@ func (g *RustGenerator) runProtoc(ctx context.Context, protoFiles []string, outD
 // renderModules declares the generated files under their protobuf packages.
 // packages maps the project-relative path of each schema without its extension
 // to its protobuf package, as recorded in the compiled descriptor set.
-func (g *RustGenerator) renderModules(packages map[string]string, generated []string) (string, error) {
+func (g *Generator) renderModules(packages map[string]string, generated []string) (string, error) {
 	// A service file belongs to the package of the schema that declares it.
-	modules := NewRustModules()
+	modules := protogen.NewRustModules()
 	for _, file := range generated {
 		stem := strings.TrimSuffix(file, rustMessageSuffix)
 		protoPackage, ok := packages[stem]
@@ -318,7 +323,7 @@ func (g *RustGenerator) renderModules(packages map[string]string, generated []st
 // schemaPackages reads the protobuf package of every compiled schema from the
 // descriptor set, keyed by the project-relative schema path without its
 // extension. The package comes from the compiled schema, never from its text.
-func (g *RustGenerator) schemaPackages(descriptors []byte) (map[string]string, error) {
+func (g *Generator) schemaPackages(descriptors []byte) (map[string]string, error) {
 	// Decode the compiler's authoritative package metadata.
 	set := &descriptorpb.FileDescriptorSet{}
 	if err := set.UnmarshalVT(descriptors); err != nil {
@@ -336,7 +341,7 @@ func (g *RustGenerator) schemaPackages(descriptors []byte) (map[string]string, e
 
 // importPath returns the canonical import path of a project-relative schema.
 // Schemas under vendor are dependencies, which keep their original import path.
-func (g *RustGenerator) importPath(file string) string {
+func (g *Generator) importPath(file string) string {
 	if dependency, ok := strings.CutPrefix(file, "vendor/"); ok {
 		return dependency
 	}
@@ -344,7 +349,7 @@ func (g *RustGenerator) importPath(file string) string {
 }
 
 // projectPath is the inverse of importPath for a generated file's path.
-func (g *RustGenerator) projectPath(importPath string) string {
+func (g *Generator) projectPath(importPath string) string {
 	if projectFile, ok := strings.CutPrefix(importPath, g.ModulePath+"/"); ok {
 		return projectFile
 	}
@@ -355,7 +360,7 @@ func (g *RustGenerator) projectPath(importPath string) string {
 // the changed files, removes obsolete ones, and writes the inventory last so a
 // failed run can still remove the outputs the previous inventory names.
 // It returns the project-relative paths that changed or became obsolete.
-func (g *RustGenerator) publish(outputs map[string][]byte, check bool) ([]string, error) {
+func (g *Generator) publish(outputs map[string][]byte, check bool) ([]string, error) {
 	// Compare every output before writing so a check reports all drift.
 	var changed []string
 	for _, file := range slices.Sorted(maps.Keys(outputs)) {
@@ -417,7 +422,7 @@ func (g *RustGenerator) publish(outputs map[string][]byte, check bool) ([]string
 }
 
 // writeFile writes a project-relative file, creating its directory.
-func (g *RustGenerator) writeFile(file string, data []byte) error {
+func (g *Generator) writeFile(file string, data []byte) error {
 	target := g.absPath(file)
 	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 		return err
@@ -426,6 +431,6 @@ func (g *RustGenerator) writeFile(file string, data []byte) error {
 }
 
 // absPath resolves a project-relative slash path.
-func (g *RustGenerator) absPath(file string) string {
+func (g *Generator) absPath(file string) string {
 	return filepath.Join(g.ProjectDir, filepath.FromSlash(file))
 }

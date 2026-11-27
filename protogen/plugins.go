@@ -226,7 +226,7 @@ func DiscoverPlugins(cfg *Config) (*Plugins, error) {
 
 	// Per-directory Rust generation retains its existing Go-module selection.
 	if hasGo && langs.Has(LanguageRust) {
-		plugins.RustStarpc, plugins.RustProst = discoverRustPlugins(toolsBin, rpcs)
+		plugins.RustStarpc, plugins.RustProst = DiscoverRustPlugins(toolsBin, rpcs)
 	}
 
 	// Node package binaries supply TypeScript message and service generators.
@@ -291,9 +291,9 @@ func DiscoverPlugins(cfg *Config) (*Plugins, error) {
 	return plugins, nil
 }
 
-// discoverRustPlugins finds the Rust StarPC plugin, when selected and built,
+// DiscoverRustPlugins finds the Rust StarPC plugin, when selected and built,
 // and configures the embedded prost plugin.
-func discoverRustPlugins(toolsBin string, rpcs RPCLibraries) (starpc, prost *Plugin) {
+func DiscoverRustPlugins(toolsBin string, rpcs RPCLibraries) (starpc, prost *Plugin) {
 	// Services require the native plugin only when StarPC is selected.
 	if rpcs.Has(RPCLibraryStarpc) {
 		rustStarpcPath := filepath.Join(toolsBin, "protoc-gen-starpc-rust")

@@ -1,4 +1,4 @@
-package protogen
+package rustgen
 
 import (
 	"maps"
@@ -7,22 +7,23 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/aperturerobotics/common/protogen"
 	"github.com/aperturerobotics/protobuf-go-lite/types/descriptorpb"
 )
 
-// newTestRustGenerator creates a generator over a temporary project directory.
-func newTestRustGenerator(t *testing.T) *RustGenerator {
+// newTestGenerator creates a generator over a temporary project directory.
+func newTestGenerator(t *testing.T) *Generator {
 	t.Helper()
 
-	return &RustGenerator{
-		Rust:       &RustConfig{Inventory: DefaultRustInventory},
+	return &Generator{
+		Rust:       &protogen.RustConfig{Inventory: protogen.DefaultRustInventory},
 		ProjectDir: t.TempDir(),
 		ModulePath: "github.com/example/app",
 	}
 }
 
 // writeProjectFile installs one input or previous output in the temporary project.
-func writeProjectFile(t *testing.T, g *RustGenerator, file, content string) {
+func writeProjectFile(t *testing.T, g *Generator, file, content string) {
 	t.Helper()
 
 	if err := g.writeFile(file, []byte(content)); err != nil {
@@ -30,8 +31,8 @@ func writeProjectFile(t *testing.T, g *RustGenerator, file, content string) {
 	}
 }
 
-func TestRustGeneratorImportPathMapping(t *testing.T) {
-	g := newTestRustGenerator(t)
+func TestGeneratorImportPathMapping(t *testing.T) {
+	g := newTestGenerator(t)
 
 	cases := []struct{ project, canonical string }{
 		{"db/block/block.proto", "github.com/example/app/db/block/block.proto"},
@@ -47,9 +48,9 @@ func TestRustGeneratorImportPathMapping(t *testing.T) {
 	}
 }
 
-func TestRustGeneratorRenderModulesSplitsPackageAcrossDirectories(t *testing.T) {
+func TestGeneratorRenderModulesSplitsPackageAcrossDirectories(t *testing.T) {
 	// Schema directories need not match the protobuf package boundary.
-	g := newTestRustGenerator(t)
+	g := newTestGenerator(t)
 
 	// Include all outputs belonging to one package in its single Rust module.
 	packages := map[string]string{
@@ -78,17 +79,17 @@ func TestRustGeneratorRenderModulesSplitsPackageAcrossDirectories(t *testing.T) 
 	}
 }
 
-func TestRustGeneratorRenderModulesRejectsUnknownOutput(t *testing.T) {
-	g := newTestRustGenerator(t)
+func TestGeneratorRenderModulesRejectsUnknownOutput(t *testing.T) {
+	g := newTestGenerator(t)
 
 	if _, err := g.renderModules(nil, []string{"stray.pb.rs"}); err == nil {
 		t.Fatal("expected an error for an output without a source schema")
 	}
 }
 
-func TestRustGeneratorSchemaPackagesReadsDescriptorSet(t *testing.T) {
+func TestGeneratorSchemaPackagesReadsDescriptorSet(t *testing.T) {
 	// Canonical import paths distinguish project files from vendored schemas.
-	g := newTestRustGenerator(t)
+	g := newTestGenerator(t)
 
 	// Two files of one package and a dependency, as protoc records them.
 	set := marshalDescriptorSet(t,
@@ -114,8 +115,8 @@ func TestRustGeneratorSchemaPackagesReadsDescriptorSet(t *testing.T) {
 	}
 }
 
-func TestRustGeneratorSchemaPackagesRejectsTruncatedSet(t *testing.T) {
-	g := newTestRustGenerator(t)
+func TestGeneratorSchemaPackagesRejectsTruncatedSet(t *testing.T) {
+	g := newTestGenerator(t)
 
 	set := marshalDescriptorSet(t, descriptorFile("a.proto", "a"))
 	if _, err := g.schemaPackages(set[:len(set)-1]); err == nil {
@@ -163,9 +164,9 @@ func marshalDescriptorSet(t *testing.T, files ...*descriptorpb.FileDescriptorPro
 	return data
 }
 
-func TestRustGeneratorPublishWritesChangesAndRemovesObsolete(t *testing.T) {
+func TestGeneratorPublishWritesChangesAndRemovesObsolete(t *testing.T) {
 	// Publication reconciles the previous inventory with the complete new output.
-	g := newTestRustGenerator(t)
+	g := newTestGenerator(t)
 
 	// The previous run generated two files and its inventory names both.
 	writeProjectFile(t, g, "a/a.pb.rs", "old a")
@@ -218,8 +219,8 @@ func TestRustGeneratorPublishWritesChangesAndRemovesObsolete(t *testing.T) {
 	}
 }
 
-func TestRustGeneratorPublishToleratesRemovedObsoleteFile(t *testing.T) {
-	g := newTestRustGenerator(t)
+func TestGeneratorPublishToleratesRemovedObsoleteFile(t *testing.T) {
+	g := newTestGenerator(t)
 
 	writeProjectFile(t, g, g.Rust.Inventory, "gone/gone.pb.rs\n")
 
@@ -229,8 +230,8 @@ func TestRustGeneratorPublishToleratesRemovedObsoleteFile(t *testing.T) {
 	}
 }
 
-func TestRustGeneratorPublishRejectsInventoryEscape(t *testing.T) {
-	g := newTestRustGenerator(t)
+func TestGeneratorPublishRejectsInventoryEscape(t *testing.T) {
+	g := newTestGenerator(t)
 
 	writeProjectFile(t, g, g.Rust.Inventory, filepath.Join("..", "outside.txt")+"\n")
 

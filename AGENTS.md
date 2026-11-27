@@ -56,7 +56,7 @@ Plugins are discovered by `DiscoverPlugins()` which checks:
 
 ### Whole-Graph Rust Generation
 
-`protogen/rust-generator.go` (`RustGenerator`) runs when `aptre.rust` is set in
+`rustgen/generator.go` (`rustgen.Generator`) runs when `aptre.rust` is set in
 `package.json`. It compiles every schema in one protoc run, renders into a
 scratch directory, then publishes changed outputs and removes files named by the
 previous inventory. `Check` compares without writing and without preparing
