@@ -25,6 +25,7 @@ This repository (`github.com/aperturerobotics/common`) provides shared tooling a
 
 ### Key Files
 
+- `protogen/cache/` - Generation manifests, source hashes, and portable run identities
 - `protogen/plugins.go` - Plugin discovery and configuration
 - `protogen/native-plugin-handler.go` - Runs plugins for protoc, serving the embedded ones in process
 - `protogen/extensions/typeid.go`, `protogen/extensions/typeid-ts.go` - The Go and TypeScript `(typeid.id)` generators (`typeid/typeid.proto`)

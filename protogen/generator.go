@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/aperturerobotics/common/protogen/cache"
 	"github.com/pkg/errors"
 )
 
@@ -127,21 +128,21 @@ func (g *Generator) Generate(ctx context.Context) error {
 	toolVersions := g.getToolVersions()
 
 	// Identify the protoc flags apart from the run's private root.
-	flagsHash := HashProtocFlags(g.buildProtocArgs(protocRootIdentity), g.ModuleDir)
+	flagsHash := cache.HashProtocFlags(g.buildProtocArgs(protocRootIdentity), g.ModuleDir)
 
 	// Restore only this run's package inventory while retaining the other runs.
 	cacheFile, err := g.Config.GetCacheFilePath()
 	if err != nil {
 		return errors.Wrap(err, "failed to get cache file path")
 	}
-	manifest, err := LoadCache(cacheFile)
+	manifest, err := cache.LoadCache(cacheFile)
 	if err != nil {
 		return errors.Wrap(err, "failed to load cache")
 	}
 	runKey := g.runKey()
 	run := manifest.Runs[runKey]
 	if run == nil || run.Packages == nil {
-		run = NewRunCache()
+		run = cache.NewRunCache()
 	}
 
 	// Group proto files by directory for cache tracking
@@ -165,7 +166,7 @@ func (g *Generator) Generate(ctx context.Context) error {
 	// Collect only packages whose source, flags or generator versions changed.
 	for _, dir := range dirs {
 		files := filesByDir[dir]
-		packageKey := GetPackageKey(g.ModulePath, files[0])
+		packageKey := cache.GetPackageKey(g.ModulePath, files[0])
 		currentPackages[packageKey] = struct{}{}
 
 		// Check if regeneration is needed
@@ -240,7 +241,7 @@ func (g *Generator) Generate(ctx context.Context) error {
 			}
 
 			// Find generated files and update cache
-			packageKey := GetPackageKey(g.ModulePath, files[0])
+			packageKey := cache.GetPackageKey(g.ModulePath, files[0])
 			var generatedFiles []string
 			for _, f := range files {
 				gf, err := FindGeneratedFilesForProto(f, g.ProjectDir, g.Plugins.Languages, g.Plugins.RPCLibraries)
@@ -305,13 +306,8 @@ func (g *Generator) Generate(ctx context.Context) error {
 // runKey identifies a language and source selection. Protoc options, including
 // RPC plugins, invalidate it in place so it can remove obsolete outputs.
 func (g *Generator) runKey() string {
-	return HashProtocFlags([]string{
-		g.ModulePath,
-		relativizePath(g.ProjectDir, g.ModuleDir),
-		strings.Join(g.Plugins.Languages.Names(), ","),
-		HashProtocFlags(g.Config.Targets, ""),
-		HashProtocFlags(g.Config.Exclude, ""),
-	}, "")
+	return cache.RunKey(g.ModulePath, g.ProjectDir, g.ModuleDir,
+		g.Plugins.Languages.Names(), g.Config.Targets, g.Config.Exclude)
 }
 
 // protocRootIdentity stands for the private protoc root in the flags hash, so
@@ -627,7 +623,7 @@ func (g *Generator) Clean() error {
 	if err != nil {
 		return err
 	}
-	manifest, err := LoadCache(cacheFile)
+	manifest, err := cache.LoadCache(cacheFile)
 	if err != nil {
 		return errors.Wrap(err, "failed to load cache")
 	}

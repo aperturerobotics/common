@@ -1,4 +1,4 @@
-package protogen
+package cache
 
 // PackageInfo contains cached information about a proto package.
 type PackageInfo struct {

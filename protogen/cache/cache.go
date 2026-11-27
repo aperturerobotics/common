@@ -1,4 +1,6 @@
-package protogen
+// Package cache stores generation manifests and computes checkout-portable
+// identities for generation selections, protoc flags and source packages.
+package cache
 
 import (
 	"crypto/sha256"
