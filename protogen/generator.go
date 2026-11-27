@@ -213,11 +213,11 @@ func (g *Generator) Generate(ctx context.Context) error {
 		postProcessor := NewPostProcessor(
 			g.ProjectDir,
 			g.VendorDir,
+			root,
 			g.ModulePath,
 			g.TsImportBoundaries,
 			g.Verbose,
 		)
-		postProcessor.ProtocRoot = root
 		for _, dir := range dirs {
 			files := filesByDir[dir]
 			// Skip if not in files to generate
@@ -557,6 +557,7 @@ func (g *Generator) formatGeneratedFiles(protoFiles []string) error {
 			var lastErr error
 			for attempt := range 3 {
 				if attempt > 0 {
+					//gostyle:timer backoff
 					time.Sleep(100 * time.Millisecond)
 				}
 				args := append([]string{"-w"}, goFiles...)

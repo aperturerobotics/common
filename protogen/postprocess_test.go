@@ -26,6 +26,7 @@ import { VolumeInfo } from "../../db/volume/volume.pb.js"
 	pp := NewPostProcessor(
 		projectDir,
 		filepath.Join(projectDir, "vendor"),
+		"",
 		"github.com/s4wave/spacewave",
 		[]string{"bldr", "db", "net"},
 		false,
@@ -65,6 +66,7 @@ import { BlockRef } from "../block/block.pb.js"
 	pp := NewPostProcessor(
 		projectDir,
 		filepath.Join(projectDir, "vendor"),
+		"",
 		"github.com/s4wave/spacewave",
 		[]string{"bldr", "db", "net"},
 		false,
@@ -90,7 +92,7 @@ func TestProcessPythonFileRewritesLocalImportsAndPreservesExternal(t *testing.T)
 	if err := os.WriteFile(file, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	pp := NewPostProcessor(projectDir, "", "github.com/example/my-project", nil, false)
+	pp := NewPostProcessor(projectDir, "", "", "github.com/example/my-project", nil, false)
 	if err := pp.ProcessPythonFile(file); err != nil {
 		t.Fatal(err)
 	}
@@ -113,7 +115,7 @@ func TestProcessPythonFileRewritesPyi(t *testing.T) {
 	projectDir := t.TempDir()
 	file := filepath.Join(projectDir, "app_pb2.pyi")
 	os.WriteFile(file, []byte("from github.com.example.mod.dep import dep_pb2 as _dep_pb2\n"), 0o644)
-	pp := NewPostProcessor(projectDir, "", "github.com/example/mod", nil, false)
+	pp := NewPostProcessor(projectDir, "", "", "github.com/example/mod", nil, false)
 	if err := pp.ProcessPythonFile(file); err != nil {
 		t.Fatal(err)
 	}
@@ -152,7 +154,7 @@ from undeclared.example import example_pb2
 	if err := os.WriteFile(file, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	pp := NewPostProcessor(projectDir, vendorDir, "github.com/s4wave/spacewave", nil, false)
+	pp := NewPostProcessor(projectDir, vendorDir, "", "github.com/s4wave/spacewave", nil, false)
 	if err := pp.ProcessPythonFile(file); err != nil {
 		t.Fatal(err)
 	}

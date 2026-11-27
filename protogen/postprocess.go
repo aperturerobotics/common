@@ -37,20 +37,23 @@ type PostProcessor struct {
 	TsImportBoundaries []string
 	// VendorDir is the vendor directory path.
 	VendorDir string
-	// ProtocRoot is the run's protoc root, where prost leaves Rust files by
-	// package path.
-	ProtocRoot string
 	// Verbose enables verbose output.
 	Verbose bool
+
+	// protocRoot is the run's protoc root, where prost leaves Rust files by
+	// package path. It remains valid until postprocessing completes.
+	protocRoot string
 }
 
-// NewPostProcessor creates a new PostProcessor.
-func NewPostProcessor(projectDir, vendorDir, modulePath string, tsImportBoundaries []string, verbose bool) *PostProcessor {
+// NewPostProcessor creates a PostProcessor bound to the run's protoc root.
+// The caller keeps protocRoot available until postprocessing completes.
+func NewPostProcessor(projectDir, vendorDir, protocRoot, modulePath string, tsImportBoundaries []string, verbose bool) *PostProcessor {
 	return &PostProcessor{
 		ProjectDir:         projectDir,
 		ModulePath:         modulePath,
 		TsImportBoundaries: tsImportBoundaries,
 		VendorDir:          vendorDir,
+		protocRoot:         protocRoot,
 		Verbose:            verbose,
 	}
 }
@@ -567,7 +570,7 @@ func (p *PostProcessor) ProcessRustFiles(protoFile string) error {
 	// Prost writes {package_path}/{basename}.pb.rs under the protoc root,
 	// where package_path is the package name as a directory path.
 	packagePath := strings.ReplaceAll(protoPackage, ".", "/")
-	srcFile := filepath.Join(p.ProtocRoot, packagePath, baseName+".pb.rs")
+	srcFile := filepath.Join(p.protocRoot, packagePath, baseName+".pb.rs")
 
 	// The file belongs beside its schema in the project.
 	dstDir := filepath.Join(p.ProjectDir, protoDir)
@@ -607,7 +610,7 @@ func (p *PostProcessor) ProcessRustFiles(protoFile string) error {
 
 // cleanEmptyDirs removes empty directories up to the protoc root.
 func (p *PostProcessor) cleanEmptyDirs(dir string) {
-	for dir != p.ProtocRoot && strings.HasPrefix(dir, p.ProtocRoot) {
+	for dir != p.protocRoot && strings.HasPrefix(dir, p.protocRoot) {
 		entries, err := os.ReadDir(dir)
 		if err != nil || len(entries) > 0 {
 			break
